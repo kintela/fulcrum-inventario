@@ -77,6 +77,7 @@ export default function EquiposList({ equipos }: EquiposListProps) {
       if (equipo.procesador) valores.push(equipo.procesador);
       if (equipo.tarjeta_grafica) valores.push(equipo.tarjeta_grafica);
       if (equipo.observaciones) valores.push(equipo.observaciones);
+      if (equipo.so_precio) valores.push(equipo.so_precio);
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
@@ -123,10 +124,9 @@ export default function EquiposList({ equipos }: EquiposListProps) {
             const usuario = obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
             const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicación";
             const sistemaOperativo = equipo.sistema_operativo ?? "Sin sistema operativo";
-            const soPrecio =
-              equipo.so_precio !== null && equipo.so_precio !== undefined
-                ? formatearImporte(equipo.so_precio)
-                : "—";
+            const tieneSoPrecio =
+              equipo.so_precio !== null && equipo.so_precio !== undefined && equipo.so_precio !== 0;
+            const soPrecioTexto = tieneSoPrecio ? formatearImporte(equipo.so_precio) : null;
             const procesador = equipo.procesador ?? "Sin procesador";
             const tarjetaGrafica = equipo.tarjeta_grafica ?? "Sin tarjeta gráfica";
             const observaciones =
@@ -163,9 +163,8 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   ) : null}
                   <p className="text-sm text-foreground/70">{tarjetaGrafica}</p>
                   <p className="text-sm text-foreground/70">
-                    {sistemaOperativo} · {soPrecio}
+                    {tieneSoPrecio ? `${sistemaOperativo} · ${soPrecioTexto}` : sistemaOperativo}
                   </p>
-                  <p className="text-sm text-foreground/70">{observaciones}</p>
                 </div>
 
                 <dl className="grid gap-2 text-sm text-foreground/80">
@@ -184,6 +183,10 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Garantía</dt>
                     <dd className="text-foreground">{equipo.en_garantia ? "Sí" : "No"}</dd>
+                  </div>
+                  <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
+                    <dt className="font-medium text-foreground/70">Observaciones</dt>
+                    <dd className="text-foreground whitespace-pre-line">{observaciones}</dd>
                   </div>
                 </dl>
               </li>

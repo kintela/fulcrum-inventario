@@ -49,18 +49,19 @@ export default async function Dashboard() {
       return acc;
     }
 
-    const precio = Number(equipo.precio_compra ?? 0);
-    const precioCents = Math.round(precio * 100);
+    const precioCents = Math.round(Number(equipo.precio_compra ?? 0) * 100);
+    const soPrecioCents = Math.round(Number(equipo.so_precio ?? 0) * 100);
+    const totalCents = precioCents + soPrecioCents;
 
     acc[clave].cantidad += 1;
-    acc[clave].gastoTotalCents += precioCents;
+    acc[clave].gastoTotalCents += totalCents;
 
     if (equipo.fecha_compra) {
       const fecha = new Date(equipo.fecha_compra);
       if (!Number.isNaN(fecha.getTime())) {
         const anio = fecha.getFullYear();
         if (anio in acc[clave].gastoPorAnioCents) {
-          acc[clave].gastoPorAnioCents[anio] += precioCents;
+          acc[clave].gastoPorAnioCents[anio] += totalCents;
         }
       }
     }
