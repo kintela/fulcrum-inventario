@@ -1,6 +1,6 @@
 import EquiposList from "@/components/EquiposList";
-import { fetchEquipos } from "@/lib/supabase";
 import { formatearImporte } from "@/lib/format";
+import { fetchEquipos } from "@/lib/supabase";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -12,32 +12,61 @@ type TipoClave = keyof typeof tipoLabels;
 
 const tipoClaves: TipoClave[] = ["sobremesa", "portatil", "tablet"];
 
+const currentYear = new Date().getFullYear();
+const aniosReferencia = [currentYear, currentYear - 1, currentYear - 2];
+
 type Indicadores = Record<
   TipoClave,
   {
     cantidad: number;
-    gasto: number;
+    gastoTotalCents: number;
+    gastoPorAnioCents: Record<number, number>;
   }
 >;
+
+function crearIndicadoresBase(): Indicadores {
+  const gastoPorAnioInicial = Object.fromEntries(aniosReferencia.map((anio) => [anio, 0])) as Record<
+    number,
+    number
+  >;
+
+  return tipoClaves.reduce((acc, clave) => {
+    acc[clave] = {
+      cantidad: 0,
+      gastoTotalCents: 0,
+      gastoPorAnioCents: { ...gastoPorAnioInicial },
+    };
+    return acc;
+  }, {} as Indicadores);
+}
 
 export default async function Dashboard() {
   const equipos = await fetchEquipos();
 
-  const indicadores = equipos.reduce<Indicadores>(
-    (acc, equipo) => {
-      const clave = equipo.tipo?.toLowerCase() as TipoClave | undefined;
-      if (clave && acc[clave] !== undefined) {
-        acc[clave].cantidad += 1;
-        acc[clave].gasto += Number(equipo.precio_compra ?? 0);
-      }
+  const indicadores = equipos.reduce<Indicadores>((acc, equipo) => {
+    const clave = equipo.tipo?.toLowerCase() as TipoClave | undefined;
+    if (!clave || acc[clave] === undefined) {
       return acc;
-    },
-    {
-      sobremesa: { cantidad: 0, gasto: 0 },
-      portatil: { cantidad: 0, gasto: 0 },
-      tablet: { cantidad: 0, gasto: 0 },
-    },
-  );
+    }
+
+    const precio = Number(equipo.precio_compra ?? 0);
+    const precioCents = Math.round(precio * 100);
+
+    acc[clave].cantidad += 1;
+    acc[clave].gastoTotalCents += precioCents;
+
+    if (equipo.fecha_compra) {
+      const fecha = new Date(equipo.fecha_compra);
+      if (!Number.isNaN(fecha.getTime())) {
+        const anio = fecha.getFullYear();
+        if (anio in acc[clave].gastoPorAnioCents) {
+          acc[clave].gastoPorAnioCents[anio] += precioCents;
+        }
+      }
+    }
+
+    return acc;
+  }, crearIndicadoresBase());
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -50,7 +79,7 @@ export default async function Dashboard() {
       </header>
 
       <section aria-label="Totales por tipo">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
           {tipoClaves.map((clave) => (
             <article
               key={clave}
@@ -58,12 +87,23 @@ export default async function Dashboard() {
             >
               <h2 className="text-sm font-medium text-foreground/70">{tipoLabels[clave]}</h2>
               <p className="mt-2 text-3xl font-semibold">{indicadores[clave].cantidad}</p>
-              <p className="mt-1 text-sm text-foreground/60">
-                Gasto total:{" "}
-                <span className="font-medium text-foreground">
-                  {formatearImporte(indicadores[clave].gasto)}
-                </span>
-              </p>
+
+              <div className="mt-4 grid grid-cols-4 gap-3 text-xs sm:text-sm">
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground/60">Gasto total</p>
+                  <p className="font-semibold text-foreground">
+                    {formatearImporte(indicadores[clave].gastoTotalCents / 100)}
+                  </p>
+                </div>
+                {aniosReferencia.map((anio) => (
+                  <div key={anio} className="space-y-1">
+                    <p className="font-medium text-foreground/60">{anio}</p>
+                    <p className="font-semibold text-foreground">
+                      {formatearImporte((indicadores[clave].gastoPorAnioCents[anio] ?? 0) / 100)}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </article>
           ))}
         </div>

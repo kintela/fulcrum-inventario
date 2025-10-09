@@ -6,7 +6,12 @@ export function formatearImporte(valor: number | null | undefined): string {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
     currency: "EUR",
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    useGrouping: true,
+    minimumIntegerDigits: 1,
+    minimumSignificantDigits: 1,
+    minimumGroupingDigits: 1,
   }).format(Number(valor));
 }
 
