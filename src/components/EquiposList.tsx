@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { EquipoRecord } from "@/lib/supabase";
+import { formatearFecha, formatearImporte } from "@/lib/format";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -12,23 +13,6 @@ const tipoLabels: Record<string, string> = {
 type EquiposListProps = {
   equipos: EquipoRecord[];
 };
-
-function formatearFecha(valor: string | null): string {
-  if (!valor) return "Sin fecha";
-  const fecha = new Date(valor);
-  if (Number.isNaN(fecha.getTime())) return "Fecha inválida";
-  return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(fecha);
-}
-
-function formatearImporte(valor: number | null): string {
-  if (valor === null || Number.isNaN(Number(valor))) return "—";
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(Number(valor));
-}
-
 function normalizarValor(valor: unknown): string {
   if (valor === null || valor === undefined) {
     return "";

@@ -1,5 +1,6 @@
 import EquiposList from "@/components/EquiposList";
 import { fetchEquipos } from "@/lib/supabase";
+import { formatearImporte } from "@/lib/format";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -11,18 +12,31 @@ type TipoClave = keyof typeof tipoLabels;
 
 const tipoClaves: TipoClave[] = ["sobremesa", "portatil", "tablet"];
 
+type Indicadores = Record<
+  TipoClave,
+  {
+    cantidad: number;
+    gasto: number;
+  }
+>;
+
 export default async function Dashboard() {
   const equipos = await fetchEquipos();
 
-  const totales = equipos.reduce<Record<TipoClave, number>>(
+  const indicadores = equipos.reduce<Indicadores>(
     (acc, equipo) => {
       const clave = equipo.tipo?.toLowerCase() as TipoClave | undefined;
       if (clave && acc[clave] !== undefined) {
-        acc[clave] += 1;
+        acc[clave].cantidad += 1;
+        acc[clave].gasto += Number(equipo.precio_compra ?? 0);
       }
       return acc;
     },
-    { sobremesa: 0, portatil: 0, tablet: 0 },
+    {
+      sobremesa: { cantidad: 0, gasto: 0 },
+      portatil: { cantidad: 0, gasto: 0 },
+      tablet: { cantidad: 0, gasto: 0 },
+    },
   );
 
   return (
@@ -36,14 +50,20 @@ export default async function Dashboard() {
       </header>
 
       <section aria-label="Totales por tipo">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
           {tipoClaves.map((clave) => (
             <article
               key={clave}
               className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
             >
               <h2 className="text-sm font-medium text-foreground/70">{tipoLabels[clave]}</h2>
-              <p className="mt-2 text-3xl font-semibold">{totales[clave]}</p>
+              <p className="mt-2 text-3xl font-semibold">{indicadores[clave].cantidad}</p>
+              <p className="mt-1 text-sm text-foreground/60">
+                Gasto total:{" "}
+                <span className="font-medium text-foreground">
+                  {formatearImporte(indicadores[clave].gasto)}
+                </span>
+              </p>
             </article>
           ))}
         </div>
