@@ -24,6 +24,19 @@ export type EquipoRecord = {
   fecha_compra: string | null;
   en_garantia: boolean;
   precio_compra: number | null;
+  fabricante_id: number | null;
+  ubicacion_id: number | null;
+  usuario_id: number | null;
+  sistema_operativo: string | null;
+  fabricante: { nombre: string | null } | null;
+  ubicacion: { nombre: string | null } | null;
+  usuario:
+    | {
+        nombre: string | null;
+        apellidos: string | null;
+        nombre_completo: string | null;
+      }
+    | null;
 } & Record<string, unknown>;
 
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
@@ -31,7 +44,25 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
   const restUrl = `${url}/rest/v1/equipos`;
 
   const requestUrl = new URL(restUrl);
-  requestUrl.searchParams.set("select", "*");
+  requestUrl.searchParams.set(
+    "select",
+    [
+      "id",
+      "nombre",
+      "modelo",
+      "tipo",
+      "fecha_compra",
+      "en_garantia",
+      "precio_compra",
+      "fabricante_id",
+      "ubicacion_id",
+      "usuario_id",
+      "sistema_operativo",
+      "fabricante:fabricantes(nombre)",
+      "ubicacion:ubicaciones(nombre)",
+      "usuario:usuarios(nombre,apellidos,nombre_completo)",
+    ].join(","),
+  );
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
 
   const response = await fetch(requestUrl.toString(), {
