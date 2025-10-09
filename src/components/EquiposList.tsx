@@ -158,7 +158,6 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                     {fabricante}
                     {equipo.modelo ? ` ${equipo.modelo}` : ""}
                   </p>
-                  <p className="text-sm text-foreground/70">{ubicacion}</p>
                   <p className="text-sm text-foreground/70">{procesador}</p>
                   {almacenamiento ? (
                     <p className="text-sm text-foreground/70">{almacenamiento}</p>
@@ -167,9 +166,14 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   <p className="text-sm text-foreground/70">
                     {tieneSoPrecio ? `${sistemaOperativo} · ${soPrecioTexto}` : sistemaOperativo}
                   </p>
+                  <div className="border-t border-border/60 pt-2" />
                 </div>
 
                 <dl className="grid gap-2 text-sm text-foreground/80">
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/70">Ubicación</dt>
+                    <dd className="text-foreground">{ubicacion}</dd>
+                  </div>
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Tipo</dt>
                     <dd className="text-foreground">{tipo}</dd>
