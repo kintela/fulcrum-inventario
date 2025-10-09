@@ -21,11 +21,12 @@ type Indicadores = Record<
     cantidad: number;
     gastoTotalCents: number;
     gastoPorAnioCents: Record<number, number>;
+    equiposPorAnio: Record<number, number>;
   }
 >;
 
 function crearIndicadoresBase(): Indicadores {
-  const gastoPorAnioInicial = Object.fromEntries(aniosReferencia.map((anio) => [anio, 0])) as Record<
+  const valoresIniciales = Object.fromEntries(aniosReferencia.map((anio) => [anio, 0])) as Record<
     number,
     number
   >;
@@ -34,7 +35,8 @@ function crearIndicadoresBase(): Indicadores {
     acc[clave] = {
       cantidad: 0,
       gastoTotalCents: 0,
-      gastoPorAnioCents: { ...gastoPorAnioInicial },
+      gastoPorAnioCents: { ...valoresIniciales },
+      equiposPorAnio: { ...valoresIniciales },
     };
     return acc;
   }, {} as Indicadores);
@@ -62,6 +64,7 @@ export default async function Dashboard() {
         const anio = fecha.getFullYear();
         if (anio in acc[clave].gastoPorAnioCents) {
           acc[clave].gastoPorAnioCents[anio] += totalCents;
+          acc[clave].equiposPorAnio[anio] += 1;
         }
       }
     }
@@ -98,7 +101,9 @@ export default async function Dashboard() {
                 </div>
                 {aniosReferencia.map((anio) => (
                   <div key={anio} className="space-y-1">
-                    <p className="font-medium text-foreground/60">{anio}</p>
+                    <p className="font-medium text-foreground/60">
+                      {anio} ({indicadores[clave].equiposPorAnio[anio] ?? 0})
+                    </p>
                     <p className="font-semibold text-foreground">
                       {formatearImporte((indicadores[clave].gastoPorAnioCents[anio] ?? 0) / 100)}
                     </p>

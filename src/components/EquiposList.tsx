@@ -76,7 +76,9 @@ export default function EquiposList({ equipos }: EquiposListProps) {
       if (equipo.ubicacion?.nombre) valores.push(equipo.ubicacion.nombre);
       if (equipo.procesador) valores.push(equipo.procesador);
       if (equipo.tarjeta_grafica) valores.push(equipo.tarjeta_grafica);
-      if (equipo.observaciones) valores.push(equipo.observaciones);
+      if (equipo.observaciones && equipo.observaciones.trim().length > 0) {
+        valores.push(equipo.observaciones);
+      }
       if (equipo.so_precio) valores.push(equipo.so_precio);
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
@@ -132,7 +134,7 @@ export default function EquiposList({ equipos }: EquiposListProps) {
             const observaciones =
               equipo.observaciones && equipo.observaciones.trim().length > 0
                 ? equipo.observaciones.trim()
-                : "Sin observaciones";
+                : null;
 
             const ram = equipo.ram ?? 0;
             const ssd = equipo.ssd ?? 0;
@@ -154,7 +156,7 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   <p className="text-xs font-semibold italic text-foreground/60">{usuario}</p>
                   <p className="text-sm text-foreground/70">
                     {fabricante}
-                    {equipo.modelo ? ` — ${equipo.modelo}` : ""}
+                    {equipo.modelo ? ` ${equipo.modelo}` : ""}
                   </p>
                   <p className="text-sm text-foreground/70">{ubicacion}</p>
                   <p className="text-sm text-foreground/70">{procesador}</p>
@@ -184,10 +186,12 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                     <dt className="font-medium text-foreground/70">Garantía</dt>
                     <dd className="text-foreground">{equipo.en_garantia ? "Sí" : "No"}</dd>
                   </div>
-                  <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
-                    <dt className="font-medium text-foreground/70">Observaciones</dt>
-                    <dd className="text-foreground whitespace-pre-line">{observaciones}</dd>
-                  </div>
+                  {observaciones ? (
+                    <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
+                      <dt className="font-medium text-foreground/70">Observaciones</dt>
+                      <dd className="text-foreground whitespace-pre-line">{observaciones}</dd>
+                    </div>
+                  ) : null}
                 </dl>
               </li>
             );
