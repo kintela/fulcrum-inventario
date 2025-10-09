@@ -24,17 +24,14 @@ export type EquipoRecord = {
   fecha_compra: string | null;
   en_garantia: boolean;
   precio_compra: number | null;
-};
+} & Record<string, unknown>;
 
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
   const { url, anonKey } = getSupabaseConfig();
   const restUrl = `${url}/rest/v1/equipos`;
 
   const requestUrl = new URL(restUrl);
-  requestUrl.searchParams.set(
-    "select",
-    ["id", "nombre", "modelo", "tipo", "fecha_compra", "en_garantia", "precio_compra"].join(","),
-  );
+  requestUrl.searchParams.set("select", "*");
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
 
   const response = await fetch(requestUrl.toString(), {
