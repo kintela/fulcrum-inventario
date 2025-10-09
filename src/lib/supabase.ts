@@ -28,6 +28,7 @@ export type EquipoRecord = {
   ubicacion_id: number | null;
   usuario_id: number | null;
   sistema_operativo: string | null;
+  so_precio: number | null;
   fabricante: { nombre: string | null } | null;
   ubicacion: { nombre: string | null } | null;
   usuario:
@@ -37,6 +38,12 @@ export type EquipoRecord = {
         nombre_completo: string | null;
       }
     | null;
+  procesador: string | null;
+  ram: number | null;
+  ssd: number | null;
+  hdd: number | null;
+  tarjeta_grafica: string | null;
+  observaciones: string | null;
 } & Record<string, unknown>;
 
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
@@ -58,6 +65,13 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "ubicacion_id",
       "usuario_id",
       "sistema_operativo",
+      "so_precio",
+      "procesador",
+      "ram",
+      "ssd",
+      "hdd",
+      "tarjeta_grafica",
+      "observaciones",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",

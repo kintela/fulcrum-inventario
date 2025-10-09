@@ -74,6 +74,9 @@ export default function EquiposList({ equipos }: EquiposListProps) {
 
       if (equipo.fabricante?.nombre) valores.push(equipo.fabricante.nombre);
       if (equipo.ubicacion?.nombre) valores.push(equipo.ubicacion.nombre);
+      if (equipo.procesador) valores.push(equipo.procesador);
+      if (equipo.tarjeta_grafica) valores.push(equipo.tarjeta_grafica);
+      if (equipo.observaciones) valores.push(equipo.observaciones);
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
@@ -120,6 +123,24 @@ export default function EquiposList({ equipos }: EquiposListProps) {
             const usuario = obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
             const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicación";
             const sistemaOperativo = equipo.sistema_operativo ?? "Sin sistema operativo";
+            const soPrecio =
+              equipo.so_precio !== null && equipo.so_precio !== undefined
+                ? formatearImporte(equipo.so_precio)
+                : "—";
+            const procesador = equipo.procesador ?? "Sin procesador";
+            const tarjetaGrafica = equipo.tarjeta_grafica ?? "Sin tarjeta gráfica";
+            const observaciones =
+              equipo.observaciones && equipo.observaciones.trim().length > 0
+                ? equipo.observaciones.trim()
+                : "Sin observaciones";
+
+            const ram = equipo.ram ?? 0;
+            const ssd = equipo.ssd ?? 0;
+            const hdd = equipo.hdd ?? 0;
+            const ramTexto = ram ? `${ram} GB RAM` : "";
+            const ssdTexto = ssd ? `${ssd} GB SSD` : "";
+            const hddTexto = hdd ? `${hdd} GB HDD` : "";
+            const almacenamiento = [ramTexto, ssdTexto, hddTexto].filter(Boolean).join(" · ");
 
             return (
               <li
@@ -131,12 +152,20 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                     {equipo.nombre ?? "Equipo sin nombre"}
                   </h3>
                   <p className="text-xs font-semibold italic text-foreground/60">{usuario}</p>
-                  <p className="text-sm text-foreground/70">{fabricante}</p>
-                  {equipo.modelo ? (
-                    <p className="text-sm text-foreground/70">{equipo.modelo}</p>
-                  ) : null}
+                  <p className="text-sm text-foreground/70">
+                    {fabricante}
+                    {equipo.modelo ? ` — ${equipo.modelo}` : ""}
+                  </p>
                   <p className="text-sm text-foreground/70">{ubicacion}</p>
-                  <p className="text-sm text-foreground/70">{sistemaOperativo}</p>
+                  <p className="text-sm text-foreground/70">{procesador}</p>
+                  {almacenamiento ? (
+                    <p className="text-sm text-foreground/70">{almacenamiento}</p>
+                  ) : null}
+                  <p className="text-sm text-foreground/70">{tarjetaGrafica}</p>
+                  <p className="text-sm text-foreground/70">
+                    {sistemaOperativo} · {soPrecio}
+                  </p>
+                  <p className="text-sm text-foreground/70">{observaciones}</p>
                 </div>
 
                 <dl className="grid gap-2 text-sm text-foreground/80">
