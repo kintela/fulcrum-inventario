@@ -64,6 +64,17 @@ export default function EquiposList({
   const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
   const [mostrarAsignados, setMostrarAsignados] = useState(true);
   const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
+  const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
+
+  const sistemasOperativos = useMemo(() => {
+    const valores = new Set<string>();
+    equipos.forEach((equipo) => {
+      if (equipo.sistema_operativo) {
+        valores.add(equipo.sistema_operativo.trim());
+      }
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+  }, [equipos]);
 
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
@@ -91,6 +102,15 @@ export default function EquiposList({
       if (!mostrarAsignados && asignado) return false;
       if (!mostrarSinAsignar && !asignado) return false;
 
+      if (sistemaOperativoSeleccionado) {
+        if (
+          !equipo.sistema_operativo ||
+          equipo.sistema_operativo.trim() !== sistemaOperativoSeleccionado
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
 
@@ -103,6 +123,7 @@ export default function EquiposList({
     mostrarNoBoxes,
     mostrarAsignados,
     mostrarSinAsignar,
+    sistemaOperativoSeleccionado,
   ]);
 
   const filtrados = useMemo(() => {
@@ -212,6 +233,24 @@ export default function EquiposList({
               </label>
             </div>
           </fieldset>
+
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Sistema operativo
+            </span>
+            <select
+              value={sistemaOperativoSeleccionado}
+              onChange={(event) => setSistemaOperativoSeleccionado(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+              {sistemasOperativos.map((so) => (
+                <option key={so} value={so}>
+                  {so}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="text-sm text-foreground/60">
