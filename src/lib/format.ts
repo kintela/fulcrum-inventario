@@ -11,7 +11,6 @@ export function formatearImporte(valor: number | null | undefined): string {
     useGrouping: true,
     minimumIntegerDigits: 1,
     minimumSignificantDigits: 1,
-    minimumGroupingDigits: 1,
   }).format(Number(valor));
 }
 
