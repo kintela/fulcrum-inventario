@@ -28,12 +28,10 @@ function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
 }
 
 function normalizarValor(valor: unknown): string {
-  if (valor === null || valor === undefined) {
-    return "";
-  }
+  if (valor === null || valor === undefined) return "";
 
   if (typeof valor === "boolean") {
-    return valor ? "true 1 si yes" : "false 0 no";
+    return valor ? "true 1 sí yes" : "false 0 no";
   }
 
   if (typeof valor === "number") {
@@ -64,15 +62,15 @@ export default function EquiposList({
   const [query, setQuery] = useState("");
   const [mostrarBoxes, setMostrarBoxes] = useState(true);
   const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
+  const [mostrarAsignados, setMostrarAsignados] = useState(true);
+  const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
 
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
 
     if (filtroTipo) {
       const tipoNormalizado = filtroTipo.toLowerCase();
-      dataset = dataset.filter(
-        (equipo) => equipo.tipo?.toLowerCase() === tipoNormalizado,
-      );
+      dataset = dataset.filter((equipo) => equipo.tipo?.toLowerCase() === tipoNormalizado);
     }
 
     if (filtroAnio !== null && filtroAnio !== undefined) {
@@ -83,18 +81,29 @@ export default function EquiposList({
       });
     }
 
-    if (!(mostrarBoxes && mostrarNoBoxes)) {
-      dataset = dataset.filter((equipo) => {
-        const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
-        const estaEnBoxes = ubicacion.includes("box");
-        if (estaEnBoxes && mostrarBoxes) return true;
-        if (!estaEnBoxes && mostrarNoBoxes) return true;
-        return false;
-      });
-    }
+    dataset = dataset.filter((equipo) => {
+      const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
+      const estaEnBoxes = ubicacion.includes("box");
+      if (!mostrarBoxes && estaEnBoxes) return false;
+      if (!mostrarNoBoxes && !estaEnBoxes) return false;
+
+      const asignado = Boolean(obtenerNombreUsuario(equipo));
+      if (!mostrarAsignados && asignado) return false;
+      if (!mostrarSinAsignar && !asignado) return false;
+
+      return true;
+    });
 
     return dataset;
-  }, [equipos, filtroTipo, filtroAnio, mostrarBoxes, mostrarNoBoxes]);
+  }, [
+    equipos,
+    filtroTipo,
+    filtroAnio,
+    mostrarBoxes,
+    mostrarNoBoxes,
+    mostrarAsignados,
+    mostrarSinAsignar,
+  ]);
 
   const filtrados = useMemo(() => {
     const normalizada = query.trim().toLowerCase();
@@ -104,7 +113,7 @@ export default function EquiposList({
       const valores: unknown[] = [...Object.values(equipo)];
 
       if (equipo.tipo) {
-        const etiqueta = tipoLabels[equipo.tipo.toString().toLowerCase()];
+        const etiqueta = tipoLabels[equipo.tipo.toLowerCase()];
         if (etiqueta) valores.push(etiqueta);
       }
 
@@ -141,7 +150,7 @@ export default function EquiposList({
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
-          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-64 lg:w-72">
+          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-56 lg:w-64">
             Buscar en todos los campos
             <input
               type="text"
@@ -177,7 +186,34 @@ export default function EquiposList({
               </label>
             </div>
           </fieldset>
+
+          <fieldset className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-auto">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Asignación
+            </legend>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={mostrarAsignados}
+                  onChange={(event) => setMostrarAsignados(event.target.checked)}
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                />
+                <span>Asignados</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={mostrarSinAsignar}
+                  onChange={(event) => setMostrarSinAsignar(event.target.checked)}
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                />
+                <span>Sin asignar</span>
+              </label>
+            </div>
+          </fieldset>
         </div>
+
         <div className="text-sm text-foreground/60">
           {filtrados.length === baseFiltrados.length
             ? filtrados.length === 1
@@ -208,8 +244,7 @@ export default function EquiposList({
             const usuario = obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
             const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicación";
             const sistemaOperativo = equipo.sistema_operativo ?? "Sin sistema operativo";
-            const esWindows10 =
-              sistemaOperativo.toLowerCase().includes("windows 10");
+            const esWindows10 = sistemaOperativo.toLowerCase().includes("windows 10");
             const tieneSoPrecio =
               equipo.so_precio !== null && equipo.so_precio !== undefined && equipo.so_precio !== 0;
             const soPrecioTexto = tieneSoPrecio ? formatearImporte(equipo.so_precio) : null;
@@ -257,12 +292,12 @@ export default function EquiposList({
                     <p className="text-sm text-foreground/70">{almacenamiento}</p>
                   ) : null}
                   <p className="text-sm text-foreground/70">{tarjetaGrafica}</p>
-                  <p
-                    className={`text-sm ${esWindows10 ? "text-red-500" : "text-foreground/70"}`}
-                  >
+                  <p className={`text-sm ${esWindows10 ? "text-red-500" : "text-foreground/70"}`}>
                     {tieneSoPrecio ? `${sistemaOperativo} · ${soPrecioTexto}` : sistemaOperativo}
                   </p>
-                  <p className="text-[9px] text-foreground/70 leading-tight">SO serial: {soSerial}</p>
+                  <p className="text-[9px] leading-tight text-foreground/70">
+                    SO serial: {soSerial}
+                  </p>
                   <p className="text-sm text-foreground/70">Número serie: {numeroSerie}</p>
                   <p className="text-sm text-foreground/70">Part number: {partNumber}</p>
                   <p className="text-sm text-foreground/70">Admite update: {admiteUpdateTexto}</p>
@@ -352,7 +387,3 @@ export default function EquiposList({
     </section>
   );
 }
-
-
-
-
