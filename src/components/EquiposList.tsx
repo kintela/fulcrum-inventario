@@ -6,7 +6,7 @@ import type { EquipoRecord } from "@/lib/supabase";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
-  portatil: "Portátil",
+  portatil: "Portatil",
   tablet: "Tablet",
 };
 
@@ -19,36 +19,25 @@ type EquiposListProps = {
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
   if (!equipo.usuario) return null;
   if (equipo.usuario.nombre_completo) return equipo.usuario.nombre_completo;
-
   const partes = [equipo.usuario.nombre, equipo.usuario.apellidos].filter(
     (parte): parte is string => Boolean(parte),
   );
-
   return partes.length > 0 ? partes.join(" ") : null;
 }
 
 function normalizarValor(valor: unknown): string {
   if (valor === null || valor === undefined) return "";
-
-  if (typeof valor === "boolean") {
-    return valor ? "true 1 sí yes" : "false 0 no";
-  }
-
+  if (typeof valor === "boolean") return valor ? "true 1 si yes" : "false 0 no";
   if (typeof valor === "number") {
     const texto = valor.toString();
     return `${texto} ${texto.replace(".", ",")}`;
   }
-
-  if (Array.isArray(valor)) {
-    return valor.map(normalizarValor).join(" ");
-  }
-
+  if (Array.isArray(valor)) return valor.map(normalizarValor).join(" ");
   if (typeof valor === "object") {
     return Object.values(valor as Record<string, unknown>)
       .map(normalizarValor)
       .join(" ");
   }
-
   const texto = valor.toString().toLowerCase();
   const sinAcentos = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return `${texto} ${sinAcentos}`.trim();
@@ -65,13 +54,20 @@ export default function EquiposList({
   const [mostrarAsignados, setMostrarAsignados] = useState(true);
   const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
   const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
+  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
 
   const sistemasOperativos = useMemo(() => {
     const valores = new Set<string>();
     equipos.forEach((equipo) => {
-      if (equipo.sistema_operativo) {
-        valores.add(equipo.sistema_operativo.trim());
-      }
+      if (equipo.sistema_operativo) valores.add(equipo.sistema_operativo.trim());
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+  }, [equipos]);
+
+  const ubicacionesDisponibles = useMemo(() => {
+    const valores = new Set<string>();
+    equipos.forEach((equipo) => {
+      if (equipo.ubicacion?.nombre) valores.add(equipo.ubicacion.nombre.trim());
     });
     return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
   }, [equipos]);
@@ -111,6 +107,11 @@ export default function EquiposList({
         }
       }
 
+      if (ubicacionSeleccionada) {
+        if (!equipo.ubicacion?.nombre || equipo.ubicacion.nombre.trim() !== ubicacionSeleccionada)
+          return false;
+      }
+
       return true;
     });
 
@@ -124,6 +125,7 @@ export default function EquiposList({
     mostrarAsignados,
     mostrarSinAsignar,
     sistemaOperativoSeleccionado,
+    ubicacionSeleccionada,
   ]);
 
   const filtrados = useMemo(() => {
@@ -132,15 +134,12 @@ export default function EquiposList({
 
     return baseFiltrados.filter((equipo) => {
       const valores: unknown[] = [...Object.values(equipo)];
-
       if (equipo.tipo) {
         const etiqueta = tipoLabels[equipo.tipo.toLowerCase()];
         if (etiqueta) valores.push(etiqueta);
       }
-
       const usuario = obtenerNombreUsuario(equipo);
       if (usuario) valores.push(usuario);
-
       if (equipo.fabricante?.nombre) valores.push(equipo.fabricante.nombre);
       if (equipo.ubicacion?.nombre) valores.push(equipo.ubicacion.nombre);
       if (equipo.procesador) valores.push(equipo.procesador);
@@ -169,102 +168,110 @@ export default function EquiposList({
 
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
-          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-56 lg:w-64">
-            Buscar en todos los campos
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+        <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-52 lg:w-60">
+          Buscar en todos los campos
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Ej. portatil HP, en garantia, 2023..."
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          />
+        </label>
+
+        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+          <legend className="font-semibold uppercase tracking-wide text-foreground/60">Boxes</legend>
+          <label className="flex items-center gap-2">
             <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ej. portátil HP, en garantía, 2023..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              type="checkbox"
+              checked={mostrarBoxes}
+              onChange={(event) => setMostrarBoxes(event.target.checked)}
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
             />
+            <span>En boxes</span>
           </label>
-
-          <fieldset className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-auto">
-            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
-              Boxes
-            </legend>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={mostrarBoxes}
-                  onChange={(event) => setMostrarBoxes(event.target.checked)}
-                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-                />
-                <span>En boxes</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={mostrarNoBoxes}
-                  onChange={(event) => setMostrarNoBoxes(event.target.checked)}
-                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-                />
-                <span>Fuera de boxes</span>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-auto">
-            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
-              Asignación
-            </legend>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={mostrarAsignados}
-                  onChange={(event) => setMostrarAsignados(event.target.checked)}
-                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-                />
-                <span>Asignados</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={mostrarSinAsignar}
-                  onChange={(event) => setMostrarSinAsignar(event.target.checked)}
-                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-                />
-                <span>Sin asignar</span>
-              </label>
-            </div>
-          </fieldset>
-
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Sistema operativo
-            </span>
-            <select
-              value={sistemaOperativoSeleccionado}
-              onChange={(event) => setSistemaOperativoSeleccionado(event.target.value)}
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todos</option>
-              {sistemasOperativos.map((so) => (
-                <option key={so} value={so}>
-                  {so}
-                </option>
-              ))}
-            </select>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarNoBoxes}
+              onChange={(event) => setMostrarNoBoxes(event.target.checked)}
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+            <span>Fuera de boxes</span>
           </label>
-        </div>
+        </fieldset>
 
-        <div className="text-sm text-foreground/60">
-          {filtrados.length === baseFiltrados.length
-            ? filtrados.length === 1
-              ? "1 resultado"
-              : `${filtrados.length} resultados`
-            : `${filtrados.length} de ${baseFiltrados.length} resultados`}
-        </div>
+        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+          <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+            Asignacion
+          </legend>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarAsignados}
+              onChange={(event) => setMostrarAsignados(event.target.checked)}
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+            <span>Asignados</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSinAsignar}
+              onChange={(event) => setMostrarSinAsignar(event.target.checked)}
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+            <span>Sin asignar</span>
+          </label>
+        </fieldset>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">
+            Sistema operativo
+          </span>
+          <select
+            value={sistemaOperativoSeleccionado}
+            onChange={(event) => setSistemaOperativoSeleccionado(event.target.value)}
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="">Todos</option>
+            {sistemasOperativos.map((so) => (
+              <option key={so} value={so}>
+                {so}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">Ubicacion</span>
+          <select
+            value={ubicacionSeleccionada}
+            onChange={(event) => setUbicacionSeleccionada(event.target.value)}
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="">Todas</option>
+            {ubicacionesDisponibles.map((ubic) => (
+              <option key={ubic} value={ubic}>
+                {ubic}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="text-sm text-foreground/60">
+        {filtrados.length === baseFiltrados.length
+          ? filtrados.length === 1
+            ? "1 resultado"
+            : `${filtrados.length} resultados`
+          : `${filtrados.length} de ${baseFiltrados.length} resultados`}
       </div>
 
       {equipos.length === 0 ? (
         <p className="text-sm text-foreground/60">
-          No hay equipos registrados todavía. Añade el primero desde el panel de gestión.
+          No hay equipos registrados todavia. Anade el primero desde el panel de gestion.
         </p>
       ) : baseFiltrados.length === 0 ? (
         <p className="text-sm text-foreground/60">
@@ -278,38 +285,35 @@ export default function EquiposList({
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
           {filtrados.map((equipo) => {
-            const tipo = equipo.tipo ? tipoLabels[equipo.tipo.toLowerCase()] ?? equipo.tipo : "—";
+            const tipo = equipo.tipo ? tipoLabels[equipo.tipo.toLowerCase()] ?? equipo.tipo : "-";
             const fabricante = equipo.fabricante?.nombre ?? "Sin fabricante";
             const usuario = obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
-            const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicación";
+            const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicacion";
             const sistemaOperativo = equipo.sistema_operativo ?? "Sin sistema operativo";
             const esWindows10 = sistemaOperativo.toLowerCase().includes("windows 10");
             const tieneSoPrecio =
               equipo.so_precio !== null && equipo.so_precio !== undefined && equipo.so_precio !== 0;
             const soPrecioTexto = tieneSoPrecio ? formatearImporte(equipo.so_precio) : null;
             const procesador = equipo.procesador ?? "Sin procesador";
-            const tarjetaGrafica = equipo.tarjeta_grafica ?? "Sin tarjeta gráfica";
+            const tarjetaGrafica = equipo.tarjeta_grafica ?? "Sin tarjeta grafica";
             const observaciones =
               equipo.observaciones && equipo.observaciones.trim().length > 0
                 ? equipo.observaciones.trim()
                 : null;
-            const soSerial = equipo.so_serial ?? "Sin número de serie SO";
-            const numeroSerie = equipo.numero_serie ?? "Sin número de serie";
+            const soSerial = equipo.so_serial ?? "Sin numero de serie SO";
+            const numeroSerie = equipo.numero_serie ?? "Sin numero de serie";
             const partNumber = equipo.part_number ?? "Sin part number";
             const admiteUpdateTexto =
               equipo.admite_update === null || equipo.admite_update === undefined
                 ? "Desconocido"
                 : equipo.admite_update
-                  ? "Sí"
+                  ? "Si"
                   : "No";
             const pantallas = Array.isArray(equipo.pantallas) ? equipo.pantallas : [];
 
-            const ram = equipo.ram ?? 0;
-            const ssd = equipo.ssd ?? 0;
-            const hdd = equipo.hdd ?? 0;
-            const ramTexto = ram ? `${ram} GB RAM` : "";
-            const ssdTexto = ssd ? `${ssd} GB SSD` : "";
-            const hddTexto = hdd ? `${hdd} GB HDD` : "";
+            const ramTexto = equipo.ram ? `${equipo.ram} GB RAM` : "";
+            const ssdTexto = equipo.ssd ? `${equipo.ssd} GB SSD` : "";
+            const hddTexto = equipo.hdd ? `${equipo.hdd} GB HDD` : "";
             const almacenamiento = [ramTexto, ssdTexto, hddTexto].filter(Boolean).join(" · ");
 
             return (
@@ -337,7 +341,7 @@ export default function EquiposList({
                   <p className="text-[9px] leading-tight text-foreground/70">
                     SO serial: {soSerial}
                   </p>
-                  <p className="text-sm text-foreground/70">Número serie: {numeroSerie}</p>
+                  <p className="text-sm text-foreground/70">Numero serie: {numeroSerie}</p>
                   <p className="text-sm text-foreground/70">Part number: {partNumber}</p>
                   <p className="text-sm text-foreground/70">Admite update: {admiteUpdateTexto}</p>
                   <div className="border-t border-border/60 pt-2" />
@@ -345,7 +349,7 @@ export default function EquiposList({
 
                 <dl className="grid gap-2 text-sm text-foreground/80">
                   <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/70">Ubicación</dt>
+                    <dt className="font-medium text-foreground/70">Ubicacion</dt>
                     <dd className="text-foreground">{ubicacion}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
@@ -374,8 +378,8 @@ export default function EquiposList({
                     </dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/70">Garantía</dt>
-                    <dd className="text-foreground">{equipo.en_garantia ? "Sí" : "No"}</dd>
+                    <dt className="font-medium text-foreground/70">Garantia</dt>
+                    <dd className="text-foreground">{equipo.en_garantia ? "Si" : "No"}</dd>
                   </div>
                   {observaciones ? (
                     <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
