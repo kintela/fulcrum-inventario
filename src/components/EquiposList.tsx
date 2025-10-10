@@ -12,6 +12,8 @@ const tipoLabels: Record<string, string> = {
 
 type EquiposListProps = {
   equipos: EquipoRecord[];
+  filtroTipo?: string | null;
+  filtroAnio?: number | null;
 };
 
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
@@ -54,14 +56,39 @@ function normalizarValor(valor: unknown): string {
   return `${texto} ${sinAcentos}`.trim();
 }
 
-export default function EquiposList({ equipos }: EquiposListProps) {
+export default function EquiposList({
+  equipos,
+  filtroTipo = null,
+  filtroAnio = null,
+}: EquiposListProps) {
   const [query, setQuery] = useState("");
+
+  const baseFiltrados = useMemo(() => {
+    let dataset = equipos;
+
+    if (filtroTipo) {
+      const tipoNormalizado = filtroTipo.toLowerCase();
+      dataset = dataset.filter(
+        (equipo) => equipo.tipo?.toLowerCase() === tipoNormalizado,
+      );
+    }
+
+    if (filtroAnio !== null && filtroAnio !== undefined) {
+      dataset = dataset.filter((equipo) => {
+        if (!equipo.fecha_compra) return false;
+        const fecha = new Date(equipo.fecha_compra);
+        return !Number.isNaN(fecha.getTime()) && fecha.getFullYear() === filtroAnio;
+      });
+    }
+
+    return dataset;
+  }, [equipos, filtroTipo, filtroAnio]);
 
   const filtrados = useMemo(() => {
     const normalizada = query.trim().toLowerCase();
-    if (!normalizada) return equipos;
+    if (!normalizada) return baseFiltrados;
 
-    return equipos.filter((equipo) => {
+    return baseFiltrados.filter((equipo) => {
       const valores: unknown[] = [...Object.values(equipo)];
 
       if (equipo.tipo) {
@@ -89,7 +116,7 @@ export default function EquiposList({ equipos }: EquiposListProps) {
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
-  }, [equipos, query]);
+  }, [baseFiltrados, query]);
 
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
@@ -107,17 +134,21 @@ export default function EquiposList({ equipos }: EquiposListProps) {
           </label>
         </div>
         <div className="text-sm text-foreground/60">
-          {filtrados.length === equipos.length
+          {filtrados.length === baseFiltrados.length
             ? filtrados.length === 1
               ? "1 resultado"
               : `${filtrados.length} resultados`
-            : `${filtrados.length} de ${equipos.length} resultados`}
+            : `${filtrados.length} de ${baseFiltrados.length} resultados`}
         </div>
       </div>
 
       {equipos.length === 0 ? (
         <p className="text-sm text-foreground/60">
           No hay equipos registrados todavía. Añade el primero desde el panel de gestión.
+        </p>
+      ) : baseFiltrados.length === 0 ? (
+        <p className="text-sm text-foreground/60">
+          No hay equipos que coincidan con el filtro seleccionado.
         </p>
       ) : filtrados.length === 0 ? (
         <p className="text-sm text-foreground/60">
@@ -241,3 +272,7 @@ export default function EquiposList({ equipos }: EquiposListProps) {
     </section>
   );
 }
+
+
+
+
