@@ -188,7 +188,20 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   </div>
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Precio compra</dt>
-                    <dd className="text-foreground">{formatearImporte(equipo.precio_compra)}</dd>
+                    <dd className="text-foreground">
+                      {equipo.url ? (
+                        <a
+                          href={equipo.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline underline-offset-4"
+                        >
+                          {formatearImporte(equipo.precio_compra)}
+                        </a>
+                      ) : (
+                        formatearImporte(equipo.precio_compra)
+                      )}
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Garantía</dt>

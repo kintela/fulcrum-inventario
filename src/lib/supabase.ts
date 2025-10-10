@@ -44,6 +44,7 @@ export type EquipoRecord = {
   hdd: number | null;
   tarjeta_grafica: string | null;
   observaciones: string | null;
+  url: string | null;
 } & Record<string, unknown>;
 
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
@@ -72,6 +73,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "hdd",
       "tarjeta_grafica",
       "observaciones",
+      "url",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
