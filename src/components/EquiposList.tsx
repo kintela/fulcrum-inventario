@@ -62,6 +62,8 @@ export default function EquiposList({
   filtroAnio = null,
 }: EquiposListProps) {
   const [query, setQuery] = useState("");
+  const [mostrarBoxes, setMostrarBoxes] = useState(true);
+  const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
 
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
@@ -81,8 +83,18 @@ export default function EquiposList({
       });
     }
 
+    if (!(mostrarBoxes && mostrarNoBoxes)) {
+      dataset = dataset.filter((equipo) => {
+        const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
+        const estaEnBoxes = ubicacion.includes("box");
+        if (estaEnBoxes && mostrarBoxes) return true;
+        if (!estaEnBoxes && mostrarNoBoxes) return true;
+        return false;
+      });
+    }
+
     return dataset;
-  }, [equipos, filtroTipo, filtroAnio]);
+  }, [equipos, filtroTipo, filtroAnio, mostrarBoxes, mostrarNoBoxes]);
 
   const filtrados = useMemo(() => {
     const normalizada = query.trim().toLowerCase();
@@ -128,17 +140,43 @@ export default function EquiposList({
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex-1">
-          <label className="flex flex-col gap-1 text-sm text-foreground/70">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
+          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-64 lg:w-72">
             Buscar en todos los campos
             <input
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ej. portatil HP, en garantia, 2023..."
+              placeholder="Ej. portátil HP, en garantía, 2023..."
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </label>
+
+          <fieldset className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-auto">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Boxes
+            </legend>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={mostrarBoxes}
+                  onChange={(event) => setMostrarBoxes(event.target.checked)}
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                />
+                <span>En boxes</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={mostrarNoBoxes}
+                  onChange={(event) => setMostrarNoBoxes(event.target.checked)}
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                />
+                <span>Fuera de boxes</span>
+              </label>
+            </div>
+          </fieldset>
         </div>
         <div className="text-sm text-foreground/60">
           {filtrados.length === baseFiltrados.length
