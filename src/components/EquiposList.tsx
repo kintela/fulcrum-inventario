@@ -80,6 +80,12 @@ export default function EquiposList({ equipos }: EquiposListProps) {
         valores.push(equipo.observaciones);
       }
       if (equipo.so_precio) valores.push(equipo.so_precio);
+      if (equipo.so_serial) valores.push(equipo.so_serial);
+      if (equipo.numero_serie) valores.push(equipo.numero_serie);
+      if (equipo.part_number) valores.push(equipo.part_number);
+      if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
+        valores.push(equipo.admite_update ? "admite update" : "no admite update");
+      }
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
@@ -137,6 +143,15 @@ export default function EquiposList({ equipos }: EquiposListProps) {
               equipo.observaciones && equipo.observaciones.trim().length > 0
                 ? equipo.observaciones.trim()
                 : null;
+            const soSerial = equipo.so_serial ?? "Sin número de serie SO";
+            const numeroSerie = equipo.numero_serie ?? "Sin número de serie";
+            const partNumber = equipo.part_number ?? "Sin part number";
+            const admiteUpdateTexto =
+              equipo.admite_update === null || equipo.admite_update === undefined
+                ? "Desconocido"
+                : equipo.admite_update
+                  ? "Sí"
+                  : "No";
 
             const ram = equipo.ram ?? 0;
             const ssd = equipo.ssd ?? 0;
@@ -170,6 +185,10 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                   >
                     {tieneSoPrecio ? `${sistemaOperativo} · ${soPrecioTexto}` : sistemaOperativo}
                   </p>
+                  <p className="text-[9px] text-foreground/70 leading-tight">SO serial: {soSerial}</p>
+                  <p className="text-sm text-foreground/70">Número serie: {numeroSerie}</p>
+                  <p className="text-sm text-foreground/70">Part number: {partNumber}</p>
+                  <p className="text-sm text-foreground/70">Admite update: {admiteUpdateTexto}</p>
                   <div className="border-t border-border/60 pt-2" />
                 </div>
 

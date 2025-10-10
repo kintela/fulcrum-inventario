@@ -29,6 +29,10 @@ export type EquipoRecord = {
   usuario_id: number | null;
   sistema_operativo: string | null;
   so_precio: number | null;
+  so_serial: string | null;
+  numero_serie: string | null;
+  part_number: string | null;
+  admite_update: boolean | null;
   fabricante: { nombre: string | null } | null;
   ubicacion: { nombre: string | null } | null;
   usuario:
@@ -67,6 +71,10 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "usuario_id",
       "sistema_operativo",
       "so_precio",
+      "so_serial",
+      "numero_serie",
+      "part_number",
+      "admite_update",
       "procesador",
       "ram",
       "ssd",
