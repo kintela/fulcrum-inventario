@@ -50,30 +50,33 @@ export default function EquiposList({
 }: EquiposListProps) {
   const [query, setQuery] = useState("");
   const [mostrarBoxes, setMostrarBoxes] = useState(true);
-  const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
-  const [mostrarAsignados, setMostrarAsignados] = useState(true);
-  const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
-  const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
-  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
+const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
+const [mostrarAsignados, setMostrarAsignados] = useState(true);
+const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
+const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
+const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
+const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
 
-  const sistemasOperativos = useMemo(() => {
-    const valores = new Set<string>();
-    equipos.forEach((equipo) => {
-      if (equipo.sistema_operativo) valores.add(equipo.sistema_operativo.trim());
-    });
-    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-  }, [equipos]);
+const sistemasOperativos = useMemo(() => {
+  const valores = new Set<string>();
+  equipos.forEach((equipo) => {
+    if (equipo.sistema_operativo) valores.add(equipo.sistema_operativo.trim());
+  });
+  return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+}, [equipos]);
 
   const ubicacionesDisponibles = useMemo(() => {
     const valores = new Set<string>();
     equipos.forEach((equipo) => {
       if (equipo.ubicacion?.nombre) valores.add(equipo.ubicacion.nombre.trim());
     });
-    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-  }, [equipos]);
+  return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+}, [equipos]);
 
-  const baseFiltrados = useMemo(() => {
-    let dataset = equipos;
+const opcionesAntiguedad = useMemo(() => Array.from({ length: 20 }, (_, indice) => indice + 1), []);
+
+const baseFiltrados = useMemo(() => {
+  let dataset = equipos;
 
     if (filtroTipo) {
       const tipoNormalizado = filtroTipo.toLowerCase();
@@ -112,6 +115,21 @@ export default function EquiposList({
           return false;
       }
 
+      if (antiguedadMinima !== null) {
+        if (!equipo.fecha_compra) return false;
+        const fechaCompra = new Date(equipo.fecha_compra);
+        if (Number.isNaN(fechaCompra.getTime())) return false;
+
+        const hoy = new Date();
+        let antiguedad = hoy.getFullYear() - fechaCompra.getFullYear();
+        const mesDiff = hoy.getMonth() - fechaCompra.getMonth();
+        if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < fechaCompra.getDate())) {
+          antiguedad -= 1;
+        }
+
+        if (antiguedad < antiguedadMinima) return false;
+      }
+
       return true;
     });
 
@@ -126,6 +144,7 @@ export default function EquiposList({
     mostrarSinAsignar,
     sistemaOperativoSeleccionado,
     ubicacionSeleccionada,
+    antiguedadMinima,
   ]);
 
   const filtrados = useMemo(() => {
@@ -255,6 +274,26 @@ export default function EquiposList({
             {ubicacionesDisponibles.map((ubic) => (
               <option key={ubic} value={ubic}>
                 {ubic}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">
+            Antiguedad
+          </span>
+          <select
+            value={antiguedadMinima ?? ""}
+            onChange={(event) =>
+              setAntiguedadMinima(event.target.value ? Number(event.target.value) : null)
+            }
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="">Todas</option>
+            {opcionesAntiguedad.map((opcion) => (
+              <option key={opcion} value={opcion}>
+                {`≥ ${opcion}`}
               </option>
             ))}
           </select>
