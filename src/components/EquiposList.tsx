@@ -113,6 +113,13 @@ export default function EquiposList({
       if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
         valores.push(equipo.admite_update ? "admite update" : "no admite update");
       }
+      if (equipo.pantallas && Array.isArray(equipo.pantallas)) {
+        equipo.pantallas.forEach((pantalla) => {
+          if (pantalla?.pulgadas) valores.push(pantalla.pulgadas);
+          if (pantalla?.modelo) valores.push(pantalla.modelo);
+          if (pantalla?.fabricanteNombre) valores.push(pantalla.fabricanteNombre);
+        });
+      }
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
@@ -183,6 +190,7 @@ export default function EquiposList({
                 : equipo.admite_update
                   ? "Sí"
                   : "No";
+            const pantallas = Array.isArray(equipo.pantallas) ? equipo.pantallas : [];
 
             const ram = equipo.ram ?? 0;
             const ssd = equipo.ssd ?? 0;
@@ -264,6 +272,40 @@ export default function EquiposList({
                     </div>
                   ) : null}
                 </dl>
+
+                {pantallas.length > 0 ? (
+                  <div className="border-t border-border/60 pt-3">
+                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/60">
+                      Pantallas conectadas
+                    </h4>
+                    <div className="flex flex-wrap gap-3" aria-label="Pantallas conectadas">
+                      {pantallas.map((pantalla, index) => {
+                        const etiquetaFabricante = pantalla?.fabricanteNombre ?? "";
+                        const etiquetaModelo = pantalla?.modelo ?? "";
+                        const descripcion =
+                          `${etiquetaFabricante} ${etiquetaModelo}`.trim() || "Pantalla";
+                        const pulgadasTexto =
+                          pantalla?.pulgadas !== null && pantalla?.pulgadas !== undefined
+                            ? `${pantalla.pulgadas}`
+                            : "?";
+
+                        return (
+                          <div
+                            key={pantalla?.id ?? `${equipo.id}-pantalla-${index}`}
+                            className="flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
+                          >
+                            <div className="flex aspect-[16/10] w-full items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-[11px] font-semibold text-foreground">
+                              {pulgadasTexto}
+                            </div>
+                            <span className="line-clamp-2 text-[10px] leading-tight text-foreground/60">
+                              {descripcion}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </li>
             );
           })}

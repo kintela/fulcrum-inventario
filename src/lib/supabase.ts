@@ -49,6 +49,15 @@ export type EquipoRecord = {
   tarjeta_grafica: string | null;
   observaciones: string | null;
   url: string | null;
+  pantallas:
+    | Array<{
+        id: number;
+        pulgadas: number | null;
+        modelo: string | null;
+        fabricante_id: number | null;
+        fabricanteNombre?: string | null;
+      }>
+    | null;
 } & Record<string, unknown>;
 
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
@@ -82,6 +91,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "tarjeta_grafica",
       "observaciones",
       "url",
+      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
@@ -104,5 +114,48 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
     throw new Error(`Error al recuperar equipos: ${response.status} ${details}`);
   }
 
-  return (await response.json()) as EquipoRecord[];
+  const equipos = (await response.json()) as EquipoRecord[];
+
+  const fabricanteIds = new Set<number>();
+  equipos.forEach((equipo) => {
+    equipo.pantallas?.forEach((pantalla) => {
+      if (typeof pantalla.fabricante_id === "number") {
+        fabricanteIds.add(pantalla.fabricante_id);
+      }
+    });
+  });
+
+  if (fabricanteIds.size === 0) {
+    return equipos;
+  }
+
+  const fabricantesUrl = new URL(`${url}/rest/v1/fabricantes`);
+  fabricantesUrl.searchParams.set("id", `in.(${Array.from(fabricanteIds).join(",")})`);
+  fabricantesUrl.searchParams.set("select", "id,nombre");
+
+  const fabricantesResponse = await fetch(fabricantesUrl.toString(), {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!fabricantesResponse.ok) {
+    const details = await fabricantesResponse.text();
+    throw new Error(`Error al recuperar fabricantes: ${fabricantesResponse.status} ${details}`);
+  }
+
+  const fabricantes = (await fabricantesResponse.json()) as Array<{ id: number; nombre: string }>;
+  const fabricantesMap = new Map(fabricantes.map((fab) => [fab.id, fab.nombre]));
+
+  equipos.forEach((equipo) => {
+    equipo.pantallas?.forEach((pantalla) => {
+      if (typeof pantalla.fabricante_id === "number") {
+        pantalla.fabricanteNombre = fabricantesMap.get(pantalla.fabricante_id) ?? null;
+      }
+    });
+  });
+
+  return equipos;
 }
