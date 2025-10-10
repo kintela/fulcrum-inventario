@@ -126,6 +126,8 @@ export default function EquiposList({ equipos }: EquiposListProps) {
             const usuario = obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
             const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicación";
             const sistemaOperativo = equipo.sistema_operativo ?? "Sin sistema operativo";
+            const esWindows10 =
+              sistemaOperativo.toLowerCase().includes("windows 10");
             const tieneSoPrecio =
               equipo.so_precio !== null && equipo.so_precio !== undefined && equipo.so_precio !== 0;
             const soPrecioTexto = tieneSoPrecio ? formatearImporte(equipo.so_precio) : null;
@@ -163,7 +165,9 @@ export default function EquiposList({ equipos }: EquiposListProps) {
                     <p className="text-sm text-foreground/70">{almacenamiento}</p>
                   ) : null}
                   <p className="text-sm text-foreground/70">{tarjetaGrafica}</p>
-                  <p className="text-sm text-foreground/70">
+                  <p
+                    className={`text-sm ${esWindows10 ? "text-red-500" : "text-foreground/70"}`}
+                  >
                     {tieneSoPrecio ? `${sistemaOperativo} · ${soPrecioTexto}` : sistemaOperativo}
                   </p>
                   <div className="border-t border-border/60 pt-2" />
