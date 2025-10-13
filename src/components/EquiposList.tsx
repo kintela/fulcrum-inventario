@@ -8,6 +8,7 @@ const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
   portatil: "Portatil",
   tablet: "Tablet",
+  servidor: "Servidor",
 };
 
 type EquiposListProps = {
@@ -58,6 +59,7 @@ const [mostrarAsignados, setMostrarAsignados] = useState(true);
 const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
 const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
 const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
+const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
 const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
 const [filtroAdmiteUpdate, setFiltroAdmiteUpdate] =
   useState<FiltroAdmiteUpdate>("todos");
@@ -72,7 +74,19 @@ const sistemasOperativos = useMemo(() => {
   return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
 }, [equipos]);
 
-  const ubicacionesDisponibles = useMemo(() => {
+const tiposDisponibles = useMemo(() => {
+  const valores = new Set<string>();
+  equipos.forEach((equipo) => {
+    if (equipo.tipo) valores.add(equipo.tipo.trim().toLowerCase());
+  });
+  return Array.from(valores).sort((a, b) => {
+    const etiquetaA = tipoLabels[a] ?? a;
+    const etiquetaB = tipoLabels[b] ?? b;
+    return etiquetaA.localeCompare(etiquetaB, "es");
+  });
+}, [equipos]);
+
+const ubicacionesDisponibles = useMemo(() => {
     const valores = new Set<string>();
     equipos.forEach((equipo) => {
       if (equipo.ubicacion?.nombre) valores.add(equipo.ubicacion.nombre.trim());
@@ -137,6 +151,10 @@ const baseFiltrados = useMemo(() => {
         if (antiguedad < antiguedadMinima) return false;
       }
 
+      if (tipoSeleccionado) {
+        if (!equipo.tipo || equipo.tipo.trim().toLowerCase() !== tipoSeleccionado) return false;
+      }
+
       if (filtroAdmiteUpdate !== "todos") {
         if (filtroAdmiteUpdate === "si" && equipo.admite_update !== true) return false;
         if (filtroAdmiteUpdate === "no" && equipo.admite_update !== false) return false;
@@ -175,6 +193,7 @@ const baseFiltrados = useMemo(() => {
     mostrarSinAsignar,
     sistemaOperativoSeleccionado,
     ubicacionSeleccionada,
+    tipoSeleccionado,
     antiguedadMinima,
     filtroAdmiteUpdate,
     filtroGarbigune,
@@ -310,6 +329,22 @@ const baseFiltrados = useMemo(() => {
             {ubicacionesDisponibles.map((ubic) => (
               <option key={ubic} value={ubic}>
                 {ubic}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">Tipo</span>
+          <select
+            value={tipoSeleccionado}
+            onChange={(event) => setTipoSeleccionado(event.target.value)}
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="">Todos</option>
+            {tiposDisponibles.map((tipoClave) => (
+              <option key={tipoClave} value={tipoClave}>
+                {tipoLabels[tipoClave] ?? tipoClave}
               </option>
             ))}
           </select>
