@@ -224,18 +224,18 @@ const baseFiltrados = useMemo(() => {
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-52 lg:w-60">
-          Buscar en todos los campos
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Ej. portatil HP, en garantia, 2023..."
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          />
-        </label>
-
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
+          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-52 lg:w-60">
+            Buscar en todos los campos
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ej. portatil HP, en garantia, 2023..."
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            />
+          </label>
+
           <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Boxes
@@ -331,7 +331,9 @@ const baseFiltrados = useMemo(() => {
               <span>No</span>
             </label>
           </fieldset>
+        </div>
 
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
             <span className="font-semibold uppercase tracking-wide text-foreground/60">
               Sistema operativo
@@ -389,7 +391,7 @@ const baseFiltrados = useMemo(() => {
               Antiguedad
             </span>
             <select
-              value={antiguedadMinima ?? ""}
+              value={antiguedadMinima ?? ''}
               onChange={(event) =>
                 setAntiguedadMinima(event.target.value ? Number(event.target.value) : null)
               }
