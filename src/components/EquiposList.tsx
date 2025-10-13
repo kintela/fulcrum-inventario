@@ -16,6 +16,8 @@ type EquiposListProps = {
   filtroAnio?: number | null;
 };
 
+type FiltroAdmiteUpdate = "todos" | "si" | "no" | "desconocido";
+
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
   if (!equipo.usuario) return null;
   if (equipo.usuario.nombre_completo) return equipo.usuario.nombre_completo;
@@ -56,6 +58,8 @@ const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
 const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
 const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
 const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
+const [filtroAdmiteUpdate, setFiltroAdmiteUpdate] =
+  useState<FiltroAdmiteUpdate>("todos");
 
 const sistemasOperativos = useMemo(() => {
   const valores = new Set<string>();
@@ -130,6 +134,18 @@ const baseFiltrados = useMemo(() => {
         if (antiguedad < antiguedadMinima) return false;
       }
 
+      if (filtroAdmiteUpdate !== "todos") {
+        if (filtroAdmiteUpdate === "si" && equipo.admite_update !== true) return false;
+        if (filtroAdmiteUpdate === "no" && equipo.admite_update !== false) return false;
+        if (
+          filtroAdmiteUpdate === "desconocido" &&
+          equipo.admite_update !== null &&
+          equipo.admite_update !== undefined
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
 
@@ -145,6 +161,7 @@ const baseFiltrados = useMemo(() => {
     sistemaOperativoSeleccionado,
     ubicacionSeleccionada,
     antiguedadMinima,
+    filtroAdmiteUpdate,
   ]);
 
   const filtrados = useMemo(() => {
@@ -296,6 +313,24 @@ const baseFiltrados = useMemo(() => {
                 {`≥ ${opcion}`}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">
+            Admite update
+          </span>
+          <select
+            value={filtroAdmiteUpdate}
+            onChange={(event) =>
+              setFiltroAdmiteUpdate(event.target.value as FiltroAdmiteUpdate)
+            }
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="todos">Todos</option>
+            <option value="si">Si</option>
+            <option value="no">No</option>
+            <option value="desconocido">Desconocido</option>
           </select>
         </label>
       </div>
