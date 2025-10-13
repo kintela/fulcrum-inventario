@@ -17,9 +17,6 @@ type EquiposListProps = {
   filtroAnio?: number | null;
 };
 
-type FiltroAdmiteUpdate = "todos" | "si" | "no" | "desconocido";
-type FiltroGarbigune = "todos" | "si" | "no" | "desconocido";
-
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
   if (!equipo.usuario) return null;
   if (equipo.usuario.nombre_completo) return equipo.usuario.nombre_completo;
@@ -61,10 +58,10 @@ const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState
 const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
 const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
 const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
-const [filtroAdmiteUpdate, setFiltroAdmiteUpdate] =
-  useState<FiltroAdmiteUpdate>("todos");
-const [filtroGarbigune, setFiltroGarbigune] =
-  useState<FiltroGarbigune>("todos");
+const [mostrarAdmitenUpdate, setMostrarAdmitenUpdate] = useState(true);
+const [mostrarNoAdmitenUpdate, setMostrarNoAdmitenUpdate] = useState(true);
+const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState(true);
+const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState(true);
 
 const sistemasOperativos = useMemo(() => {
   const valores = new Set<string>();
@@ -155,29 +152,11 @@ const baseFiltrados = useMemo(() => {
         if (!equipo.tipo || equipo.tipo.trim().toLowerCase() !== tipoSeleccionado) return false;
       }
 
-      if (filtroAdmiteUpdate !== "todos") {
-        if (filtroAdmiteUpdate === "si" && equipo.admite_update !== true) return false;
-        if (filtroAdmiteUpdate === "no" && equipo.admite_update !== false) return false;
-        if (
-          filtroAdmiteUpdate === "desconocido" &&
-          equipo.admite_update !== null &&
-          equipo.admite_update !== undefined
-        ) {
-          return false;
-        }
-      }
+      if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
+      if (!mostrarNoAdmitenUpdate && equipo.admite_update === false) return false;
 
-      if (filtroGarbigune !== "todos") {
-        if (filtroGarbigune === "si" && equipo.al_garbigune !== true) return false;
-        if (filtroGarbigune === "no" && equipo.al_garbigune !== false) return false;
-        if (
-          filtroGarbigune === "desconocido" &&
-          equipo.al_garbigune !== null &&
-          equipo.al_garbigune !== undefined
-        ) {
-          return false;
-        }
-      }
+      if (!mostrarGarbiguneSi && equipo.al_garbigune === true) return false;
+      if (!mostrarGarbiguneNo && equipo.al_garbigune === false) return false;
 
       return true;
     });
@@ -195,8 +174,10 @@ const baseFiltrados = useMemo(() => {
     ubicacionSeleccionada,
     tipoSeleccionado,
     antiguedadMinima,
-    filtroAdmiteUpdate,
-    filtroGarbigune,
+    mostrarAdmitenUpdate,
+    mostrarNoAdmitenUpdate,
+    mostrarGarbiguneSi,
+    mostrarGarbiguneNo,
   ]);
 
   const filtrados = useMemo(() => {
@@ -242,7 +223,7 @@ const baseFiltrados = useMemo(() => {
 
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+      <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-52 lg:w-60">
           Buscar en todos los campos
           <input
@@ -254,157 +235,176 @@ const baseFiltrados = useMemo(() => {
           />
         </label>
 
-        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
-          <legend className="font-semibold uppercase tracking-wide text-foreground/60">Boxes</legend>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarBoxes}
-              onChange={(event) => setMostrarBoxes(event.target.checked)}
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
-            <span>En boxes</span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Boxes
+            </legend>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarBoxes}
+                onChange={(event) => setMostrarBoxes(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>En boxes</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarNoBoxes}
+                onChange={(event) => setMostrarNoBoxes(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Fuera de boxes</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Asignacion
+            </legend>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarAsignados}
+                onChange={(event) => setMostrarAsignados(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Asignados</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarSinAsignar}
+                onChange={(event) => setMostrarSinAsignar(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Sin asignar</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Admite update
+            </legend>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarAdmitenUpdate}
+                onChange={(event) => setMostrarAdmitenUpdate(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Si admite</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarNoAdmitenUpdate}
+                onChange={(event) => setMostrarNoAdmitenUpdate(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>No admite</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Al garbigune
+            </legend>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarGarbiguneSi}
+                onChange={(event) => setMostrarGarbiguneSi(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Si</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarGarbiguneNo}
+                onChange={(event) => setMostrarGarbiguneNo(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>No</span>
+            </label>
+          </fieldset>
+
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Sistema operativo
+            </span>
+            <select
+              value={sistemaOperativoSeleccionado}
+              onChange={(event) => setSistemaOperativoSeleccionado(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+              {sistemasOperativos.map((so) => (
+                <option key={so} value={so}>
+                  {so}
+                </option>
+              ))}
+            </select>
           </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarNoBoxes}
-              onChange={(event) => setMostrarNoBoxes(event.target.checked)}
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
-            <span>Fuera de boxes</span>
+
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Ubicacion
+            </span>
+            <select
+              value={ubicacionSeleccionada}
+              onChange={(event) => setUbicacionSeleccionada(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todas</option>
+              {ubicacionesDisponibles.map((ubic) => (
+                <option key={ubic} value={ubic}>
+                  {ubic}
+                </option>
+              ))}
+            </select>
           </label>
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
-          <legend className="font-semibold uppercase tracking-wide text-foreground/60">
-            Asignacion
-          </legend>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarAsignados}
-              onChange={(event) => setMostrarAsignados(event.target.checked)}
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
-            <span>Asignados</span>
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">Tipo</span>
+            <select
+              value={tipoSeleccionado}
+              onChange={(event) => setTipoSeleccionado(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+              {tiposDisponibles.map((tipoClave) => (
+                <option key={tipoClave} value={tipoClave}>
+                  {tipoLabels[tipoClave] ?? tipoClave}
+                </option>
+              ))}
+            </select>
           </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarSinAsignar}
-              onChange={(event) => setMostrarSinAsignar(event.target.checked)}
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
-            <span>Sin asignar</span>
+
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Antiguedad
+            </span>
+            <select
+              value={antiguedadMinima ?? ""}
+              onChange={(event) =>
+                setAntiguedadMinima(event.target.value ? Number(event.target.value) : null)
+              }
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todas</option>
+              {opcionesAntiguedad.map((opcion) => (
+                <option key={opcion} value={opcion}>
+                  {`= ${opcion}`}
+                </option>
+              ))}
+            </select>
           </label>
-        </fieldset>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">
-            Sistema operativo
-          </span>
-          <select
-            value={sistemaOperativoSeleccionado}
-            onChange={(event) => setSistemaOperativoSeleccionado(event.target.value)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="">Todos</option>
-            {sistemasOperativos.map((so) => (
-              <option key={so} value={so}>
-                {so}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">Ubicacion</span>
-          <select
-            value={ubicacionSeleccionada}
-            onChange={(event) => setUbicacionSeleccionada(event.target.value)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="">Todas</option>
-            {ubicacionesDisponibles.map((ubic) => (
-              <option key={ubic} value={ubic}>
-                {ubic}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">Tipo</span>
-          <select
-            value={tipoSeleccionado}
-            onChange={(event) => setTipoSeleccionado(event.target.value)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="">Todos</option>
-            {tiposDisponibles.map((tipoClave) => (
-              <option key={tipoClave} value={tipoClave}>
-                {tipoLabels[tipoClave] ?? tipoClave}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">
-            Antiguedad
-          </span>
-          <select
-            value={antiguedadMinima ?? ""}
-            onChange={(event) =>
-              setAntiguedadMinima(event.target.value ? Number(event.target.value) : null)
-            }
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="">Todas</option>
-            {opcionesAntiguedad.map((opcion) => (
-              <option key={opcion} value={opcion}>
-                {`≥ ${opcion}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">
-            Admite update
-          </span>
-          <select
-            value={filtroAdmiteUpdate}
-            onChange={(event) =>
-              setFiltroAdmiteUpdate(event.target.value as FiltroAdmiteUpdate)
-            }
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="todos">Todos</option>
-            <option value="si">Si</option>
-            <option value="no">No</option>
-            <option value="desconocido">Desconocido</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-          <span className="font-semibold uppercase tracking-wide text-foreground/60">
-            Al garbigune
-          </span>
-          <select
-            value={filtroGarbigune}
-            onChange={(event) => setFiltroGarbigune(event.target.value as FiltroGarbigune)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-          >
-            <option value="todos">Todos</option>
-            <option value="si">Si</option>
-            <option value="no">No</option>
-            <option value="desconocido">Desconocido</option>
-          </select>
-        </label>
+        </div>
       </div>
-
       <div className="text-sm text-foreground/60">
         {filtrados.length === baseFiltrados.length
           ? filtrados.length === 1
