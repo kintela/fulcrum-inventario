@@ -459,7 +459,6 @@ const baseFiltrados = useMemo(() => {
                   <p className="text-sm text-foreground/70">Numero serie: {numeroSerie}</p>
                   <p className="text-sm text-foreground/70">Part number: {partNumber}</p>
                   <p className="text-sm text-foreground/70">Admite update: {admiteUpdateTexto}</p>
-                  <p className="text-sm text-foreground/70">Al garbigune: {alGarbiguneTexto}</p>
                   <div className="border-t border-border/60 pt-2" />
                 </div>
 
@@ -496,6 +495,10 @@ const baseFiltrados = useMemo(() => {
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Garantia</dt>
                     <dd className="text-foreground">{equipo.en_garantia ? "Si" : "No"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/70">Al garbigune</dt>
+                    <dd className="text-foreground">{alGarbiguneTexto}</dd>
                   </div>
                   {observaciones ? (
                     <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
