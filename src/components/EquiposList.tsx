@@ -101,7 +101,7 @@ const baseFiltrados = useMemo(() => {
       if (!mostrarBoxes && estaEnBoxes) return false;
       if (!mostrarNoBoxes && !estaEnBoxes) return false;
 
-      const asignado = Boolean(obtenerNombreUsuario(equipo));
+      const asignado = equipo.usuario_id !== null && equipo.usuario_id !== undefined;
       if (!mostrarAsignados && asignado) return false;
       if (!mostrarSinAsignar && !asignado) return false;
 
