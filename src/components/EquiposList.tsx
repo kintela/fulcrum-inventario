@@ -17,6 +17,7 @@ type EquiposListProps = {
 };
 
 type FiltroAdmiteUpdate = "todos" | "si" | "no" | "desconocido";
+type FiltroGarbigune = "todos" | "si" | "no" | "desconocido";
 
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
   if (!equipo.usuario) return null;
@@ -60,6 +61,8 @@ const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
 const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
 const [filtroAdmiteUpdate, setFiltroAdmiteUpdate] =
   useState<FiltroAdmiteUpdate>("todos");
+const [filtroGarbigune, setFiltroGarbigune] =
+  useState<FiltroGarbigune>("todos");
 
 const sistemasOperativos = useMemo(() => {
   const valores = new Set<string>();
@@ -146,6 +149,18 @@ const baseFiltrados = useMemo(() => {
         }
       }
 
+      if (filtroGarbigune !== "todos") {
+        if (filtroGarbigune === "si" && equipo.al_garbigune !== true) return false;
+        if (filtroGarbigune === "no" && equipo.al_garbigune !== false) return false;
+        if (
+          filtroGarbigune === "desconocido" &&
+          equipo.al_garbigune !== null &&
+          equipo.al_garbigune !== undefined
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
 
@@ -162,6 +177,7 @@ const baseFiltrados = useMemo(() => {
     ubicacionSeleccionada,
     antiguedadMinima,
     filtroAdmiteUpdate,
+    filtroGarbigune,
   ]);
 
   const filtrados = useMemo(() => {
@@ -189,6 +205,9 @@ const baseFiltrados = useMemo(() => {
       if (equipo.part_number) valores.push(equipo.part_number);
       if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
         valores.push(equipo.admite_update ? "admite update" : "no admite update");
+      }
+      if (equipo.al_garbigune !== null && equipo.al_garbigune !== undefined) {
+        valores.push(equipo.al_garbigune ? "al garbigune" : "no garbigune");
       }
       if (equipo.pantallas && Array.isArray(equipo.pantallas)) {
         equipo.pantallas.forEach((pantalla) => {
@@ -333,6 +352,22 @@ const baseFiltrados = useMemo(() => {
             <option value="desconocido">Desconocido</option>
           </select>
         </label>
+
+        <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
+          <span className="font-semibold uppercase tracking-wide text-foreground/60">
+            Al garbigune
+          </span>
+          <select
+            value={filtroGarbigune}
+            onChange={(event) => setFiltroGarbigune(event.target.value as FiltroGarbigune)}
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+          >
+            <option value="todos">Todos</option>
+            <option value="si">Si</option>
+            <option value="no">No</option>
+            <option value="desconocido">Desconocido</option>
+          </select>
+        </label>
       </div>
 
       <div className="text-sm text-foreground/60">
@@ -383,6 +418,12 @@ const baseFiltrados = useMemo(() => {
                 : equipo.admite_update
                   ? "Si"
                   : "No";
+            const alGarbiguneTexto =
+              equipo.al_garbigune === null || equipo.al_garbigune === undefined
+                ? "Desconocido"
+                : equipo.al_garbigune
+                  ? "Si"
+                  : "No";
             const pantallas = Array.isArray(equipo.pantallas) ? equipo.pantallas : [];
 
             const ramTexto = equipo.ram ? `${equipo.ram} GB RAM` : "";
@@ -418,6 +459,7 @@ const baseFiltrados = useMemo(() => {
                   <p className="text-sm text-foreground/70">Numero serie: {numeroSerie}</p>
                   <p className="text-sm text-foreground/70">Part number: {partNumber}</p>
                   <p className="text-sm text-foreground/70">Admite update: {admiteUpdateTexto}</p>
+                  <p className="text-sm text-foreground/70">Al garbigune: {alGarbiguneTexto}</p>
                   <div className="border-t border-border/60 pt-2" />
                 </div>
 
