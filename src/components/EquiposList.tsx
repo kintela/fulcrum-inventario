@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatearFecha, formatearImporte } from "@/lib/format";
 import type { EquipoRecord } from "@/lib/supabase";
 
@@ -16,6 +16,98 @@ type EquiposListProps = {
   filtroTipo?: string | null;
   filtroAnio?: number | null;
 };
+
+type IaFilters = {
+  sistemasOperativosContains?: string[];
+  admiteUpdate?: "true" | "false" | "unknown";
+  asignado?: boolean;
+  alGarbigune?: boolean;
+  ubicacionesContains?: string[];
+  tiposIn?: string[];
+};
+
+type IaResultado = {
+  filters: IaFilters;
+  summary: string | null;
+};
+
+function normalizarListadoStrings(valor: unknown): string[] | undefined {
+  if (typeof valor === "string") {
+    const limpio = valor.trim().toLowerCase();
+    return limpio ? [limpio] : undefined;
+  }
+
+  if (!Array.isArray(valor)) return undefined;
+  const lista = valor
+    .map((item) => (typeof item === "string" ? item.trim().toLowerCase() : null))
+    .filter((item): item is string => Boolean(item));
+  return lista.length > 0 ? Array.from(new Set(lista)) : undefined;
+}
+
+
+function normalizarFiltrosIa(raw: unknown): IaFilters {
+  if (!raw || typeof raw !== "object") return {};
+  const objeto = raw as Record<string, unknown>;
+  const filtros: IaFilters = {};
+
+  const so = normalizarListadoStrings(
+    objeto.sistema_operativo_contains ??
+      objeto.sistemas_operativos_contains ??
+      objeto.sistema_operativo_normalizado_contains ??
+      objeto.sistema_operativo,
+  );
+  if (so) filtros.sistemasOperativosContains = so;
+
+  const ubicaciones = normalizarListadoStrings(
+    objeto.ubicacion_contains ??
+      objeto.ubicaciones_contains ??
+      objeto.ubicacion_normalizada_contains ??
+      objeto.ubicacion,
+  );
+  if (ubicaciones) filtros.ubicacionesContains = ubicaciones;
+
+  const tipos = normalizarListadoStrings(objeto.tipo_in ?? objeto.tipos_in ?? objeto.tipo);
+  if (tipos) filtros.tiposIn = tipos.map((tipo) => tipo.toLowerCase());
+
+  const admite =
+    objeto.admite_update ??
+    objeto.admite_update_equals ??
+    objeto.admite_update_es ??
+    objeto.admiteUpdate;
+  if (typeof admite === "string") {
+    const valor = admite.trim().toLowerCase();
+    if (["true", "false", "unknown", "null"].includes(valor)) {
+      filtros.admiteUpdate = valor === "null" ? "unknown" : (valor as IaFilters["admiteUpdate"]);
+    }
+  } else if (typeof admite === "boolean") {
+    filtros.admiteUpdate = admite ? "true" : "false";
+  }
+
+  const asignado =
+    objeto.asignado ??
+    objeto.asignados ??
+    objeto.asignado_equals ??
+    objeto.asignado_es ??
+    objeto.tiene_usuario ??
+    objeto.usuario_no_es_null;
+  if (typeof asignado === "boolean") {
+    filtros.asignado = asignado;
+  } else if (typeof asignado === "string") {
+    const valor = asignado.trim().toLowerCase();
+    if (valor === "true" || valor === "false") filtros.asignado = valor === "true";
+  }
+
+  const garbigune =
+    objeto.al_garbigune ?? objeto.al_garbigune_equals ?? objeto.garbigune;
+  if (typeof garbigune === "boolean") {
+    filtros.alGarbigune = garbigune;
+  } else if (typeof garbigune === "string") {
+    const valor = garbigune.trim().toLowerCase();
+    if (valor === "true" || valor === "false") filtros.alGarbigune = valor === "true";
+  }
+
+  return filtros;
+}
 
 function obtenerNombreUsuario(equipo: EquipoRecord): string | null {
   if (!equipo.usuario) return null;
@@ -51,50 +143,135 @@ export default function EquiposList({
 }: EquiposListProps) {
   const [query, setQuery] = useState("");
   const [mostrarBoxes, setMostrarBoxes] = useState(true);
-const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
-const [mostrarAsignados, setMostrarAsignados] = useState(true);
-const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
-const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
-const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
-const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
-const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
-const [mostrarAdmitenUpdate, setMostrarAdmitenUpdate] = useState(true);
-const [mostrarNoAdmitenUpdate, setMostrarNoAdmitenUpdate] = useState(true);
-const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState(true);
-const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState(true);
+  const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
+  const [mostrarAsignados, setMostrarAsignados] = useState(true);
+  const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
+  const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] = useState<string>("");
+  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>("");
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
+  const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
+  const [mostrarAdmitenUpdate, setMostrarAdmitenUpdate] = useState(true);
+  const [mostrarNoAdmitenUpdate, setMostrarNoAdmitenUpdate] = useState(true);
+  const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState(true);
+  const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState(true);
+  const [iaResultado, setIaResultado] = useState<IaResultado | null>(null);
+  const [respuestaIa, setRespuestaIa] = useState<string | null>(null);
+  const [errorIa, setErrorIa] = useState<string | null>(null);
+  const [cargandoIa, setCargandoIa] = useState(false);
 
-const sistemasOperativos = useMemo(() => {
-  const valores = new Set<string>();
-  equipos.forEach((equipo) => {
-    if (equipo.sistema_operativo) valores.add(equipo.sistema_operativo.trim());
-  });
-  return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-}, [equipos]);
+  const sistemasOperativos = useMemo(() => {
+    const valores = new Set<string>();
+    equipos.forEach((equipo) => {
+      if (equipo.sistema_operativo) valores.add(equipo.sistema_operativo.trim());
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+  }, [equipos]);
 
-const tiposDisponibles = useMemo(() => {
-  const valores = new Set<string>();
-  equipos.forEach((equipo) => {
-    if (equipo.tipo) valores.add(equipo.tipo.trim().toLowerCase());
-  });
-  return Array.from(valores).sort((a, b) => {
-    const etiquetaA = tipoLabels[a] ?? a;
-    const etiquetaB = tipoLabels[b] ?? b;
-    return etiquetaA.localeCompare(etiquetaB, "es");
-  });
-}, [equipos]);
+  const tiposDisponibles = useMemo(() => {
+    const valores = new Set<string>();
+    equipos.forEach((equipo) => {
+      if (equipo.tipo) valores.add(equipo.tipo.trim().toLowerCase());
+    });
+    return Array.from(valores).sort((a, b) => {
+      const etiquetaA = tipoLabels[a] ?? a;
+      const etiquetaB = tipoLabels[b] ?? b;
+      return etiquetaA.localeCompare(etiquetaB, "es");
+    });
+  }, [equipos]);
 
-const ubicacionesDisponibles = useMemo(() => {
+  const ubicacionesDisponibles = useMemo(() => {
     const valores = new Set<string>();
     equipos.forEach((equipo) => {
       if (equipo.ubicacion?.nombre) valores.add(equipo.ubicacion.nombre.trim());
     });
-  return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-}, [equipos]);
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+  }, [equipos]);
 
-const opcionesAntiguedad = useMemo(() => Array.from({ length: 20 }, (_, indice) => indice + 1), []);
+  const opcionesAntiguedad = useMemo(
+    () => Array.from({ length: 20 }, (_, indice) => indice + 1),
+    [],
+  );
 
-const baseFiltrados = useMemo(() => {
-  let dataset = equipos;
+  async function consultarIA() {
+    const prompt = query.trim();
+    if (!prompt) return;
+
+    setCargandoIa(true);
+    setErrorIa(null);
+    setRespuestaIa(null);
+    setIaResultado(null);
+
+    try {
+      const resumenEquipos = equipos.map((equipo) => ({
+        id: equipo.id,
+        nombre: equipo.nombre,
+        tipo: equipo.tipo,
+        admite_update: equipo.admite_update,
+        admite_update_bool: equipo.admite_update === true,
+        al_garbigune: equipo.al_garbigune,
+        ubicacion: equipo.ubicacion?.nombre ?? null,
+        usuario_id: equipo.usuario_id,
+        usuario_resumen: obtenerNombreUsuario(equipo),
+        asignado: equipo.usuario_id !== null && equipo.usuario_id !== undefined,
+        sistema_operativo: equipo.sistema_operativo,
+        sistema_operativo_normalizado: equipo.sistema_operativo?.toLowerCase() ?? null,
+        en_garantia: equipo.en_garantia,
+        fecha_compra: equipo.fecha_compra,
+        texto_busqueda: normalizarValor({
+          nombre: equipo.nombre,
+          tipo: equipo.tipo,
+          sistema_operativo: equipo.sistema_operativo,
+          usuario: obtenerNombreUsuario(equipo),
+          ubicacion: equipo.ubicacion?.nombre ?? null,
+          admite_update: equipo.admite_update,
+          al_garbigune: equipo.al_garbigune,
+        }),
+      }));
+
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          contexto: {
+            equipos: resumenEquipos,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const detalle = await response.json().catch(() => ({}));
+        throw new Error(detalle?.message ?? "No se pudo obtener respuesta de la IA.");
+      }
+
+      const data = (await response.json()) as {
+        filters?: Record<string, unknown>;
+        summary?: string | null;
+      };
+
+      const filtros = normalizarFiltrosIa(data.filters);
+      setIaResultado({
+        filters: filtros,
+        summary: data.summary ?? null,
+      });
+      setRespuestaIa(data.summary ?? null);
+    } catch (error) {
+      const mensaje =
+        error instanceof Error ? error.message : "Ha ocurrido un error consultando la IA.";
+      setErrorIa(mensaje);
+    } finally {
+      setCargandoIa(false);
+    }
+  }
+
+  function limpiarFiltroIa() {
+    setIaResultado(null);
+    setRespuestaIa(null);
+    setErrorIa(null);
+  }
+
+  const baseFiltrados = useMemo(() => {
+    let dataset = equipos;
 
     if (filtroTipo) {
       const tipoNormalizado = filtroTipo.toLowerCase();
@@ -119,7 +296,9 @@ const baseFiltrados = useMemo(() => {
       if (!mostrarAsignados && asignado) return false;
       if (!mostrarSinAsignar && !asignado) return false;
 
-      if (sistemaOperativoSeleccionado) {
+      const filtrosIa = iaResultado?.filters ?? null;
+
+      if (!filtrosIa?.sistemasOperativosContains?.length && sistemaOperativoSeleccionado) {
         if (
           !equipo.sistema_operativo ||
           equipo.sistema_operativo.trim() !== sistemaOperativoSeleccionado
@@ -161,6 +340,57 @@ const baseFiltrados = useMemo(() => {
       return true;
     });
 
+    const filtrosIa = iaResultado?.filters ?? null;
+    if (filtrosIa) {
+      if (filtrosIa.sistemasOperativosContains) {
+        dataset = dataset.filter((equipo) => {
+          const so = equipo.sistema_operativo?.toLowerCase() ?? "";
+          return filtrosIa.sistemasOperativosContains!.some((fragmento) =>
+            so.includes(fragmento),
+          );
+        });
+      }
+
+      if (filtrosIa.ubicacionesContains) {
+        dataset = dataset.filter((equipo) => {
+          const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
+          return filtrosIa.ubicacionesContains!.some((fragmento) =>
+            ubicacion.includes(fragmento),
+          );
+        });
+      }
+
+      if (filtrosIa.tiposIn) {
+        dataset = dataset.filter((equipo) => {
+          const tipo = equipo.tipo?.toLowerCase() ?? "";
+          return filtrosIa.tiposIn!.includes(tipo);
+        });
+      }
+
+      if (filtrosIa.admiteUpdate === "true") {
+        dataset = dataset.filter((equipo) => equipo.admite_update === true);
+      } else if (filtrosIa.admiteUpdate === "false") {
+        dataset = dataset.filter(
+          (equipo) => equipo.admite_update === false || equipo.admite_update === null,
+        );
+      } else if (filtrosIa.admiteUpdate === "unknown") {
+        dataset = dataset.filter(
+          (equipo) => equipo.admite_update === null || equipo.admite_update === undefined,
+        );
+      }
+
+      if (typeof filtrosIa.asignado === "boolean") {
+        dataset = dataset.filter((equipo) => {
+          const tieneUsuario = equipo.usuario_id !== null && equipo.usuario_id !== undefined;
+          return filtrosIa.asignado ? tieneUsuario : !tieneUsuario;
+        });
+      }
+
+      if (typeof filtrosIa.alGarbigune === "boolean") {
+        dataset = dataset.filter((equipo) => equipo.al_garbigune === filtrosIa.alGarbigune);
+      }
+    }
+
     return dataset;
   }, [
     equipos,
@@ -178,13 +408,29 @@ const baseFiltrados = useMemo(() => {
     mostrarNoAdmitenUpdate,
     mostrarGarbiguneSi,
     mostrarGarbiguneNo,
+    iaResultado,
   ]);
 
-  const filtrados = useMemo(() => {
-    const normalizada = query.trim().toLowerCase();
-    if (!normalizada) return baseFiltrados;
+  useEffect(() => {
+    if (!iaResultado) return;
+    const conteo = baseFiltrados.length;
+    const baseMensaje =
+      iaResultado.summary ??
+      `Filtro IA aplicado (${conteo} ${conteo === 1 ? "resultado" : "resultados"})`;
+    const mensaje =
+      iaResultado.summary && !iaResultado.summary.includes(`${conteo}`)
+        ? `${iaResultado.summary} (${conteo} ${conteo === 1 ? "resultado" : "resultados"})`
+        : baseMensaje;
+    setRespuestaIa((prev) => (prev === mensaje ? prev : mensaje));
+  }, [iaResultado, baseFiltrados.length]);
 
-    return baseFiltrados.filter((equipo) => {
+  const filtrados = useMemo(() => {
+    const dataset = baseFiltrados;
+    if (iaResultado) return dataset;
+    const normalizada = query.trim().toLowerCase();
+    if (!normalizada) return dataset;
+
+    return dataset.filter((equipo) => {
       const valores: unknown[] = [...Object.values(equipo)];
       if (equipo.tipo) {
         const etiqueta = tipoLabels[equipo.tipo.toLowerCase()];
@@ -219,22 +465,53 @@ const baseFiltrados = useMemo(() => {
 
       return valores.some((valor) => normalizarValor(valor).includes(normalizada));
     });
-  }, [baseFiltrados, query]);
+  }, [baseFiltrados, query, iaResultado]);
 
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
-          <label className="flex flex-col gap-1 text-sm text-foreground/70 sm:w-52 lg:w-60">
-            Buscar en todos los campos
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Ej. portatil HP, en garantia, 2023..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            />
-          </label>
+          <div className="flex items-end gap-2 sm:w-64 lg:w-72">
+            <label className="flex flex-1 flex-col gap-1 text-sm text-foreground/70">
+              Buscar en todos los campos
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Ej. portatil HP, en garantia, 2023..."
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={consultarIA}
+              disabled={cargandoIa}
+              className="flex h-[42px] cursor-pointer items-center gap-2 rounded-full border border-border bg-foreground px-4 text-sm font-semibold text-background shadow-sm transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Consultar IA sobre los datos"
+              title="Consultar IA sobre los datos"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  d="M12 3.75a8.25 8.25 0 0 0-7.19 12.3l-1.06 3.18 3.18-1.06A8.25 8.25 0 1 0 12 3.75Z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9.75 12c0-1.24 1.01-2.25 2.25-2.25S14.25 10.76 14.25 12 13.24 14.25 12 14.25 9.75 13.24 9.75 12Z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>IA</span>
+            </button>
+          </div>
 
           <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
@@ -406,6 +683,39 @@ const baseFiltrados = useMemo(() => {
             </select>
           </label>
         </div>
+
+        {cargandoIa || errorIa || respuestaIa || iaResultado ? (
+          <div className="rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-foreground/80">
+            <div className="mb-1 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground/60">
+                Respuesta IA
+              </p>
+              {iaResultado ? (
+                <button
+                  type="button"
+                  onClick={limpiarFiltroIa}
+                  className="cursor-pointer text-xs font-semibold text-foreground transition hover:text-foreground/70"
+                >
+                  Limpiar filtro IA
+                </button>
+              ) : null}
+            </div>
+            {cargandoIa ? (
+              <p className="animate-pulse text-foreground/70">Consultando...</p>
+            ) : errorIa ? (
+              <p className="text-red-500">{errorIa}</p>
+            ) : respuestaIa ? (
+              <pre className="whitespace-pre-wrap break-words font-mono text-foreground">
+                {respuestaIa}
+              </pre>
+            ) : null}
+            {iaResultado?.filters ? (
+              <pre className="mt-2 whitespace-pre-wrap break-words rounded bg-background/60 px-2 py-1 text-[11px] font-mono text-foreground/80">
+                {JSON.stringify(iaResultado.filters, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className="text-sm text-foreground/60">
         {filtrados.length === baseFiltrados.length
@@ -586,3 +896,4 @@ const baseFiltrados = useMemo(() => {
     </section>
   );
 }
+
