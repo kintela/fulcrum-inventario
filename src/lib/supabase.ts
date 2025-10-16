@@ -16,6 +16,15 @@ function getSupabaseConfig(): SupabaseConfig {
   return { url: url.replace(/\/$/, ""), anonKey };
 }
 
+export type ActuacionRecord = {
+  id: number;
+  tipo: string;
+  descripcion: string | null;
+  coste: number | null;
+  fecha: string | null;
+  hecha_por: string | null;
+};
+
 export type EquipoRecord = {
   id: string;
   nombre: string | null;
@@ -60,16 +69,7 @@ export type EquipoRecord = {
         fabricanteNombre?: string | null;
       }>
     | null;
-  actuaciones?:
-    | Array<{
-        id: number;
-        tipo: string;
-        descripcion: string | null;
-        coste: number | null;
-        fecha: string | null;
-        hecha_por: string | null;
-      }>
-    | null;
+  actuaciones?: ActuacionRecord[] | null;
 } & Record<string, unknown>;
 
 export type CatalogoItem = {
@@ -394,5 +394,101 @@ export async function updateEquipo(
     throw new Error(
       `Error al actualizar el equipo ${id}: ${response.status} ${details}`,
     );
+  }
+}
+
+export type ActuacionUpsert = {
+  id?: number;
+  tipo: string;
+  descripcion?: string | null;
+  coste?: number | null;
+  fecha?: string;
+  hecha_por?: string | null;
+};
+
+export async function upsertActuaciones(
+  equipoId: string,
+  actuaciones: ActuacionUpsert[],
+): Promise<void> {
+  if (actuaciones.length === 0) return;
+
+  const config = getSupabaseConfig();
+
+  const crear = actuaciones.filter(
+    (actuacion) => typeof actuacion.id !== "number",
+  );
+  const actualizar = actuaciones.filter(
+    (actuacion): actuacion is ActuacionUpsert & { id: number } =>
+      typeof actuacion.id === "number",
+  );
+
+  const headersBase = {
+    apikey: config.anonKey,
+    Authorization: `Bearer ${config.anonKey}`,
+    "Content-Type": "application/json",
+    Prefer: "return=minimal",
+  };
+
+  if (crear.length > 0) {
+    const responses = await Promise.all(
+      crear.map((actuacion) => {
+        const body = { ...actuacion, equipo_id: equipoId } as {
+          equipo_id: string;
+          id?: number;
+          tipo: string;
+          descripcion?: string | null;
+          coste?: number | null;
+          fecha?: string;
+          hecha_por?: string | null;
+        };
+        delete body.id;
+        const payload = Object.fromEntries(
+          Object.entries(body).filter(([, value]) => value !== undefined),
+        );
+
+        return fetch(`${config.url}/rest/v1/actuaciones`, {
+          method: "POST",
+          headers: headersBase,
+          body: JSON.stringify(payload),
+        });
+      }),
+    );
+
+    for (const response of responses) {
+      if (!response || response.ok) continue;
+      const details = await response.text();
+      throw new Error(
+        `Error al crear una actuacion: ${response.status} ${details}`,
+      );
+    }
+  }
+
+  if (actualizar.length > 0) {
+    const responses = await Promise.all(
+      actualizar.map((actuacion) => {
+        const { id, ...resto } = actuacion;
+        const payload = Object.fromEntries(
+          Object.entries(resto).filter(([, value]) => value !== undefined),
+        );
+
+        if (Object.keys(payload).length === 0) {
+          return null;
+        }
+
+        return fetch(`${config.url}/rest/v1/actuaciones?id=eq.${id}`, {
+          method: "PATCH",
+          headers: headersBase,
+          body: JSON.stringify(payload),
+        });
+      }),
+    );
+
+    for (const response of responses) {
+      if (!response || response.ok) continue;
+      const details = await response.text();
+      throw new Error(
+        `Error al actualizar una actuacion: ${response.status} ${details}`,
+      );
+    }
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import type {
@@ -25,6 +25,16 @@ type EquipoEditFormProps = {
     formData: FormData,
   ) => Promise<EquipoEditFormState>;
   initialState: EquipoEditFormState;
+};
+
+type ActuacionFormItem = {
+  key: string;
+  id: number | null;
+  tipo: string;
+  descripcion: string;
+  coste: string;
+  fecha: string;
+  hechaPor: string;
 };
 
 const tipoOptions: Array<{ value: string; label: string }> = [
@@ -94,6 +104,41 @@ export default function EquipoEditForm({
       : equipo.al_garbigune
         ? "true"
         : "false";
+
+  const [actuacionesForm, setActuacionesForm] = useState<ActuacionFormItem[]>(
+    () =>
+      (equipo.actuaciones ?? []).map((actuacion) => ({
+        key: `act-${actuacion.id}`,
+        id: typeof actuacion.id === "number" ? actuacion.id : null,
+        tipo: actuacion.tipo ?? "",
+        descripcion: actuacion.descripcion ?? "",
+        coste:
+          actuacion.coste !== null && actuacion.coste !== undefined
+            ? `${actuacion.coste}`
+            : "",
+        fecha: formatDateForInput(actuacion.fecha ?? null),
+        hechaPor: actuacion.hecha_por ?? "",
+      })),
+  );
+
+  const handleAddActuacion = () => {
+    setActuacionesForm((prev) => [
+      ...prev,
+      {
+        key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id: null,
+        tipo: "",
+        descripcion: "",
+        coste: "",
+        fecha: "",
+        hechaPor: "",
+      },
+    ]);
+  };
+
+  const handleRemoveActuacion = (key: string) => {
+    setActuacionesForm((prev) => prev.filter((item) => item.key !== key));
+  };
 
   return (
     <form
@@ -193,7 +238,7 @@ export default function EquipoEditForm({
 
           <label className="flex flex-col gap-1 text-sm text-foreground/80">
             <span className="font-medium text-foreground">
-              Precio compra (€)
+              Precio compra (EUR)
             </span>
             <input
               type="number"
@@ -209,7 +254,7 @@ export default function EquipoEditForm({
           </label>
 
           <label className="flex flex-col gap-1 text-sm text-foreground/80">
-            <span className="font-medium text-foreground">Precio SO (€)</span>
+            <span className="font-medium text-foreground">Precio SO (EUR)</span>
             <input
               type="number"
               step="0.01"
@@ -355,6 +400,122 @@ export default function EquipoEditForm({
             </select>
           </label>
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">
+            Actuaciones
+          </h3>
+          <button
+            type="button"
+            onClick={handleAddActuacion}
+            className="inline-flex items-center justify-center rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground/70 transition hover:bg-foreground/10"
+          >
+            Anadir actuacion
+          </button>
+        </div>
+
+        <input
+          type="hidden"
+          name="actuaciones_count"
+          value={String(actuacionesForm.length)}
+          readOnly
+        />
+
+        {actuacionesForm.length === 0 ? (
+          <p className="text-sm text-foreground/60">
+            Todavia no hay actuaciones para este equipo.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {actuacionesForm.map((item, index) => (
+              <div
+                key={item.key}
+                className="rounded-lg border border-border bg-background/60 p-4"
+              >
+                <input
+                  type="hidden"
+                  name={`actuaciones_${index}_id`}
+                  defaultValue={item.id ?? ""}
+                />
+                <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4">
+                  <label className="flex flex-col gap-1 text-sm text-foreground/80">
+                    <span className="font-medium text-foreground">Tipo</span>
+                    <input
+                      type="text"
+                      name={`actuaciones_${index}_tipo`}
+                      defaultValue={item.tipo}
+                      className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm text-foreground/80">
+                    <span className="font-medium text-foreground">
+                      Fecha
+                    </span>
+                    <input
+                      type="date"
+                      name={`actuaciones_${index}_fecha`}
+                      defaultValue={item.fecha}
+                      className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm text-foreground/80 sm:col-span-2">
+                    <span className="font-medium text-foreground">
+                      Descripcion
+                    </span>
+                    <textarea
+                      name={`actuaciones_${index}_descripcion`}
+                      rows={3}
+                      defaultValue={item.descripcion}
+                      className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm text-foreground/80">
+                    <span className="font-medium text-foreground">
+                      Coste (EUR)
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      name={`actuaciones_${index}_coste`}
+                      defaultValue={item.coste}
+                      className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm text-foreground/80">
+                    <span className="font-medium text-foreground">
+                      Hecha por
+                    </span>
+                    <input
+                      type="text"
+                      name={`actuaciones_${index}_hecha_por`}
+                      defaultValue={item.hechaPor}
+                      className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
+                  </label>
+                </div>
+
+                {item.id === null ? (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveActuacion(item.key)}
+                      className="inline-flex items-center justify-center rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground/70 transition hover:bg-foreground/10"
+                    >
+                      Quitar formulario
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="space-y-4">

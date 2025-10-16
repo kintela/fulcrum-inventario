@@ -10,7 +10,9 @@ import {
   fetchUbicacionesCatalogo,
   fetchUsuariosCatalogo,
   updateEquipo,
+  upsertActuaciones,
   type EquipoUpdatePayload,
+  type ActuacionUpsert,
 } from "@/lib/supabase";
 
 type Params = {
@@ -156,6 +158,93 @@ export default async function EditarEquipoPage({
 
     const tipoRaw = getStringOrNull("tipo");
 
+    const actuacionesCountRaw = formData.get("actuaciones_count");
+    const actuacionesCount =
+      typeof actuacionesCountRaw === "string"
+        ? Number.parseInt(actuacionesCountRaw, 10)
+        : 0;
+
+    if (Number.isNaN(actuacionesCount) || actuacionesCount < 0) {
+      return {
+        status: "error",
+        message: "El numero de actuaciones indicado es invalido.",
+      };
+    }
+
+    const actuacionesPayload: ActuacionUpsert[] = [];
+
+    for (let i = 0; i < actuacionesCount; i += 1) {
+      const indiceHumano = i + 1;
+
+      const actuacionId = parseIntegerField(
+        `actuaciones_${i}_id`,
+        `Actuacion ${indiceHumano}`,
+      );
+      if (!actuacionId.ok) {
+        return { status: "error", message: actuacionId.message };
+      }
+
+      const tipoActuacion = getStringOrNull(`actuaciones_${i}_tipo`);
+      const descripcionActuacion = getStringOrNull(
+        `actuaciones_${i}_descripcion`,
+      );
+      const fechaActuacion = getStringOrNull(`actuaciones_${i}_fecha`);
+      const hechaPorActuacion = getStringOrNull(
+        `actuaciones_${i}_hecha_por`,
+      );
+
+      const costeActuacion = parseNumberField(
+        `actuaciones_${i}_coste`,
+        `Coste actuacion ${indiceHumano}`,
+      );
+      if (!costeActuacion.ok) {
+        return { status: "error", message: costeActuacion.message };
+      }
+
+      const hayContenido =
+        actuacionId.value !== null ||
+        Boolean(tipoActuacion) ||
+        Boolean(descripcionActuacion) ||
+        costeActuacion.value !== null ||
+        Boolean(fechaActuacion) ||
+        Boolean(hechaPorActuacion);
+
+      if (!hayContenido) {
+        continue;
+      }
+
+      if (!tipoActuacion) {
+        return {
+          status: "error",
+          message: `La actuacion ${indiceHumano} debe incluir un tipo.`,
+        };
+      }
+
+      if (actuacionId.value !== null && !fechaActuacion) {
+        return {
+          status: "error",
+          message: `La actuacion ${indiceHumano} requiere una fecha valida.`,
+        };
+      }
+
+      const actuacion: ActuacionUpsert = {
+        tipo: tipoActuacion,
+        descripcion: descripcionActuacion,
+        coste: costeActuacion.value,
+        hecha_por: hechaPorActuacion,
+      };
+
+      if (fechaActuacion) {
+        actuacion.fecha = fechaActuacion;
+      }
+
+      if (actuacionId.value !== null) {
+        actuacion.id = actuacionId.value;
+      }
+
+      actuacionesPayload.push(actuacion);
+    }
+
     const payload: EquipoUpdatePayload = {
       nombre: getStringOrNull("nombre"),
       modelo: getStringOrNull("modelo"),
@@ -185,6 +274,9 @@ export default async function EditarEquipoPage({
 
     try {
       await updateEquipo(params.id, payload);
+      if (actuacionesPayload.length > 0) {
+        await upsertActuaciones(params.id, actuacionesPayload);
+      }
       revalidatePath("/");
       revalidatePath(`/equipos/${params.id}/editar`);
       return {
