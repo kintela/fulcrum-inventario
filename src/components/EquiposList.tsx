@@ -304,6 +304,8 @@ export default function EquiposList({
     setSearchTerm("");
 
     try {
+      const ahora = new Date();
+
       const resumenEquipos = equipos.map((equipo) => {
         const fechaCompra = equipo.fecha_compra
           ? new Date(equipo.fecha_compra)
@@ -632,6 +634,8 @@ export default function EquiposList({
     iaResultado,
 
     iaDestacados,
+
+    iaDestacadosMapa,
   ]);
 
   useEffect(() => {
