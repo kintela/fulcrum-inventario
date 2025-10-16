@@ -1193,23 +1193,21 @@ export default function EquiposList({
 
             const esDestacadoIa = iaDestacadosMapa.has(equipo.id);
 
-            const actuaciones = Array.isArray(equipo.actuaciones)
-              ? equipo.actuaciones
-              : [];
-
             const obtenerTimestampActuacion = (valor: string | null | undefined) => {
               if (!valor) return Number.NEGATIVE_INFINITY;
               const time = new Date(valor).getTime();
               return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
             };
 
-            const actuacionesOrdenadas = actuaciones
-              .slice()
-              .sort(
-                (a, b) =>
-                  obtenerTimestampActuacion(b.fecha) -
-                  obtenerTimestampActuacion(a.fecha),
-              );
+            const actuacionesOrdenadas = Array.isArray(equipo.actuaciones)
+              ? equipo.actuaciones
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      obtenerTimestampActuacion(b.fecha) -
+                      obtenerTimestampActuacion(a.fecha),
+                  )
+              : [];
 
             return (
               <li
@@ -1378,19 +1376,16 @@ export default function EquiposList({
                   ) : null}
                 </dl>
 
-                <div className="border-t border-border/60 pt-3">
-                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/60">
-                    Actuaciones
-                  </h4>
+                {actuacionesOrdenadas.length > 0 ? (
+                  <div className="border-t border-border/60 pt-3">
+                    <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/60">
+                      Actuaciones
+                    </h4>
 
-                  {actuacionesOrdenadas.length === 0 ? (
-                    <p className="text-xs text-foreground/60">
-                      No hay actuaciones registradas.
-                    </p>
-                  ) : (
                     <ul className="flex flex-col gap-3 text-xs text-foreground/70">
                       {actuacionesOrdenadas.map((actuacion) => {
                         const fechaTexto = formatearFecha(actuacion.fecha ?? null);
+
                         const costeValor =
                           typeof actuacion.coste === "number"
                             ? actuacion.coste
@@ -1442,8 +1437,8 @@ export default function EquiposList({
                         );
                       })}
                     </ul>
-                  )}
-                </div>
+                  </div>
+                ) : null}
 
                 {pantallas.length > 0 ? (
                   <div className="border-t border-border/60 pt-3">
