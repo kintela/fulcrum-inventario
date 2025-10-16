@@ -11,7 +11,9 @@ import {
   fetchUsuariosCatalogo,
   updateEquipo,
   upsertActuaciones,
+  TIPO_ACTUACION_ENUM_VALUES,
   type EquipoUpdatePayload,
+  type ActuacionTipo,
   type ActuacionUpsert,
 } from "@/lib/supabase";
 
@@ -220,6 +222,17 @@ export default async function EditarEquipoPage({
         };
       }
 
+      if (
+        !TIPO_ACTUACION_ENUM_VALUES.includes(
+          tipoActuacion as ActuacionTipo,
+        )
+      ) {
+        return {
+          status: "error",
+          message: `Selecciona un tipo valido para la actuacion ${indiceHumano}.`,
+        };
+      }
+
       if (actuacionId.value !== null && !fechaActuacion) {
         return {
           status: "error",
@@ -227,8 +240,10 @@ export default async function EditarEquipoPage({
         };
       }
 
+      const tipoValidado = tipoActuacion as ActuacionTipo;
+
       const actuacion: ActuacionUpsert = {
-        tipo: tipoActuacion,
+        tipo: tipoValidado,
         descripcion: descripcionActuacion,
         coste: costeActuacion.value,
         hecha_por: hechaPorActuacion,

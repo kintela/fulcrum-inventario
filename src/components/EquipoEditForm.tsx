@@ -9,6 +9,7 @@ import type {
   EquipoRecord,
   UsuarioCatalogo,
 } from "@/lib/supabase";
+import { TIPO_ACTUACION_ENUM_VALUES } from "@/lib/supabase";
 
 export type EquipoEditFormState = {
   status: "idle" | "success" | "error";
@@ -43,6 +44,14 @@ const tipoOptions: Array<{ value: string; label: string }> = [
   { value: "portatil", label: "Portatil" },
   { value: "servidor", label: "Servidor" },
   { value: "tablet", label: "Tablet" },
+];
+
+const tipoActuacionOptions: Array<{ value: string; label: string }> = [
+  { value: "", label: "Selecciona un tipo" },
+  ...TIPO_ACTUACION_ENUM_VALUES.map((value) => ({
+    value,
+    label: value.charAt(0).toUpperCase() + value.slice(1),
+  })),
 ];
 
 function formatDateForInput(value: string | null | undefined) {
@@ -442,12 +451,17 @@ export default function EquipoEditForm({
                 <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4">
                   <label className="flex flex-col gap-1 text-sm text-foreground/80">
                     <span className="font-medium text-foreground">Tipo</span>
-                    <input
-                      type="text"
+                    <select
                       name={`actuaciones_${index}_tipo`}
                       defaultValue={item.tipo}
                       className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
-                    />
+                    >
+                      {tipoActuacionOptions.map((option) => (
+                        <option key={`${option.value || "empty"}-${index}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
 
                   <label className="flex flex-col gap-1 text-sm text-foreground/80">

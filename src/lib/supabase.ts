@@ -3,6 +3,15 @@ type SupabaseConfig = {
   anonKey: string;
 };
 
+export const TIPO_ACTUACION_ENUM_VALUES = [
+  "reparación",
+  "ampliación",
+  "formateo",
+] as const;
+
+export type ActuacionTipo =
+  (typeof TIPO_ACTUACION_ENUM_VALUES)[number];
+
 function getSupabaseConfig(): SupabaseConfig {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -18,7 +27,7 @@ function getSupabaseConfig(): SupabaseConfig {
 
 export type ActuacionRecord = {
   id: number;
-  tipo: string;
+  tipo: ActuacionTipo;
   descripcion: string | null;
   coste: number | null;
   fecha: string | null;
@@ -399,7 +408,7 @@ export async function updateEquipo(
 
 export type ActuacionUpsert = {
   id?: number;
-  tipo: string;
+  tipo: ActuacionTipo;
   descripcion?: string | null;
   coste?: number | null;
   fecha?: string;
