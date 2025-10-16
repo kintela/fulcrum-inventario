@@ -74,6 +74,57 @@ function calcularIndicadores(equipos: EquipoRecord[]): Indicadores {
   return indicadores;
 }
 
+type PantallasResumen = {
+  cantidad: number;
+  gastoTotalCents: number;
+  gastoPorAnioCents: Record<number, number>;
+  pantallasPorAnio: Record<number, number>;
+};
+
+function crearPantallasResumenBase(): PantallasResumen {
+  const valoresIniciales = Object.fromEntries(
+    aniosReferencia.map((anio) => [anio, 0]),
+  ) as Record<number, number>;
+
+  return {
+    cantidad: 0,
+    gastoTotalCents: 0,
+    gastoPorAnioCents: { ...valoresIniciales },
+    pantallasPorAnio: { ...valoresIniciales },
+  };
+}
+
+function calcularResumenPantallas(equipos: EquipoRecord[]): PantallasResumen {
+  const resumen = crearPantallasResumenBase();
+
+  equipos.forEach((equipo) => {
+    if (!Array.isArray(equipo.pantallas)) return;
+
+    equipo.pantallas.forEach((pantalla) => {
+      resumen.cantidad += 1;
+
+      const precio = Number(pantalla.precio ?? 0);
+      const precioCents = Number.isFinite(precio)
+        ? Math.round(precio * 100)
+        : 0;
+      resumen.gastoTotalCents += precioCents;
+
+      if (pantalla.fecha_compra) {
+        const fecha = new Date(pantalla.fecha_compra);
+        if (!Number.isNaN(fecha.getTime())) {
+          const anio = fecha.getFullYear();
+          if (anio in resumen.pantallasPorAnio) {
+            resumen.pantallasPorAnio[anio] += 1;
+            resumen.gastoPorAnioCents[anio] += precioCents;
+          }
+        }
+      }
+    });
+  });
+
+  return resumen;
+}
+
 type DashboardContentProps = {
   equipos: EquipoRecord[];
 };
@@ -83,6 +134,10 @@ export default function DashboardContent({ equipos }: DashboardContentProps) {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
+  const resumenPantallas = useMemo(
+    () => calcularResumenPantallas(equipos),
+    [equipos],
+  );
 
   const handleFilter = (tipo: TipoClave, year: number | null = null) => {
     if (selectedTipo === tipo && selectedYear === year) {
@@ -162,6 +217,32 @@ export default function DashboardContent({ equipos }: DashboardContentProps) {
               </div>
             </article>
           ))}
+
+          <article className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+            <h2 className="text-sm font-medium text-foreground/70">Pantallas</h2>
+            <p className="mt-2 text-3xl font-semibold">{resumenPantallas.cantidad}</p>
+
+            <div className="mt-4 grid grid-cols-4 gap-3 text-xs sm:text-sm">
+              <div className="space-y-1">
+                <p className="font-medium text-foreground/60">Gasto total</p>
+                <span className="inline-flex w-full justify-start font-semibold text-foreground transition">
+                  {formatearImporte(resumenPantallas.gastoTotalCents / 100)}
+                </span>
+              </div>
+              {aniosReferencia.map((anio) => (
+                <div key={`pantallas-${anio}`} className="space-y-1">
+                  <p className="font-medium text-foreground/60">
+                    {anio} ({resumenPantallas.pantallasPorAnio[anio] ?? 0})
+                  </p>
+                  <span className="inline-flex w-full justify-start font-semibold text-foreground transition">
+                    {formatearImporte(
+                      (resumenPantallas.gastoPorAnioCents[anio] ?? 0) / 100,
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </article>
         </div>
       </section>
 

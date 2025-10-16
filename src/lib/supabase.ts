@@ -76,6 +76,9 @@ export type EquipoRecord = {
         modelo: string | null;
         fabricante_id: number | null;
         fabricanteNombre?: string | null;
+        precio: number | null;
+        fecha_compra: string | null;
+        en_garantia: boolean | null;
       }>
     | null;
   actuaciones?: ActuacionRecord[] | null;
@@ -184,7 +187,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "fecha_bios",
       "url",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id)",
+      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
@@ -248,7 +251,7 @@ export async function fetchEquipoById(
       "url",
       "fecha_bios",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id)",
+      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
