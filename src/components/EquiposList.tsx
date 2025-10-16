@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
@@ -1146,6 +1147,8 @@ export default function EquiposList({
             const tarjetaGrafica =
               equipo.tarjeta_grafica ?? "Sin tarjeta grafica";
 
+            const nombreEquipo = equipo.nombre ?? "Equipo sin nombre";
+
             const observaciones =
               equipo.observaciones && equipo.observaciones.trim().length > 0
                 ? equipo.observaciones.trim()
@@ -1193,9 +1196,38 @@ export default function EquiposList({
             return (
               <li
                 key={equipo.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
               >
-                <div className="space-y-1">
+                <Link
+                  href={`/equipos/${equipo.id}/editar`}
+                  aria-label={`Editar ${nombreEquipo}`}
+                  className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
+                >
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4.5 12.75V15.5h2.75L15 7.75 12.25 5l-7.75 7.75Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="m11.5 5.5 3 3"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
+
+                <div className="space-y-1 pr-10">
                   {iaResultado && esDestacadoIa ? (
                     <div className="mb-1 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-800">
                       IA: {motivoIa ?? "Marcado como bajo retorno"}
@@ -1203,7 +1235,7 @@ export default function EquiposList({
                   ) : null}
 
                   <h3 className="text-lg font-semibold text-foreground">
-                    {equipo.nombre ?? "Equipo sin nombre"}
+                    {nombreEquipo}
                   </h3>
 
                   <p className="text-xs font-semibold italic text-foreground/60">
