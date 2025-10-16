@@ -1193,6 +1193,24 @@ export default function EquiposList({
 
             const esDestacadoIa = iaDestacadosMapa.has(equipo.id);
 
+            const actuaciones = Array.isArray(equipo.actuaciones)
+              ? equipo.actuaciones
+              : [];
+
+            const obtenerTimestampActuacion = (valor: string | null | undefined) => {
+              if (!valor) return Number.NEGATIVE_INFINITY;
+              const time = new Date(valor).getTime();
+              return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+            };
+
+            const actuacionesOrdenadas = actuaciones
+              .slice()
+              .sort(
+                (a, b) =>
+                  obtenerTimestampActuacion(b.fecha) -
+                  obtenerTimestampActuacion(a.fecha),
+              );
+
             return (
               <li
                 key={equipo.id}
@@ -1359,6 +1377,73 @@ export default function EquiposList({
                     </div>
                   ) : null}
                 </dl>
+
+                <div className="border-t border-border/60 pt-3">
+                  <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/60">
+                    Actuaciones
+                  </h4>
+
+                  {actuacionesOrdenadas.length === 0 ? (
+                    <p className="text-xs text-foreground/60">
+                      No hay actuaciones registradas.
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col gap-3 text-xs text-foreground/70">
+                      {actuacionesOrdenadas.map((actuacion) => {
+                        const fechaTexto = formatearFecha(actuacion.fecha ?? null);
+                        const costeValor =
+                          typeof actuacion.coste === "number"
+                            ? actuacion.coste
+                            : actuacion.coste !== null &&
+                                actuacion.coste !== undefined &&
+                                actuacion.coste !== ""
+                              ? Number(actuacion.coste)
+                              : null;
+
+                        const costeTexto =
+                          costeValor !== null && Number.isFinite(costeValor)
+                            ? formatearImporte(costeValor)
+                            : null;
+
+                        return (
+                          <li
+                            key={actuacion.id}
+                            className="rounded-lg border border-border/60 bg-background/40 px-3 py-2"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-foreground/80">
+                              <span className="text-xs font-semibold uppercase tracking-wide">
+                                {actuacion.tipo}
+                              </span>
+
+                              <div className="flex items-center gap-2 text-[11px] font-medium text-foreground/60">
+                                {fechaTexto ? (
+                                  <span>{fechaTexto}</span>
+                                ) : null}
+                                {costeTexto ? (
+                                  <span className="rounded bg-foreground/10 px-2 py-[1px] text-[10px] font-semibold text-foreground/70">
+                                    {costeTexto}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            {actuacion.descripcion ? (
+                              <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-foreground/70">
+                                {actuacion.descripcion}
+                              </p>
+                            ) : null}
+
+                            {actuacion.hecha_por ? (
+                              <p className="mt-1 text-[10px] uppercase tracking-wide text-foreground/50">
+                                Hecha por: {actuacion.hecha_por}
+                              </p>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
 
                 {pantallas.length > 0 ? (
                   <div className="border-t border-border/60 pt-3">

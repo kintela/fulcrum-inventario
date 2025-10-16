@@ -60,6 +60,16 @@ export type EquipoRecord = {
         fabricanteNombre?: string | null;
       }>
     | null;
+  actuaciones?:
+    | Array<{
+        id: number;
+        tipo: string;
+        descripcion: string | null;
+        coste: number | null;
+        fecha: string | null;
+        hecha_por: string | null;
+      }>
+    | null;
 } & Record<string, unknown>;
 
 export type CatalogoItem = {
@@ -162,7 +172,9 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "hdd",
       "tarjeta_grafica",
       "observaciones",
+      "fecha_bios",
       "url",
+      "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
       "pantallas:pantallas(id,pulgadas,modelo,fabricante_id)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
@@ -224,9 +236,9 @@ export async function fetchEquipoById(
       "hdd",
       "tarjeta_grafica",
       "observaciones",
-      "fecha_bios",
       "url",
       "fecha_bios",
+      "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
       "pantallas:pantallas(id,pulgadas,modelo,fabricante_id)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
