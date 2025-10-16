@@ -46,7 +46,7 @@ type PeticionIA = {
 export async function POST(request: NextRequest) {
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json(
-      { message: "OPENAI_API_KEY no está configurada en el entorno." },
+      { message: "OPENAI_API_KEY no esta configurada en el entorno." },
       { status: 500 },
     );
   }
@@ -55,15 +55,23 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as PeticionIA;
   } catch {
-    return NextResponse.json({ message: "Cuerpo de la petición inválido." }, { status: 400 });
+    return NextResponse.json(
+      { message: "Cuerpo de la peticion invalido." },
+      { status: 400 },
+    );
   }
 
   const prompt = body.prompt?.trim();
   if (!prompt) {
-    return NextResponse.json({ message: "El prompt no puede estar vacío." }, { status: 400 });
+    return NextResponse.json(
+      { message: "El prompt no puede estar vacio." },
+      { status: 400 },
+    );
   }
 
-  const equipos = Array.isArray(body.contexto?.equipos) ? body.contexto?.equipos : [];
+  const equipos = Array.isArray(body.contexto?.equipos)
+    ? body.contexto?.equipos
+    : [];
 
   const userMessage = `
 Pregunta del usuario:
@@ -74,45 +82,51 @@ ${JSON.stringify(equipos, null, 2)}
 `;
 
   try {
-    const respuesta = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    const respuesta = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0.2,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Eres un asistente especializado en evaluar el inventario descrito. " +
+                "Debes analizar la peticion del usuario y los registros facilitados, devolver un conjunto de filtros y, sobre todo, razonar que equipos destacan segun la pregunta. " +
+                "Los datos incluyen campos utiles como 'sistema_operativo_normalizado', 'asignado', 'admite_update', 'fecha_compra', 'precio_compra', 'ram', 'ssd', 'hdd', 'procesador', 'tarjeta_grafica', 'antiguedad_anos' y 'en_garantia'. " +
+                "Considera coincidencias parciales sin distincion de mayusculas/minusculas en campos de texto (por ejemplo, usa includes sobre 'sistema_operativo_normalizado'). " +
+                "Trata un equipo como 'asignado' cuando 'asignado' es true o usuario_id no es null. " +
+                'Devuelve EXCLUSIVAMENTE JSON sin bloques de codigo ni texto extra, con la forma {"filters": { ... }, "highlights": [ ... ], "summary": "..."}. ' +
+                "En 'filters' utiliza solo claves conocidas (sistema_operativo_contains, admite_update, asignado, al_garbigune, ubicacion_contains, tipo_in, antiguedad_min, antiguedad_max, ram_min, ram_max, precio_max, etc.). " +
+                '"highlights" debe ser un array con objetos {"id": string, "motivo": string}. El motivo debe explicar brevemente POR QUE el equipo encaja con la peticion, citando datos concretos (por ejemplo, antiguedad de X anos, especificaciones bajas, precio original, si requiere gasto mayor al valor, etc.). ' +
+                "Si la peticion implica comparar coste/beneficio, justifica explicitamente por que no merece invertir los 280 en soporte (edad avanzada, hardware limitado, coste mayor que valor residual, etc.). " +
+                "Si no hay equipos destacados, devuelve \"highlights\": [] y explica el motivo en 'summary'. " +
+                "No inventes informacion ni propongas acciones fuera del ambito del inventario. Mantente conciso y preciso.",
+            },
+            {
+              role: "system",
+              content: `Contexto estructural de la base de datos:\n${SCHEMA_CONTEXT}`,
+            },
+            {
+              role: "user",
+              content: userMessage,
+            },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Eres un asistente especializado en filtrar datos del inventario descrito. " +
-              "Debes analizar la petición del usuario y los registros facilitados y devolver únicamente un conjunto de filtros que satisfacen la petición. " +
-              "Dispones de campos auxiliares como 'asignado' (boolean) y 'sistema_operativo_normalizado' (en minúsculas). " +
-              "Considera coincidencias parciales y sin distinción de mayúsculas/minúsculas en campos de texto, por ejemplo, utiliza includes sobre 'sistema_operativo_normalizado'. " +
-              "Trata un equipo como 'asignado' cuando su campo asignado es true o usuario_id no es null. " +
-              "El campo admite_update puede ser true, false o null (desconocido); filtra únicamente con true/false cuando corresponda. " +
-              "Responde EXCLUSIVAMENTE en JSON sin bloques de código ni texto adicional, con la forma {\"filters\": { ... }, \"summary\": \"texto opcional\"}. " +
-              "Dentro de 'filters' utiliza solo claves conocidas como: sistema_operativo_contains (array de fragmentos), admite_update (\"true\"|\"false\"|\"unknown\"), asignado (boolean), al_garbigune (boolean), ubicacion_contains (array), tipo_in (array). " +
-              "Si no hay coincidencias, devuelve un objeto 'filters' vacío y explica brevemente el motivo en 'summary'. " +
-              "No inventes información ni sugieras acciones fuera del filtrado solicitado.",
-          },
-          {
-            role: "system",
-            content: `Contexto estructural de la base de datos:\n${SCHEMA_CONTEXT}`,
-          },
-          {
-            role: "user",
-            content: userMessage,
-          },
-        ],
-      }),
-    });
+    );
 
     if (!respuesta.ok) {
       const errorDetalles = await respuesta.text();
-      throw new Error(errorDetalles || "Error desconocido en la API de OpenAI.");
+      throw new Error(
+        errorDetalles || "Error desconocido en la API de OpenAI.",
+      );
     }
 
     const datos = (await respuesta.json()) as {
@@ -121,7 +135,7 @@ ${JSON.stringify(equipos, null, 2)}
     const answer = datos.choices?.[0]?.message?.content?.trim();
 
     if (!answer) {
-      throw new Error("La respuesta de la IA no contenía contenido utilizable.");
+      throw new Error("La respuesta de la IA no contena contenido utilizable.");
     }
 
     let parsed: unknown;
@@ -134,7 +148,7 @@ ${JSON.stringify(equipos, null, 2)}
         answer.match(/\{[\s\S]*\}/)?.[0];
 
       if (!bloqueJson) {
-        throw new Error("La IA no devolvió JSON válido.");
+        throw new Error("La IA no devolvio JSON valido.");
       }
 
       parsed = JSON.parse(bloqueJson);
@@ -142,17 +156,44 @@ ${JSON.stringify(equipos, null, 2)}
 
     const filtersRaw = (parsed as { filters?: unknown }).filters;
     const summaryRaw = (parsed as { summary?: unknown }).summary;
+    const highlightsRaw = (parsed as { highlights?: unknown }).highlights;
 
     const filtros =
-      filtersRaw && typeof filtersRaw === "object" ? (filtersRaw as Record<string, unknown>) : {};
+      filtersRaw && typeof filtersRaw === "object"
+        ? (filtersRaw as Record<string, unknown>)
+        : {};
 
     const summary =
-      typeof summaryRaw === "string" && summaryRaw.trim().length > 0 ? summaryRaw.trim() : null;
+      typeof summaryRaw === "string" && summaryRaw.trim().length > 0
+        ? summaryRaw.trim()
+        : null;
 
-    return NextResponse.json({ filters: filtros, summary });
+    const highlights = Array.isArray(highlightsRaw)
+      ? highlightsRaw
+          .map((item) =>
+            item &&
+            typeof item === "object" &&
+            typeof (item as { id?: unknown }).id === "string"
+              ? {
+                  id: (item as { id: string }).id,
+                  motivo:
+                    typeof (item as { motivo?: unknown }).motivo === "string"
+                      ? (item as { motivo: string }).motivo.trim() || null
+                      : null,
+                }
+              : null,
+          )
+          .filter((item): item is { id: string; motivo: string | null } =>
+            Boolean(item),
+          )
+      : [];
+
+    return NextResponse.json({ filters: filtros, highlights, summary });
   } catch (error) {
     const mensaje =
-      error instanceof Error ? error.message : "Error inesperado al consultar la IA.";
+      error instanceof Error
+        ? error.message
+        : "Error inesperado al consultar la IA.";
     return NextResponse.json({ message: mensaje }, { status: 500 });
   }
 }
