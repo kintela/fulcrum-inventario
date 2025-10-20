@@ -545,6 +545,50 @@ export type PantallaUpdatePayload = {
   equipo_id?: string | null;
 };
 
+export async function deleteEquipo(id: string): Promise<void> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
+  requestUrl.searchParams.set("id", `eq.${id}`);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al eliminar el equipo ${id}: ${response.status} ${details}`,
+    );
+  }
+}
+
+export async function deletePantalla(id: number): Promise<void> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
+  requestUrl.searchParams.set("id", `eq.${id}`);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al eliminar la pantalla ${id}: ${response.status} ${details}`,
+    );
+  }
+}
+
 export async function updateEquipo(
   id: string,
   payload: EquipoUpdatePayload,

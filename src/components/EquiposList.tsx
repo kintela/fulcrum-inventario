@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
 
@@ -236,6 +245,14 @@ export default function EquiposList({
   const [mostrarEquipos, setMostrarEquipos] = useState(true);
 
   const [mostrarPantallas, setMostrarPantallas] = useState(false);
+  const [pantallaPulgadasSeleccionadas, setPantallaPulgadasSeleccionadas] =
+    useState<string>("");
+  const [equipoEliminandoId, setEquipoEliminandoId] = useState<string | null>(
+    null,
+  );
+  const [pantallaEliminandoId, setPantallaEliminandoId] = useState<
+    number | null
+  >(null);
 
   const [iaResultado, setIaResultado] = useState<IaResultado | null>(null);
 
@@ -256,6 +273,62 @@ export default function EquiposList({
   const [errorIa, setErrorIa] = useState<string | null>(null);
 
   const [cargandoIa, setCargandoIa] = useState(false);
+  const router = useRouter();
+
+  const handleEliminarEquipo = useCallback(
+    async (equipoId: string) => {
+      setEquipoEliminandoId(equipoId);
+      try {
+        const respuesta = await fetch(`/api/equipos/${equipoId}`, {
+          method: "DELETE",
+        });
+        if (!respuesta.ok) {
+          let detalle = "No se pudo eliminar el equipo.";
+          try {
+            const data = await respuesta.json();
+            if (data?.error) detalle = data.error;
+          } catch {
+            // ignore json parse errors
+          }
+          throw new Error(detalle);
+        }
+        router.refresh();
+      } catch (error) {
+        console.error(error);
+        // Silenciar, el diálogo muestra el error antes del envío
+      } finally {
+        setEquipoEliminandoId(null);
+      }
+    },
+    [router],
+  );
+
+  const handleEliminarPantalla = useCallback(
+    async (pantallaId: number) => {
+      setPantallaEliminandoId(pantallaId);
+      try {
+        const respuesta = await fetch(`/api/pantallas/${pantallaId}`, {
+          method: "DELETE",
+        });
+        if (!respuesta.ok) {
+          let detalle = "No se pudo eliminar la pantalla.";
+          try {
+            const data = await respuesta.json();
+            if (data?.error) detalle = data.error;
+          } catch {
+            // ignore json parse errors
+          }
+          throw new Error(detalle);
+        }
+        router.refresh();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setPantallaEliminandoId(null);
+      }
+    },
+    [router],
+  );
 
   const sistemasOperativos = useMemo(() => {
     const valores = new Set<string>();
@@ -765,7 +838,7 @@ export default function EquiposList({
     const lista: Array<{
       id: number;
       equipoId: string | null;
-          equipoNombre: string;
+      equipoNombre: string;
           modelo: string | null;
           fabricanteNombre: string | null;
           pulgadas: number | null;
@@ -850,10 +923,65 @@ export default function EquiposList({
       });
     });
 
-    return lista.sort(
+    const listaFiltrada = lista.filter((pantalla) => {
+      if (!pantallaPulgadasSeleccionadas) return true;
+
+      if (pantalla.pulgadas === null) {
+        return pantallaPulgadasSeleccionadas === "sin_dato";
+      }
+
+      const valor = pantalla.pulgadas.toString();
+      return valor === pantallaPulgadasSeleccionadas;
+    });
+
+    return listaFiltrada.sort(
       (a, b) => obtenerTimestamp(b.fechaCompra) - obtenerTimestamp(a.fechaCompra),
     );
-  }, [filtrados, pantallasSinEquipo, searchTerm, iaResultado]);
+  }, [
+    filtrados,
+    pantallasSinEquipo,
+    searchTerm,
+    iaResultado,
+    pantallaPulgadasSeleccionadas,
+  ]);
+
+  const pantallasPulgadasDisponibles = useMemo(() => {
+    const valores = new Set<number>();
+    let haySinDato = false;
+
+    const registrar = (pulgadas: unknown) => {
+      if (typeof pulgadas === "number" && Number.isFinite(pulgadas)) {
+        valores.add(pulgadas);
+      } else if (pulgadas === null || pulgadas === undefined) {
+        haySinDato = true;
+      }
+    };
+
+    filtrados.forEach((equipo) => {
+      if (!Array.isArray(equipo.pantallas)) return;
+      equipo.pantallas.forEach((pantalla) => {
+        if (!pantalla) return;
+        registrar(pantalla.pulgadas);
+      });
+    });
+
+    pantallasSinEquipo.forEach((pantalla) => {
+      registrar(pantalla?.pulgadas ?? null);
+    });
+
+    const opciones = Array.from(valores)
+      .sort((a, b) => a - b)
+      .map((valor) => ({
+        value: valor.toString(),
+        label: `${valor}"`,
+      }));
+
+    if (haySinDato) {
+      opciones.push({ value: "sin_dato", label: "Sin dato" });
+    }
+
+    return opciones;
+  }, [filtrados, pantallasSinEquipo]);
 
   const equiposResultadosTexto =
     iaResultado
@@ -1097,6 +1225,29 @@ export default function EquiposList({
               ))}
             </select>
           </label>
+
+          {mostrarPantallas && (
+            <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+              <span className="font-semibold uppercase tracking-wide text-foreground/60">
+                Pulgadas pantalla
+              </span>
+
+              <select
+                value={pantallaPulgadasSeleccionadas}
+                onChange={(event) =>
+                  setPantallaPulgadasSeleccionadas(event.target.value)
+                }
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+              >
+                <option value="">Todas</option>
+                {pantallasPulgadasDisponibles.map((opcion) => (
+                  <option key={opcion.value} value={opcion.value}>
+                    {opcion.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
             <span className="font-semibold uppercase tracking-wide text-foreground/60">
@@ -1373,11 +1524,12 @@ export default function EquiposList({
                       obtenerTimestamp(b.fecha) - obtenerTimestamp(a.fecha),
                   )
               : [];
+            const estaEliminandoEquipo = equipoEliminandoId === equipo.id;
 
             return (
               <li
                 key={equipo.id}
-                className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
               >
                 <Link
                   href={`/equipos/${equipo.id}/editar`}
@@ -1651,6 +1803,62 @@ export default function EquiposList({
                     </div>
                   </div>
                 ) : null}
+
+                <AlertDialogPrimitive.Root>
+                  <AlertDialogPrimitive.Trigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`Eliminar ${nombreEquipo}`}
+                      title="Eliminar equipo"
+                      disabled={estaEliminandoEquipo}
+                      className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </AlertDialogPrimitive.Trigger>
+                  <AlertDialogPrimitive.Portal>
+                    <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+                    <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+                      <div className="space-y-2">
+                        <AlertDialogPrimitive.Title className="text-lg font-semibold text-foreground">
+                          Eliminar equipo
+                        </AlertDialogPrimitive.Title>
+                        <AlertDialogPrimitive.Description className="text-sm text-foreground/70">
+                          ¿Seguro que quieres eliminar{" "}
+                          <span className="font-medium text-foreground">
+                            {nombreEquipo}
+                          </span>
+                          ? Esta acción no se puede deshacer.
+                        </AlertDialogPrimitive.Description>
+                      </div>
+                      <div className="mt-6 flex justify-end gap-2">
+                        <AlertDialogPrimitive.Cancel className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 transition hover:bg-foreground/10">
+                          Cancelar
+                        </AlertDialogPrimitive.Cancel>
+                        <AlertDialogPrimitive.Action
+                          className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => handleEliminarEquipo(equipo.id)}
+                        >
+                          Eliminar
+                        </AlertDialogPrimitive.Action>
+                      </div>
+                    </AlertDialogPrimitive.Content>
+                  </AlertDialogPrimitive.Portal>
+                </AlertDialogPrimitive.Root>
               </li>
             );
           })}
@@ -1683,11 +1891,13 @@ export default function EquiposList({
                     : pantalla.enGarantia
                       ? "Si"
                       : "No";
+                const estaEliminandoPantalla =
+                  pantallaEliminandoId === pantalla.id;
 
                 return (
                   <li
                     key={`pantalla-${pantalla.id}`}
-                    className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                    className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
                   >
                     <Link
                       href={`/pantallas/${pantalla.id}/editar`}
@@ -1752,6 +1962,62 @@ export default function EquiposList({
                         </p>
                       ) : null}
                     </div>
+
+                    <AlertDialogPrimitive.Root>
+                      <AlertDialogPrimitive.Trigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`Eliminar pantalla ${modelo ?? fabricante ?? pantalla.id}`}
+                          title="Eliminar pantalla"
+                          disabled={estaEliminandoPantalla}
+                          className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <svg
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </AlertDialogPrimitive.Trigger>
+                      <AlertDialogPrimitive.Portal>
+                        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+                        <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+                          <div className="space-y-2">
+                            <AlertDialogPrimitive.Title className="text-lg font-semibold text-foreground">
+                              Eliminar pantalla
+                            </AlertDialogPrimitive.Title>
+                            <AlertDialogPrimitive.Description className="text-sm text-foreground/70">
+                              ¿Seguro que quieres eliminar{" "}
+                              <span className="font-medium text-foreground">
+                                {modelo ?? fabricante ?? `Pantalla ${pantalla.id}`}
+                              </span>
+                              ? Esta acción no se puede deshacer.
+                            </AlertDialogPrimitive.Description>
+                          </div>
+                          <div className="mt-6 flex justify-end gap-2">
+                            <AlertDialogPrimitive.Cancel className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 transition hover:bg-foreground/10">
+                              Cancelar
+                            </AlertDialogPrimitive.Cancel>
+                            <AlertDialogPrimitive.Action
+                              className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => handleEliminarPantalla(pantalla.id)}
+                            >
+                              Eliminar
+                            </AlertDialogPrimitive.Action>
+                          </div>
+                        </AlertDialogPrimitive.Content>
+                      </AlertDialogPrimitive.Portal>
+                    </AlertDialogPrimitive.Root>
                   </li>
                 );
               })}
