@@ -1666,7 +1666,8 @@ export default function EquiposList({
           ) : (
             <ul className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
               {pantallasVisibles.map((pantalla) => {
-                const modelo = pantalla.modelo ?? "Pantalla sin modelo";
+                const modeloBruto = pantalla.modelo?.trim();
+                const modelo = modeloBruto && modeloBruto.length > 0 ? modeloBruto : null;
                 const fabricante =
                   pantalla.fabricanteNombre ?? "Sin fabricante";
                 const pulgadasTexto =
@@ -1719,7 +1720,8 @@ export default function EquiposList({
 
                     <div className="space-y-1 pr-10">
                       <h3 className="text-lg font-semibold text-foreground">
-                        {modelo}
+                        {fabricante}
+                        {modelo ? ` - ${modelo}` : ""}
                       </h3>
 
                       <p className="flex items-center gap-2 text-xs font-semibold italic text-foreground/60">
@@ -1733,8 +1735,7 @@ export default function EquiposList({
                       </p>
 
                       <p className="text-sm text-foreground/70">
-                        {fabricante}
-                        {pulgadasTexto ? ` · ${pulgadasTexto}` : ""}
+                        {pulgadasTexto ? `${pulgadasTexto}` : ""}
                       </p>
 
                       <p className="text-sm text-foreground/70">
