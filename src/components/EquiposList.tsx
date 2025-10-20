@@ -765,15 +765,15 @@ export default function EquiposList({
     const lista: Array<{
       id: number;
       equipoId: string | null;
-      equipoNombre: string;
-      modelo: string | null;
-      fabricanteNombre: string | null;
-      pulgadas: number | null;
-      precio: number | null;
-      fechaCompra: string | null;
-      enGarantia: boolean | null;
-      sinEquipo: boolean;
-    }> = [];
+          equipoNombre: string;
+          modelo: string | null;
+          fabricanteNombre: string | null;
+          pulgadas: number | null;
+          precio: number | null;
+          fechaCompra: string | null;
+          enGarantia: boolean | null;
+          sinEquipo: boolean;
+        }> = [];
 
     const terminoBusqueda = iaResultado
       ? ""
@@ -805,7 +805,7 @@ export default function EquiposList({
           pulgadas:
             typeof pantalla.pulgadas === "number" ? pantalla.pulgadas : null,
           precio,
-          fechaCompra: pantalla.fecha_compra ?? equipo.fecha_compra ?? null,
+          fechaCompra: pantalla.fecha_compra ?? null,
           enGarantia:
             pantalla.en_garantia === null || pantalla.en_garantia === undefined
               ? null
@@ -1686,20 +1686,50 @@ export default function EquiposList({
                 return (
                   <li
                     key={`pantalla-${pantalla.id}`}
-                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                    className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
                   >
-                    <div className="space-y-1">
+                    <Link
+                      href={`/pantallas/${pantalla.id}/editar`}
+                      aria-label={`Editar pantalla ${modelo}`}
+                      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M4.5 12.75V15.5h2.75L15 7.75 12.25 5l-7.75 7.75Z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="m11.5 5.5 3 3"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+
+                    <div className="space-y-1 pr-10">
                       <h3 className="text-lg font-semibold text-foreground">
                         {modelo}
                       </h3>
 
                       <p className="flex items-center gap-2 text-xs font-semibold italic text-foreground/60">
-                        {pantalla.equipoNombre}
                         {pantalla.sinEquipo ? (
                           <span className="rounded-full bg-amber-100 px-2 py-[1px] text-[10px] font-semibold normal-case text-amber-800">
                             Sin equipo
                           </span>
-                        ) : null}
+                        ) : (
+                          pantalla.equipoNombre
+                        )}
                       </p>
 
                       <p className="text-sm text-foreground/70">

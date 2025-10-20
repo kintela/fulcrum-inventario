@@ -44,6 +44,11 @@ export type PantallaRecord = {
   precio: number | null;
   fecha_compra: string | null;
   en_garantia: boolean | null;
+  equipo?: {
+    id: string;
+    nombre: string | null;
+    fecha_compra?: string | null;
+  } | null;
 };
 
 export type EquipoRecord = {
@@ -88,6 +93,12 @@ export type EquipoRecord = {
 export type CatalogoItem = {
   id: number;
   nombre: string | null;
+};
+
+export type EquipoCatalogoItem = {
+  id: string;
+  nombre: string | null;
+  modelo?: string | null;
 };
 
 export type UsuarioCatalogo = {
@@ -270,6 +281,79 @@ export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
   return pantallas;
 }
 
+export async function fetchPantallaById(
+  id: number,
+): Promise<PantallaRecord | null> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
+  requestUrl.searchParams.set(
+    "select",
+    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,equipo:equipos(id,nombre,fecha_compra)",
+  );
+  requestUrl.searchParams.set("id", `eq.${id}`);
+  requestUrl.searchParams.set("limit", "1");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar la pantalla ${id}: ${response.status} ${details}`,
+    );
+  }
+
+  const pantallas = (await response.json()) as PantallaRecord[];
+  if (pantallas.length === 0) {
+    return null;
+  }
+
+  await completarFabricantesPantallas([], config, pantallas);
+
+  return pantallas[0];
+}
+
+export async function updatePantalla(
+  id: number,
+  payload: PantallaUpdatePayload,
+): Promise<void> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
+  requestUrl.searchParams.set("id", `eq.${id}`);
+
+  const cuerpo = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+
+  if (Object.keys(cuerpo).length === 0) {
+    return;
+  }
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "PATCH",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(cuerpo),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al actualizar la pantalla ${id}: ${response.status} ${details}`,
+    );
+  }
+}
+
 export async function fetchEquipoById(
   id: string,
 ): Promise<EquipoRecord | null> {
@@ -425,6 +509,40 @@ export type EquipoUpdatePayload = {
   observaciones?: string | null;
   url?: string | null;
   fecha_bios?: string | null;
+};
+
+export async function fetchEquiposCatalogo(): Promise<EquipoCatalogoItem[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
+  requestUrl.searchParams.set("select", "id,nombre,modelo");
+  requestUrl.searchParams.set("order", "nombre.asc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar equipos para el catalogo: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as EquipoCatalogoItem[];
+}
+
+export type PantallaUpdatePayload = {
+  modelo?: string | null;
+  fabricante_id?: number | null;
+  precio?: number | null;
+  fecha_compra?: string | null;
+  en_garantia?: boolean | null;
+  pulgadas?: number | null;
+  equipo_id?: string | null;
 };
 
 export async function updateEquipo(
