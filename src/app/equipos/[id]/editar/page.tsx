@@ -29,9 +29,11 @@ const INITIAL_STATE: EquipoEditFormState = {
 export default async function EditarEquipoPage({
   params,
 }: {
-  params: Params;
+  params: Promise<Params>;
 }) {
-  const equipo = await fetchEquipoById(params.id);
+  const { id } = await params;
+
+  const equipo = await fetchEquipoById(id);
   if (!equipo) {
     notFound();
   }
@@ -288,12 +290,12 @@ export default async function EditarEquipoPage({
     };
 
     try {
-      await updateEquipo(params.id, payload);
+      await updateEquipo(id, payload);
       if (actuacionesPayload.length > 0) {
-        await upsertActuaciones(params.id, actuacionesPayload);
+        await upsertActuaciones(id, actuacionesPayload);
       }
       revalidatePath("/");
-      revalidatePath(`/equipos/${params.id}/editar`);
+      revalidatePath(`/equipos/${id}/editar`);
       return {
         status: "success",
         message: "Equipo actualizado correctamente.",

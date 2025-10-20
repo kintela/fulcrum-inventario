@@ -1,7 +1,16 @@
 import DashboardContent from "@/components/DashboardContent";
-import { fetchEquipos } from "@/lib/supabase";
+import { fetchEquipos, fetchPantallasSinEquipo } from "@/lib/supabase";
 
 export default async function Dashboard() {
-  const equipos = await fetchEquipos();
-  return <DashboardContent equipos={equipos} />;
+  const [equipos, pantallasSinEquipo] = await Promise.all([
+    fetchEquipos(),
+    fetchPantallasSinEquipo(),
+  ]);
+
+  return (
+    <DashboardContent
+      equipos={equipos}
+      pantallasSinEquipo={pantallasSinEquipo}
+    />
+  );
 }

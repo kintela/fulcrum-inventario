@@ -34,6 +34,18 @@ export type ActuacionRecord = {
   hecha_por: string | null;
 };
 
+export type PantallaRecord = {
+  id: number;
+  equipo_id?: string | null;
+  pulgadas: number | null;
+  modelo: string | null;
+  fabricante_id: number | null;
+  fabricanteNombre?: string | null;
+  precio: number | null;
+  fecha_compra: string | null;
+  en_garantia: boolean | null;
+};
+
 export type EquipoRecord = {
   id: string;
   nombre: string | null;
@@ -69,18 +81,7 @@ export type EquipoRecord = {
   observaciones: string | null;
   url: string | null;
   fecha_bios: string | null;
-  pantallas:
-    | Array<{
-        id: number;
-        pulgadas: number | null;
-        modelo: string | null;
-        fabricante_id: number | null;
-        fabricanteNombre?: string | null;
-        precio: number | null;
-        fecha_compra: string | null;
-        en_garantia: boolean | null;
-      }>
-    | null;
+  pantallas: PantallaRecord[] | null;
   actuaciones?: ActuacionRecord[] | null;
 } & Record<string, unknown>;
 
@@ -99,6 +100,7 @@ export type UsuarioCatalogo = {
 async function completarFabricantesPantallas(
   equipos: EquipoRecord[],
   config: SupabaseConfig,
+  pantallasAdicionales: PantallaRecord[] = [],
 ) {
   const fabricanteIds = new Set<number>();
 
@@ -108,6 +110,12 @@ async function completarFabricantesPantallas(
         fabricanteIds.add(pantalla.fabricante_id);
       }
     });
+  });
+
+  pantallasAdicionales.forEach((pantalla) => {
+    if (typeof pantalla.fabricante_id === "number") {
+      fabricanteIds.add(pantalla.fabricante_id);
+    }
   });
 
   if (fabricanteIds.size === 0) {
@@ -152,6 +160,15 @@ async function completarFabricantesPantallas(
       }
     });
   });
+
+  pantallasAdicionales.forEach((pantalla) => {
+    if (typeof pantalla.fabricante_id === "number") {
+      pantalla.fabricanteNombre =
+        fabricantesMap.get(pantalla.fabricante_id) ?? null;
+    } else if (pantalla.fabricanteNombre === undefined) {
+      pantalla.fabricanteNombre = null;
+    }
+  });
 }
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
   const { url, anonKey } = getSupabaseConfig();
@@ -187,7 +204,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "fecha_bios",
       "url",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
+        "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
@@ -215,6 +232,42 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
   await completarFabricantesPantallas(equipos, { url, anonKey });
 
   return equipos;
+}
+
+export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
+  requestUrl.searchParams.set(
+    "select",
+    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia",
+  );
+  requestUrl.searchParams.set("equipo_id", "is.null");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar pantallas sin equipo: ${response.status} ${details}`,
+    );
+  }
+
+  const pantallas = (await response.json()) as PantallaRecord[];
+
+  if (pantallas.length === 0) {
+    return [];
+  }
+
+  await completarFabricantesPantallas([], config, pantallas);
+
+  return pantallas;
 }
 
 export async function fetchEquipoById(
@@ -251,7 +304,7 @@ export async function fetchEquipoById(
       "url",
       "fecha_bios",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-      "pantallas:pantallas(id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
+        "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",

@@ -5,7 +5,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
 
-import type { EquipoRecord } from "@/lib/supabase";
+import type { EquipoRecord, PantallaRecord } from "@/lib/supabase";
+
+function obtenerTimestamp(fecha: string | null | undefined): number {
+  if (!fecha) return Number.NEGATIVE_INFINITY;
+
+  const time = new Date(fecha).getTime();
+
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+}
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -19,6 +27,8 @@ const tipoLabels: Record<string, string> = {
 
 type EquiposListProps = {
   equipos: EquipoRecord[];
+
+  pantallasSinEquipo?: PantallaRecord[];
 
   filtroTipo?: string | null;
 
@@ -187,6 +197,7 @@ function normalizarValor(valor: unknown): string {
 
 export default function EquiposList({
   equipos,
+  pantallasSinEquipo = [],
 
   filtroTipo = null,
 
@@ -221,6 +232,10 @@ export default function EquiposList({
   const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState(true);
 
   const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState(true);
+
+  const [mostrarEquipos, setMostrarEquipos] = useState(true);
+
+  const [mostrarPantallas, setMostrarPantallas] = useState(false);
 
   const [iaResultado, setIaResultado] = useState<IaResultado | null>(null);
 
@@ -431,6 +446,22 @@ export default function EquiposList({
     setSearchTerm(current.trim());
   }
 
+  function manejarCambioMostrarEquipos(checked: boolean) {
+    if (!checked && !mostrarPantallas) {
+      setMostrarPantallas(true);
+    }
+
+    setMostrarEquipos(checked);
+  }
+
+  function manejarCambioMostrarPantallas(checked: boolean) {
+    if (!checked && !mostrarEquipos) {
+      setMostrarEquipos(true);
+    }
+
+    setMostrarPantallas(checked);
+  }
+
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
 
@@ -600,7 +631,10 @@ export default function EquiposList({
       }
     }
 
-    return dataset;
+    return [...dataset].sort(
+      (a, b) =>
+        obtenerTimestamp(b.fecha_compra) - obtenerTimestamp(a.fecha_compra),
+    );
   }, [
     equipos,
 
@@ -726,6 +760,121 @@ export default function EquiposList({
       );
     });
   }, [baseFiltrados, searchTerm, iaResultado]);
+
+  const pantallasVisibles = useMemo(() => {
+    const lista: Array<{
+      id: number;
+      equipoId: string | null;
+      equipoNombre: string;
+      modelo: string | null;
+      fabricanteNombre: string | null;
+      pulgadas: number | null;
+      precio: number | null;
+      fechaCompra: string | null;
+      enGarantia: boolean | null;
+      sinEquipo: boolean;
+    }> = [];
+
+    const terminoBusqueda = iaResultado
+      ? ""
+      : searchTerm.trim().toLowerCase();
+
+    const coincideConBusqueda = (valores: unknown[]) => {
+      if (!terminoBusqueda) return true;
+
+      return valores.some((valor) =>
+        normalizarValor(valor).includes(terminoBusqueda),
+      );
+    };
+
+    filtrados.forEach((equipo) => {
+      if (!Array.isArray(equipo.pantallas)) return;
+
+      equipo.pantallas.forEach((pantalla) => {
+        if (!pantalla) return;
+
+        const precio =
+          typeof pantalla.precio === "number" ? pantalla.precio : null;
+
+        lista.push({
+          id: pantalla.id,
+          equipoId: equipo.id,
+          equipoNombre: equipo.nombre ?? "Equipo sin nombre",
+          modelo: pantalla.modelo ?? null,
+          fabricanteNombre: pantalla.fabricanteNombre ?? null,
+          pulgadas:
+            typeof pantalla.pulgadas === "number" ? pantalla.pulgadas : null,
+          precio,
+          fechaCompra: pantalla.fecha_compra ?? equipo.fecha_compra ?? null,
+          enGarantia:
+            pantalla.en_garantia === null || pantalla.en_garantia === undefined
+              ? null
+              : pantalla.en_garantia,
+          sinEquipo: false,
+        });
+      });
+    });
+
+    pantallasSinEquipo.forEach((pantalla) => {
+      if (!pantalla) return;
+
+      if (
+        !coincideConBusqueda([
+          pantalla.modelo,
+          pantalla.fabricanteNombre,
+          pantalla.pulgadas,
+          pantalla.precio,
+        ])
+      ) {
+        return;
+      }
+
+      const precio =
+        typeof pantalla.precio === "number" ? pantalla.precio : null;
+
+      lista.push({
+        id: pantalla.id,
+        equipoId: pantalla.equipo_id ?? null,
+        equipoNombre: "Sin equipo asignado",
+        modelo: pantalla.modelo ?? null,
+        fabricanteNombre: pantalla.fabricanteNombre ?? null,
+        pulgadas:
+          typeof pantalla.pulgadas === "number" ? pantalla.pulgadas : null,
+        precio,
+        fechaCompra: pantalla.fecha_compra ?? null,
+        enGarantia:
+          pantalla.en_garantia === null || pantalla.en_garantia === undefined
+            ? null
+            : pantalla.en_garantia,
+        sinEquipo: true,
+      });
+    });
+
+    return lista.sort(
+      (a, b) => obtenerTimestamp(b.fechaCompra) - obtenerTimestamp(a.fechaCompra),
+    );
+  }, [filtrados, pantallasSinEquipo, searchTerm, iaResultado]);
+
+  const equiposResultadosTexto =
+    iaResultado
+      ? `${filtrados.length} resultado${filtrados.length === 1 ? "" : "s"}`
+      : searchTerm
+        ? `${filtrados.length} de ${baseFiltrados.length} resultados`
+        : filtrados.length === 1
+          ? "1 resultado"
+          : `${filtrados.length} resultados`;
+
+  const pantallasResultadosTexto = `${pantallasVisibles.length} pantalla${
+    pantallasVisibles.length === 1 ? "" : "s"
+  }`;
+
+  let resumenResultados = equiposResultadosTexto;
+
+  if (mostrarEquipos && mostrarPantallas) {
+    resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
+  } else if (!mostrarEquipos && mostrarPantallas) {
+    resumenResultados = pantallasResultadosTexto;
+  }
 
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
@@ -1082,63 +1231,86 @@ export default function EquiposList({
         ) : null}
       </div>
 
-      <div className="text-sm text-foreground/60">
-        {iaResultado
-          ? `${filtrados.length} resultado${filtrados.length === 1 ? "" : "s"}`
-          : searchTerm
-            ? `${filtrados.length} de ${baseFiltrados.length} resultados`
-            : filtrados.length === 1
-              ? "1 resultado"
-              : `${filtrados.length} resultados`}
+      <div className="flex flex-col gap-2 text-sm text-foreground/60 sm:flex-row sm:items-center sm:justify-between">
+        <div>{resumenResultados}</div>
+
+        <div className="flex items-center gap-4 text-xs text-foreground/70 sm:text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarEquipos}
+              onChange={(event) =>
+                manejarCambioMostrarEquipos(event.target.checked)
+              }
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Equipos</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarPantallas}
+              onChange={(event) =>
+                manejarCambioMostrarPantallas(event.target.checked)
+              }
+              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Pantallas</span>
+          </label>
+        </div>
       </div>
 
-      {equipos.length === 0 ? (
-        <p className="text-sm text-foreground/60">
-          No hay equipos registrados todavia. Anade el primero desde el panel de
-          gestion.
-        </p>
-      ) : baseFiltrados.length === 0 ? (
-        <p className="text-sm text-foreground/60">
-          No hay equipos que coincidan con el filtro seleccionado.
-        </p>
-      ) : filtrados.length === 0 ? (
-        <p className="text-sm text-foreground/60">
-          {searchTerm ? (
-            <>
-              No se encontraron equipos que coincidan con{" "}
-              <span className="font-medium">&ldquo;{searchTerm}&rdquo;</span>.
-            </>
-          ) : (
-            "No se encontraron equipos que coincidan con el filtro seleccionado."
-          )}
-        </p>
-      ) : (
-        <ul className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-          {filtrados.map((equipo) => {
-            const tipo = equipo.tipo
-              ? (tipoLabels[equipo.tipo.toLowerCase()] ?? equipo.tipo)
-              : "-";
+      {mostrarEquipos &&
+        (equipos.length === 0 ? (
+          <p className="text-sm text-foreground/60">
+            No hay equipos registrados todavia. Anade el primero desde el panel
+            de gestion.
+          </p>
+        ) : baseFiltrados.length === 0 ? (
+          <p className="text-sm text-foreground/60">
+            No hay equipos que coincidan con el filtro seleccionado.
+          </p>
+        ) : filtrados.length === 0 ? (
+          <p className="text-sm text-foreground/60">
+            {searchTerm ? (
+              <>
+                No se encontraron equipos que coincidan con{" "}
+                <span className="font-medium">&ldquo;{searchTerm}&rdquo;</span>.
+              </>
+            ) : (
+              "No se encontraron equipos que coincidan con el filtro seleccionado."
+            )}
+          </p>
+        ) : (
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+            {filtrados.map((equipo) => {
+              const tipo = equipo.tipo
+                ? (tipoLabels[equipo.tipo.toLowerCase()] ?? equipo.tipo)
+                : "-";
 
-            const fabricante = equipo.fabricante?.nombre ?? "Sin fabricante";
+              const fabricante = equipo.fabricante?.nombre ?? "Sin fabricante";
 
-            const usuario =
-              obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
+              const usuario =
+                obtenerNombreUsuario(equipo) ?? "Sin usuario asignado";
 
-            const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicacion";
+              const ubicacion = equipo.ubicacion?.nombre ?? "Sin ubicacion";
 
-            const sistemaOperativo =
-              equipo.sistema_operativo ?? "Sin sistema operativo";
+              const sistemaOperativo =
+                equipo.sistema_operativo ?? "Sin sistema operativo";
 
-            const esWindows10 = sistemaOperativo
-              .toLowerCase()
-              .includes("windows 10");
+              const esWindows10 = sistemaOperativo
+                .toLowerCase()
+                .includes("windows 10");
 
-            const tieneSoPrecio =
-              equipo.so_precio !== null &&
-              equipo.so_precio !== undefined &&
-              equipo.so_precio !== 0;
+              const tieneSoPrecio =
+                equipo.so_precio !== null &&
+                equipo.so_precio !== undefined &&
+                equipo.so_precio !== 0;
 
-            const soPrecioTexto = tieneSoPrecio
+              const soPrecioTexto = tieneSoPrecio
               ? formatearImporte(equipo.so_precio)
               : null;
 
@@ -1193,19 +1365,12 @@ export default function EquiposList({
 
             const esDestacadoIa = iaDestacadosMapa.has(equipo.id);
 
-            const obtenerTimestampActuacion = (valor: string | null | undefined) => {
-              if (!valor) return Number.NEGATIVE_INFINITY;
-              const time = new Date(valor).getTime();
-              return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
-            };
-
             const actuacionesOrdenadas = Array.isArray(equipo.actuaciones)
               ? equipo.actuaciones
                   .slice()
                   .sort(
                     (a, b) =>
-                      obtenerTimestampActuacion(b.fecha) -
-                      obtenerTimestampActuacion(a.fecha),
+                      obtenerTimestamp(b.fecha) - obtenerTimestamp(a.fecha),
                   )
               : [];
 
@@ -1490,7 +1655,80 @@ export default function EquiposList({
             );
           })}
         </ul>
-      )}
+      ))}
+
+      {mostrarPantallas ? (
+        <div className={mostrarEquipos ? "mt-6" : ""}>
+          {pantallasVisibles.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              No hay pantallas que coincidan con el filtro seleccionado.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+              {pantallasVisibles.map((pantalla) => {
+                const modelo = pantalla.modelo ?? "Pantalla sin modelo";
+                const fabricante =
+                  pantalla.fabricanteNombre ?? "Sin fabricante";
+                const pulgadasTexto =
+                  pantalla.pulgadas !== null ? `${pantalla.pulgadas}"` : "?";
+                const precioTexto =
+                  pantalla.precio !== null
+                    ? formatearImporte(pantalla.precio)
+                    : null;
+                const fechaTexto = formatearFecha(pantalla.fechaCompra);
+                const enGarantiaTexto =
+                  pantalla.enGarantia === null
+                    ? "Desconocido"
+                    : pantalla.enGarantia
+                      ? "Si"
+                      : "No";
+
+                return (
+                  <li
+                    key={`pantalla-${pantalla.id}`}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {modelo}
+                      </h3>
+
+                      <p className="flex items-center gap-2 text-xs font-semibold italic text-foreground/60">
+                        {pantalla.equipoNombre}
+                        {pantalla.sinEquipo ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-[1px] text-[10px] font-semibold normal-case text-amber-800">
+                            Sin equipo
+                          </span>
+                        ) : null}
+                      </p>
+
+                      <p className="text-sm text-foreground/70">
+                        {fabricante}
+                        {pulgadasTexto ? ` · ${pulgadasTexto}` : ""}
+                      </p>
+
+                      <p className="text-sm text-foreground/70">
+                        En garantia: {enGarantiaTexto}
+                      </p>
+
+                      <p className="text-sm text-foreground/70">
+                        Fecha compra: {fechaTexto ?? "-"}
+                      </p>
+
+                      {precioTexto ? (
+                        <p className="text-sm text-foreground/70">
+                          Precio: {precioTexto}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
+

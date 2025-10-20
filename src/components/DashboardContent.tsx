@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import EquiposList from "@/components/EquiposList";
 import { formatearImporte } from "@/lib/format";
-import type { EquipoRecord } from "@/lib/supabase";
+import type { EquipoRecord, PantallaRecord } from "@/lib/supabase";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -94,7 +94,10 @@ function crearPantallasResumenBase(): PantallasResumen {
   };
 }
 
-function calcularResumenPantallas(equipos: EquipoRecord[]): PantallasResumen {
+function calcularResumenPantallas(
+  equipos: EquipoRecord[],
+  pantallasSinEquipo: PantallaRecord[] = [],
+): PantallasResumen {
   const resumen = crearPantallasResumenBase();
 
   equipos.forEach((equipo) => {
@@ -122,21 +125,44 @@ function calcularResumenPantallas(equipos: EquipoRecord[]): PantallasResumen {
     });
   });
 
+  pantallasSinEquipo.forEach((pantalla) => {
+    resumen.cantidad += 1;
+
+    const precio = Number(pantalla.precio ?? 0);
+    const precioCents = Number.isFinite(precio) ? Math.round(precio * 100) : 0;
+    resumen.gastoTotalCents += precioCents;
+
+    if (pantalla.fecha_compra) {
+      const fecha = new Date(pantalla.fecha_compra);
+      if (!Number.isNaN(fecha.getTime())) {
+        const anio = fecha.getFullYear();
+        if (anio in resumen.pantallasPorAnio) {
+          resumen.pantallasPorAnio[anio] += 1;
+          resumen.gastoPorAnioCents[anio] += precioCents;
+        }
+      }
+    }
+  });
+
   return resumen;
 }
 
 type DashboardContentProps = {
   equipos: EquipoRecord[];
+  pantallasSinEquipo: PantallaRecord[];
 };
 
-export default function DashboardContent({ equipos }: DashboardContentProps) {
+export default function DashboardContent({
+  equipos,
+  pantallasSinEquipo,
+}: DashboardContentProps) {
   const [selectedTipo, setSelectedTipo] = useState<TipoClave | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
   const resumenPantallas = useMemo(
-    () => calcularResumenPantallas(equipos),
-    [equipos],
+    () => calcularResumenPantallas(equipos, pantallasSinEquipo),
+    [equipos, pantallasSinEquipo],
   );
 
   const handleFilter = (tipo: TipoClave, year: number | null = null) => {
@@ -265,6 +291,7 @@ export default function DashboardContent({ equipos }: DashboardContentProps) {
         equipos={equipos}
         filtroTipo={selectedTipo}
         filtroAnio={selectedYear}
+        pantallasSinEquipo={pantallasSinEquipo}
       />
     </div>
   );
