@@ -6,7 +6,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -214,7 +213,8 @@ export default function EquiposList({
 }: EquiposListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
+  const [iaPrompt, setIaPrompt] = useState("");
+  const [mostrarPanelIa, setMostrarPanelIa] = useState(false);
 
   const getStringParam = (key: string) => searchParams?.get(key) ?? "";
   const getBoolParam = (key: string, defaultValue: boolean) => {
@@ -281,6 +281,13 @@ export default function EquiposList({
     ? `from=${encodeURIComponent(currentQueryString)}`
     : "";
   const router = useRouter();
+  const handleSearchInputChange = (value: string) => {
+    setSearchTerm(value);
+    setIaResultado(null);
+    setIaDestacados([]);
+    setRespuestaIa(null);
+    setErrorIa(null);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -492,9 +499,7 @@ export default function EquiposList({
   );
 
   async function consultarIA() {
-    const promptOriginal = promptRef.current?.value ?? "";
-
-    const prompt = promptOriginal.trim();
+    const prompt = iaPrompt.trim();
 
     if (!prompt) return;
 
@@ -509,6 +514,7 @@ export default function EquiposList({
     setIaDestacados([]);
 
     setSearchTerm("");
+    setIaPrompt(prompt);
 
     try {
       const ahora = new Date();
@@ -615,6 +621,7 @@ export default function EquiposList({
       setIaDestacados(Array.isArray(data.highlights) ? data.highlights : []);
 
       setRespuestaIa(data.summary ?? null);
+      setMostrarPanelIa(false);
     } catch (error) {
       const mensaje =
         error instanceof Error
@@ -632,9 +639,7 @@ export default function EquiposList({
     setIaDestacados([]);
     setRespuestaIa(null);
     setErrorIa(null);
-
-    const current = promptRef.current?.value ?? "";
-    setSearchTerm(current.trim());
+    setIaPrompt("");
   }
 
   function manejarCambioMostrarEquipos(checked: boolean) {
@@ -1129,72 +1134,13 @@ export default function EquiposList({
           <div className="flex flex-col gap-2">
             <label className="flex flex-col gap-1 text-sm text-foreground/70">
               Buscar en todos los campos
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-                <textarea
-                  ref={promptRef}
-                  placeholder="Escribe tu busqueda o prompt"
-                  rows={5}
-                  className="flex-1 resize-y rounded-lg border border-border bg-background px-3 py-3 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                />
-
-                <div className="flex flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const termino = promptRef.current?.value ?? "";
-                      const trimmed = termino.trim();
-
-                      setIaResultado(null);
-                      setIaDestacados([]);
-                      setRespuestaIa(null);
-                      setErrorIa(null);
-
-                      if (promptRef.current) {
-                        promptRef.current.value = trimmed;
-                      }
-
-                      setSearchTerm(trimmed);
-                    }}
-                    className="flex h-[48px] cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-semibold uppercase tracking-wide text-foreground shadow-sm transition hover:bg-card/80"
-                    aria-label="Aplicar busqueda manual"
-                    title="Aplicar busqueda manual"
-                  >
-                    Buscar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={consultarIA}
-                    disabled={cargandoIa}
-                    className="flex h-[48px] cursor-pointer items-center gap-2 rounded-full border border-border bg-foreground px-5 text-sm font-semibold uppercase tracking-wide text-background shadow-sm transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label="Consultar IA sobre los datos"
-                    title="Consultar IA sobre los datos"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      className="h-5 w-5"
-                    >
-                      <path
-                        d="M12 3.75a8.25 8.25 0 0 0-7.19 12.3l-1.06 3.18 3.18-1.06A8.25 8.25 0 1 0 12 3.75Z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-
-                      <path
-                        d="M9.75 12c0-1.24 1.01-2.25 2.25-2.25S14.25 10.76 14.25 12 13.24 14.25 12 14.25 9.75 13.24 9.75 12Z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-
-                    <span>IA</span>
-                  </button>
-                </div>
-              </div>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => handleSearchInputChange(event.target.value)}
+                placeholder="Filtra por nombre, usuario, sistema operativo, etc."
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              />
             </label>
           </div>
         </div>
@@ -2215,6 +2161,96 @@ export default function EquiposList({
           )}
         </div>
       ) : null}
+
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+        {mostrarPanelIa ? (
+          <div className="w-80 rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xl">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M19 10V7a3 3 0 0 0-3-3H8a3 3 0 0 0-3 3v3m14 0h1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1m0-4V9a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v1m14 0h-1m-13 0H4a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h1m0-4h1m-1 4v3a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-3m-14 0h14"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span>Asistente IA</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarPanelIa(false)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs font-semibold text-foreground/70 transition hover:bg-foreground/10"
+                aria-label="Cerrar asistente IA"
+              >
+                ×
+              </button>
+            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                consultarIA();
+              }}
+              className="flex flex-col gap-3"
+            >
+              <textarea
+                value={iaPrompt}
+                onChange={(event) => setIaPrompt(event.target.value)}
+                rows={4}
+                placeholder="Escribe tu prompt para la IA"
+                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={limpiarFiltroIa}
+                  className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground/70 transition hover:bg-foreground/10"
+                >
+                  Limpiar
+                </button>
+                <button
+                  type="submit"
+                  disabled={cargandoIa}
+                  className="inline-flex items-center gap-2 rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {cargandoIa ? "Consultando..." : "Consultar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setMostrarPanelIa((prev) => !prev)}
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+          aria-label="Abrir asistente de búsqueda IA"
+          title="Asistente IA"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            className="h-6 w-6"
+            aria-hidden="true"
+          >
+            <path
+              d="M19 10V7a3 3 0 0 0-3-3H8a3 3 0 0 0-3 3v3m14 0h1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1m0-4V9a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v1m14 0h-1m-13 0H4a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h1m0-4h1m-1 4v3a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-3m-14 0h14"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
     </section>
   );
 }
