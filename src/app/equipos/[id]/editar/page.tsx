@@ -28,10 +28,18 @@ const INITIAL_STATE: EquipoEditFormState = {
 
 export default async function EditarEquipoPage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const resolvedSearch = await searchParams;
+  const fromParamRaw = resolvedSearch?.from;
+  const fromParam = Array.isArray(fromParamRaw)
+    ? fromParamRaw[0]
+    : fromParamRaw ?? null;
+  const backHref = fromParam ? `/?${fromParam}` : "/";
 
   const equipo = await fetchEquipoById(id);
   if (!equipo) {
@@ -320,6 +328,7 @@ export default async function EditarEquipoPage({
         usuarios={usuarios}
         action={actualizarEquipoAction}
         initialState={INITIAL_STATE}
+        backHref={backHref}
       />
     </main>
   );

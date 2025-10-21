@@ -17,7 +17,18 @@ const INITIAL_STATE: PantallaEditFormState = {
   message: null,
 };
 
-export default async function NuevaPantallaPage() {
+type PantallaSearch = {
+  from?: string;
+};
+
+export default async function NuevaPantallaPage({
+  searchParams,
+}: {
+  searchParams: Promise<PantallaSearch>;
+}) {
+  const { from } = await searchParams;
+  const backHref = from ? `/?${from}` : "/";
+
   const [fabricantes, equipos] = await Promise.all([
     fetchFabricantesCatalogo(),
     fetchEquiposCatalogo(),
@@ -34,6 +45,7 @@ export default async function NuevaPantallaPage() {
     fecha_compra: null,
     en_garantia: null,
     equipo: null,
+    observaciones: null,
   };
 
   async function crearPantallaAction(
@@ -127,12 +139,14 @@ export default async function NuevaPantallaPage() {
       en_garantia: enGarantia,
       pulgadas: pulgadas.value,
       equipo_id: equipoId,
+      observaciones: getStringOrNull("observaciones"),
     };
 
     try {
       const nuevaId = await createPantalla(payload);
       revalidatePath("/");
-      redirect(`/pantallas/${nuevaId}/editar`);
+      const suffix = from ? `?from=${encodeURIComponent(from)}` : "";
+      redirect(`/pantallas/${nuevaId}/editar${suffix}`);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -168,6 +182,7 @@ export default async function NuevaPantallaPage() {
         equipos={equipos}
         action={crearPantallaAction}
         initialState={INITIAL_STATE}
+        backHref={backHref}
       />
     </main>
   );

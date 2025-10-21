@@ -23,8 +23,10 @@ const INITIAL_STATE: PantallaEditFormState = {
 
 export default async function EditarPantallaPage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
   const pantallaId = Number.parseInt(id, 10);
@@ -37,6 +39,13 @@ export default async function EditarPantallaPage({
   if (!pantalla) {
     notFound();
   }
+
+  const resolvedSearch = await searchParams;
+  const fromParamRaw = resolvedSearch?.from;
+  const fromParam = Array.isArray(fromParamRaw)
+    ? fromParamRaw[0]
+    : fromParamRaw ?? null;
+  const backHref = fromParam ? `/?${fromParam}` : "/";
 
   const [fabricantes, equipos] = await Promise.all([
     fetchFabricantesCatalogo(),
@@ -140,6 +149,7 @@ export default async function EditarPantallaPage({
       en_garantia: enGarantia,
       pulgadas: pulgadas.value,
       equipo_id: equipoIdValue,
+      observaciones: getStringOrNull("observaciones"),
     };
 
     try {
@@ -169,6 +179,7 @@ export default async function EditarPantallaPage({
         equipos={equipos}
         action={actualizarPantallaAction}
         initialState={INITIAL_STATE}
+        backHref={backHref}
       />
     </main>
   );

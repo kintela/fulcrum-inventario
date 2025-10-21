@@ -49,6 +49,7 @@ export type PantallaRecord = {
     nombre: string | null;
     fecha_compra?: string | null;
   } | null;
+  observaciones?: string | null;
 };
 
 export type EquipoRecord = {
@@ -215,7 +216,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "fecha_bios",
       "url",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-        "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
+        "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones)",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
@@ -250,7 +251,7 @@ export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
   const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
   requestUrl.searchParams.set(
     "select",
-    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia",
+    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones",
   );
   requestUrl.searchParams.set("equipo_id", "is.null");
 
@@ -288,7 +289,7 @@ export async function fetchPantallaById(
   const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
   requestUrl.searchParams.set(
     "select",
-    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,equipo:equipos(id,nombre,fecha_compra)",
+    "id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones,equipo:equipos(id,nombre,fecha_compra)",
   );
   requestUrl.searchParams.set("id", `eq.${id}`);
   requestUrl.searchParams.set("limit", "1");
@@ -543,6 +544,7 @@ export type PantallaUpdatePayload = {
   en_garantia?: boolean | null;
   pulgadas?: number | null;
   equipo_id?: string | null;
+  observaciones?: string | null;
 };
 
 export type EquipoInsertPayload = {
@@ -580,6 +582,7 @@ export type PantallaInsertPayload = {
   en_garantia?: boolean | null;
   pulgadas?: number | null;
   equipo_id?: string | null;
+  observaciones?: string | null;
 };
 
 export async function deleteEquipo(id: string): Promise<void> {

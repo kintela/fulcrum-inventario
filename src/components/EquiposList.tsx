@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -212,41 +212,126 @@ export default function EquiposList({
 
   filtroAnio = null,
 }: EquiposListProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const [mostrarBoxes, setMostrarBoxes] = useState(true);
+  const getStringParam = (key: string) => searchParams?.get(key) ?? "";
+  const getBoolParam = (key: string, defaultValue: boolean) => {
+    const value = searchParams?.get(key);
+    if (value === null) return defaultValue;
+    if (value === "1") return true;
+    if (value === "0") return false;
+    return defaultValue;
+  };
+  const getNumberParam = (key: string) => {
+    const value = searchParams?.get(key);
+    if (!value) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
 
-  const [mostrarNoBoxes, setMostrarNoBoxes] = useState(true);
-
-  const [mostrarAsignados, setMostrarAsignados] = useState(true);
-
-  const [mostrarSinAsignar, setMostrarSinAsignar] = useState(true);
-
+  const [searchTerm, setSearchTerm] = useState<string>(() =>
+    getStringParam("q"),
+  );
+  const [mostrarBoxes, setMostrarBoxes] = useState<boolean>(() =>
+    getBoolParam("boxes", true),
+  );
+  const [mostrarNoBoxes, setMostrarNoBoxes] = useState<boolean>(() =>
+    getBoolParam("noboxes", true),
+  );
+  const [mostrarAsignados, setMostrarAsignados] = useState<boolean>(() =>
+    getBoolParam("asignados", true),
+  );
+  const [mostrarSinAsignar, setMostrarSinAsignar] = useState<boolean>(() =>
+    getBoolParam("sinAsignar", true),
+  );
   const [sistemaOperativoSeleccionado, setSistemaOperativoSeleccionado] =
-    useState<string>("");
-
-  const [ubicacionSeleccionada, setUbicacionSeleccionada] =
-    useState<string>("");
-
-  const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
-
-  const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(null);
-
-  const [mostrarAdmitenUpdate, setMostrarAdmitenUpdate] = useState(true);
-
-  const [mostrarNoAdmitenUpdate, setMostrarNoAdmitenUpdate] = useState(true);
-
-  const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState(true);
-
-  const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState(true);
-
-  const [mostrarEquipos, setMostrarEquipos] = useState(true);
-
-  const [mostrarPantallas, setMostrarPantallas] = useState(false);
+    useState<string>(() => getStringParam("so"));
+  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>(
+    () => getStringParam("ubicacion"),
+  );
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<string>(() =>
+    getStringParam("tipoFiltro"),
+  );
+  const [antiguedadMinima, setAntiguedadMinima] = useState<number | null>(() =>
+    getNumberParam("antiguedad"),
+  );
+  const [mostrarAdmitenUpdate, setMostrarAdmitenUpdate] = useState<boolean>(
+    () => getBoolParam("admite", true),
+  );
+  const [mostrarNoAdmitenUpdate, setMostrarNoAdmitenUpdate] =
+    useState<boolean>(() => getBoolParam("noadmite", true));
+  const [mostrarGarbiguneSi, setMostrarGarbiguneSi] = useState<boolean>(() =>
+    getBoolParam("garbiguneSi", true),
+  );
+  const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState<boolean>(() =>
+    getBoolParam("garbiguneNo", true),
+  );
+  const [mostrarEquipos, setMostrarEquipos] = useState<boolean>(() =>
+    getBoolParam("equipos", true),
+  );
+  const [mostrarPantallas, setMostrarPantallas] = useState<boolean>(() =>
+    getBoolParam("pantallas", false),
+  );
   const [pantallaPulgadasSeleccionadas, setPantallaPulgadasSeleccionadas] =
-    useState<string>("");
+    useState<string>(() => getStringParam("pulgadas"));
+  const currentQueryString = searchParams?.toString() ?? "";
+  const fromQueryParam = currentQueryString
+    ? `from=${encodeURIComponent(currentQueryString)}`
+    : "";
+  const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    if (!mostrarBoxes) params.set("boxes", "0");
+    if (!mostrarNoBoxes) params.set("noboxes", "0");
+    if (!mostrarAsignados) params.set("asignados", "0");
+    if (!mostrarSinAsignar) params.set("sinAsignar", "0");
+    if (sistemaOperativoSeleccionado)
+      params.set("so", sistemaOperativoSeleccionado);
+    if (ubicacionSeleccionada)
+      params.set("ubicacion", ubicacionSeleccionada);
+    if (tipoSeleccionado) params.set("tipoFiltro", tipoSeleccionado);
+    if (antiguedadMinima !== null)
+      params.set("antiguedad", String(antiguedadMinima));
+    if (!mostrarAdmitenUpdate) params.set("admite", "0");
+    if (!mostrarNoAdmitenUpdate) params.set("noadmite", "0");
+    if (!mostrarGarbiguneSi) params.set("garbiguneSi", "0");
+    if (!mostrarGarbiguneNo) params.set("garbiguneNo", "0");
+    if (!mostrarEquipos) params.set("equipos", "0");
+    if (mostrarPantallas) params.set("pantallas", "1");
+    if (pantallaPulgadasSeleccionadas)
+      params.set("pulgadas", pantallaPulgadasSeleccionadas);
+
+    const newQuery = params.toString();
+    if (newQuery !== currentQueryString) {
+      const targetUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
+      router.replace(targetUrl, { scroll: false });
+    }
+  }, [
+    searchTerm,
+    mostrarBoxes,
+    mostrarNoBoxes,
+    mostrarAsignados,
+    mostrarSinAsignar,
+    sistemaOperativoSeleccionado,
+    ubicacionSeleccionada,
+    tipoSeleccionado,
+    antiguedadMinima,
+    mostrarAdmitenUpdate,
+    mostrarNoAdmitenUpdate,
+    mostrarGarbiguneSi,
+    mostrarGarbiguneNo,
+    mostrarEquipos,
+    mostrarPantallas,
+    pantallaPulgadasSeleccionadas,
+    currentQueryString,
+    pathname,
+    router,
+  ]);
+
   const [equipoEliminandoId, setEquipoEliminandoId] = useState<string | null>(
     null,
   );
@@ -276,7 +361,6 @@ export default function EquiposList({
   const [errorIa, setErrorIa] = useState<string | null>(null);
 
   const [cargandoIa, setCargandoIa] = useState(false);
-  const router = useRouter();
 
   const handleEliminarEquipo = useCallback(
     async (equipoId: string) => {
@@ -1566,7 +1650,11 @@ export default function EquiposList({
                 className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
               >
                 <Link
-                  href={`/equipos/${equipo.id}/editar`}
+                  href={
+                    fromQueryParam
+                      ? `/equipos/${equipo.id}/editar?${fromQueryParam}`
+                      : `/equipos/${equipo.id}/editar`
+                  }
                   aria-label={`Editar ${nombreEquipo}`}
                   className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
                 >
@@ -1830,18 +1918,62 @@ export default function EquiposList({
                             className="relative flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
                           >
                             {typeof idPantalla === "number" ? (
-                              <button
-                                type="button"
-                                aria-label="Desvincular pantalla"
-                                title="Desvincular pantalla"
-                                disabled={estaDesvinculando}
-                                onClick={() =>
-                                  handleDesvincularPantalla(idPantalla)
-                                }
-                                className="absolute -right-2 -top-2 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                ×
-                              </button>
+                              <AlertDialogPrimitive.Root>
+                                <AlertDialogPrimitive.Trigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="Desvincular pantalla"
+                                    title="Desvincular pantalla"
+                                    disabled={estaDesvinculando}
+                                    className="absolute -right-2 -top-2 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    <svg
+                                      viewBox="0 0 20 20"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-3 w-3"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        d="M6 6l8 8m0-8l-8 8"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                  </button>
+                                </AlertDialogPrimitive.Trigger>
+                                <AlertDialogPrimitive.Portal>
+                                  <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+                                  <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+                                    <div className="space-y-2">
+                                      <AlertDialogPrimitive.Title className="text-lg font-semibold text-foreground">
+                                        Desvincular pantalla
+                                      </AlertDialogPrimitive.Title>
+                                      <AlertDialogPrimitive.Description className="text-sm text-foreground/70">
+                                        ¿Seguro que quieres desvincular{" "}
+                                        <span className="font-medium text-foreground">
+                                          {descripcion}
+                                        </span>
+                                        ? La pantalla pasará a la lista de pantallas sin asignar.
+                                      </AlertDialogPrimitive.Description>
+                                    </div>
+                                    <div className="mt-6 flex justify-end gap-2">
+                                      <AlertDialogPrimitive.Cancel className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 transition hover:bg-foreground/10">
+                                        Cancelar
+                                      </AlertDialogPrimitive.Cancel>
+                                      <AlertDialogPrimitive.Action
+                                        className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                          handleDesvincularPantalla(idPantalla)
+                                        }
+                                      >
+                                        Desvincular
+                                      </AlertDialogPrimitive.Action>
+                                    </div>
+                                  </AlertDialogPrimitive.Content>
+                                </AlertDialogPrimitive.Portal>
+                              </AlertDialogPrimitive.Root>
                             ) : null}
 
                             <div className="flex aspect-[16/10] w-full items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-[11px] font-semibold text-foreground">
@@ -1954,7 +2086,11 @@ export default function EquiposList({
                     className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
                   >
                     <Link
-                      href={`/pantallas/${pantalla.id}/editar`}
+                      href={
+                        fromQueryParam
+                          ? `/pantallas/${pantalla.id}/editar?${fromQueryParam}`
+                          : `/pantallas/${pantalla.id}/editar`
+                      }
                       aria-label={`Editar pantalla ${modelo}`}
                       className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
                     >

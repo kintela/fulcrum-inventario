@@ -24,6 +24,7 @@ const INITIAL_STATE: EquipoEditFormState = {
 
 type SearchParams = {
   tipo?: string;
+  from?: string;
 };
 
 export default async function NuevoEquipoPage({
@@ -31,7 +32,8 @@ export default async function NuevoEquipoPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { tipo } = await searchParams;
+  const { tipo, from } = await searchParams;
+  const backHref = from ? `/?${from}` : "/";
 
   const [fabricantes, ubicaciones, usuarios] = await Promise.all([
     fetchFabricantesCatalogo(),
@@ -296,7 +298,8 @@ export default async function NuevoEquipoPage({
         await upsertActuaciones(nuevoId, actuacionesPayload);
       }
       revalidatePath("/");
-      redirect(`/equipos/${nuevoId}/editar`);
+      const suffix = from ? `?from=${encodeURIComponent(from)}` : "";
+      redirect(`/equipos/${nuevoId}/editar${suffix}`);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -333,6 +336,7 @@ export default async function NuevoEquipoPage({
         usuarios={usuarios}
         action={crearEquipoAction}
         initialState={INITIAL_STATE}
+        backHref={backHref}
       />
     </main>
   );

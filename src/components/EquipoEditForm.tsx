@@ -30,6 +30,7 @@ type EquipoEditFormProps = {
   submitLabel?: string;
   title?: string;
   description?: string;
+  backHref?: string;
 };
 
 type ActuacionFormItem = {
@@ -102,6 +103,7 @@ export default function EquipoEditForm({
   submitLabel,
   title,
   description,
+  backHref,
 }: EquipoEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
@@ -147,6 +149,7 @@ export default function EquipoEditForm({
     (mode === "create"
       ? "Rellena los datos y guarda el nuevo equipo."
       : "Actualiza los datos y guarda los cambios cuando termines.");
+  const backLinkHref = backHref ?? "/";
 
   const handleAddActuacion = () => {
     setActuacionesForm((prev) => [
@@ -178,7 +181,7 @@ export default function EquipoEditForm({
           <p className="text-sm text-foreground/70">{descriptionText}</p>
         </div>
         <Link
-          href="/"
+          href={backLinkHref}
           className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition hover:bg-foreground/10"
         >
           Volver al listado

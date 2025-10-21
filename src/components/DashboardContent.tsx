@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import EquiposList from "@/components/EquiposList";
 import { formatearImporte } from "@/lib/format";
 import type { EquipoRecord, PantallaRecord } from "@/lib/supabase";
@@ -157,6 +158,11 @@ export default function DashboardContent({
   equipos,
   pantallasSinEquipo,
 }: DashboardContentProps) {
+  const searchParams = useSearchParams();
+  const currentQueryString = searchParams?.toString() ?? "";
+  const fromQuery = currentQueryString
+    ? `from=${encodeURIComponent(currentQueryString)}`
+    : "";
   const [selectedTipo, setSelectedTipo] = useState<TipoClave | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
@@ -206,7 +212,11 @@ export default function DashboardContent({
               className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
             >
               <Link
-                href={`/equipos/nuevo?tipo=${encodeURIComponent(clave)}`}
+                href={
+                  fromQuery
+                    ? `/equipos/nuevo?tipo=${encodeURIComponent(clave)}&${fromQuery}`
+                    : `/equipos/nuevo?tipo=${encodeURIComponent(clave)}`
+                }
                 aria-label={`Añadir ${tipoLabels[clave]}`}
                 title="Añadir equipo"
                 className="absolute right-4 top-4 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/70 transition hover:bg-background/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
@@ -270,7 +280,7 @@ export default function DashboardContent({
 
           <article className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
             <Link
-              href="/pantallas/nueva"
+              href={fromQuery ? `/pantallas/nueva?${fromQuery}` : "/pantallas/nueva"}
               aria-label="Añadir pantalla"
               title="Añadir pantalla"
               className="absolute right-4 top-4 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/70 transition hover:bg-background/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"

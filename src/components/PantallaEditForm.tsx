@@ -28,6 +28,7 @@ type PantallaEditFormProps = {
   submitLabel?: string;
   title?: string;
   description?: string;
+  backHref?: string;
 };
 
 function formatDateForInput(value: string | null | undefined) {
@@ -77,6 +78,7 @@ export default function PantallaEditForm({
   submitLabel,
   title,
   description,
+  backHref,
 }: PantallaEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
@@ -99,6 +101,7 @@ export default function PantallaEditForm({
     (mode === "create"
       ? "Rellena los datos y guarda la nueva pantalla."
       : "Actualiza los datos y guarda los cambios cuando termines.");
+  const backLinkHref = backHref ?? "/";
 
   return (
     <form
@@ -112,7 +115,7 @@ export default function PantallaEditForm({
         </div>
 
         <Link
-          href="/"
+          href={backLinkHref}
           className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground/80 transition hover:bg-foreground/10"
         >
           Volver al listado
@@ -239,6 +242,21 @@ export default function PantallaEditForm({
             </select>
           </label>
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">
+          Observaciones
+        </h3>
+        <label className="flex flex-col gap-1 text-sm text-foreground/80">
+          <span className="sr-only">Observaciones</span>
+          <textarea
+            name="observaciones"
+            rows={4}
+            defaultValue={pantalla.observaciones ?? ""}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+          />
+        </label>
       </section>
 
       <div className="flex justify-end">
