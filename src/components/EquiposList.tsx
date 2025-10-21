@@ -253,6 +253,9 @@ export default function EquiposList({
   const [pantallaEliminandoId, setPantallaEliminandoId] = useState<
     number | null
   >(null);
+  const [pantallaDesvinculandoId, setPantallaDesvinculandoId] = useState<
+    number | null
+  >(null);
 
   const [iaResultado, setIaResultado] = useState<IaResultado | null>(null);
 
@@ -325,6 +328,37 @@ export default function EquiposList({
         console.error(error);
       } finally {
         setPantallaEliminandoId(null);
+      }
+    },
+    [router],
+  );
+
+  const handleDesvincularPantalla = useCallback(
+    async (pantallaId: number) => {
+      setPantallaDesvinculandoId(pantallaId);
+      try {
+        const respuesta = await fetch(`/api/pantallas/${pantallaId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ equipo_id: null }),
+        });
+        if (!respuesta.ok) {
+          let detalle = "No se pudo desvincular la pantalla.";
+          try {
+            const data = await respuesta.json();
+            if (data?.error) detalle = data.error;
+          } catch {
+            // ignore json parse errors
+          }
+          throw new Error(detalle);
+        }
+        router.refresh();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setPantallaDesvinculandoId(null);
       }
     },
     [router],
@@ -1783,13 +1817,33 @@ export default function EquiposList({
                             ? `${pantalla.pulgadas}`
                             : "?";
 
+                        const idPantalla = pantalla?.id;
+                        const estaDesvinculando =
+                          typeof idPantalla === "number" &&
+                          pantallaDesvinculandoId === idPantalla;
+
                         return (
                           <div
                             key={
-                              pantalla?.id ?? `${equipo.id}-pantalla-${index}`
+                              idPantalla ?? `${equipo.id}-pantalla-${index}`
                             }
-                            className="flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
+                            className="relative flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
                           >
+                            {typeof idPantalla === "number" ? (
+                              <button
+                                type="button"
+                                aria-label="Desvincular pantalla"
+                                title="Desvincular pantalla"
+                                disabled={estaDesvinculando}
+                                onClick={() =>
+                                  handleDesvincularPantalla(idPantalla)
+                                }
+                                className="absolute -right-2 -top-2 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+
                             <div className="flex aspect-[16/10] w-full items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-[11px] font-semibold text-foreground">
                               {pulgadasTexto}
                             </div>
