@@ -251,6 +251,9 @@ export default function EquiposList({
   const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>(
     () => getStringParam("ubicacion"),
   );
+  const [fabricanteSeleccionado, setFabricanteSeleccionado] = useState<string>(
+    () => getStringParam("fabricante"),
+  );
   const [tipoSeleccionado, setTipoSeleccionado] = useState<string>(() =>
     getStringParam("tipoFiltro"),
   );
@@ -300,6 +303,8 @@ export default function EquiposList({
       params.set("so", sistemaOperativoSeleccionado);
     if (ubicacionSeleccionada)
       params.set("ubicacion", ubicacionSeleccionada);
+    if (fabricanteSeleccionado)
+      params.set("fabricante", fabricanteSeleccionado);
     if (tipoSeleccionado) params.set("tipoFiltro", tipoSeleccionado);
     if (antiguedadMinima !== null)
       params.set("antiguedad", String(antiguedadMinima));
@@ -325,6 +330,7 @@ export default function EquiposList({
     mostrarSinAsignar,
     sistemaOperativoSeleccionado,
     ubicacionSeleccionada,
+    fabricanteSeleccionado,
     tipoSeleccionado,
     antiguedadMinima,
     mostrarAdmitenUpdate,
@@ -487,6 +493,20 @@ export default function EquiposList({
 
     equipos.forEach((equipo) => {
       if (equipo.ubicacion?.nombre) valores.add(equipo.ubicacion.nombre.trim());
+    });
+
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
+  }, [equipos]);
+
+  const fabricantesDisponibles = useMemo(() => {
+    const valores = new Set<string>();
+
+    equipos.forEach((equipo) => {
+      const nombre = equipo.fabricante?.nombre;
+      if (typeof nombre === "string") {
+        const limpio = nombre.trim();
+        if (limpio) valores.add(limpio);
+      }
     });
 
     return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
@@ -719,6 +739,11 @@ export default function EquiposList({
           return false;
       }
 
+      if (fabricanteSeleccionado) {
+        const fabricanteNombre = equipo.fabricante?.nombre?.trim() ?? "";
+        if (fabricanteNombre !== fabricanteSeleccionado) return false;
+      }
+
       if (antiguedadMinima !== null) {
         if (!equipo.fecha_compra) return false;
 
@@ -849,6 +874,8 @@ export default function EquiposList({
     sistemaOperativoSeleccionado,
 
     ubicacionSeleccionada,
+
+    fabricanteSeleccionado,
 
     tipoSeleccionado,
 
@@ -1328,6 +1355,28 @@ export default function EquiposList({
               {ubicacionesDisponibles.map((ubic) => (
                 <option key={ubic} value={ubic}>
                   {ubic}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Fabricante
+            </span>
+
+            <select
+              value={fabricanteSeleccionado}
+              onChange={(event) =>
+                setFabricanteSeleccionado(event.target.value)
+              }
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+
+              {fabricantesDisponibles.map((fabricante) => (
+                <option key={fabricante} value={fabricante}>
+                  {fabricante}
                 </option>
               ))}
             </select>
