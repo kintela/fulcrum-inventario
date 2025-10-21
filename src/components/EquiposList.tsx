@@ -1156,7 +1156,7 @@ export default function EquiposList({
                 type="checkbox"
                 checked={mostrarBoxes}
                 onChange={(event) => setMostrarBoxes(event.target.checked)}
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>En boxes</span>
@@ -1167,7 +1167,7 @@ export default function EquiposList({
                 type="checkbox"
                 checked={mostrarNoBoxes}
                 onChange={(event) => setMostrarNoBoxes(event.target.checked)}
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>Fuera de boxes</span>
@@ -1180,23 +1180,23 @@ export default function EquiposList({
             </legend>
 
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={mostrarAsignados}
-                onChange={(event) => setMostrarAsignados(event.target.checked)}
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-              />
+            <input
+              type="checkbox"
+              checked={mostrarAsignados}
+              onChange={(event) => setMostrarAsignados(event.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
 
               <span>Asignados</span>
             </label>
 
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={mostrarSinAsignar}
-                onChange={(event) => setMostrarSinAsignar(event.target.checked)}
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-              />
+            <input
+              type="checkbox"
+              checked={mostrarSinAsignar}
+              onChange={(event) => setMostrarSinAsignar(event.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
 
               <span>Sin asignar</span>
             </label>
@@ -1214,7 +1214,7 @@ export default function EquiposList({
                 onChange={(event) =>
                   setMostrarAdmitenUpdate(event.target.checked)
                 }
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>Si admite</span>
@@ -1227,7 +1227,7 @@ export default function EquiposList({
                 onChange={(event) =>
                   setMostrarNoAdmitenUpdate(event.target.checked)
                 }
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>No admite</span>
@@ -1246,7 +1246,7 @@ export default function EquiposList({
                 onChange={(event) =>
                   setMostrarGarbiguneSi(event.target.checked)
                 }
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>Si</span>
@@ -1259,7 +1259,7 @@ export default function EquiposList({
                 onChange={(event) =>
                   setMostrarGarbiguneNo(event.target.checked)
                 }
-                className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
               />
 
               <span>No</span>
@@ -1457,7 +1457,7 @@ export default function EquiposList({
               onChange={(event) =>
                 manejarCambioMostrarEquipos(event.target.checked)
               }
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
             />
 
             <span>Equipos</span>
@@ -1470,7 +1470,7 @@ export default function EquiposList({
               onChange={(event) =>
                 manejarCambioMostrarPantallas(event.target.checked)
               }
-              className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
             />
 
             <span>Pantallas</span>
