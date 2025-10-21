@@ -198,7 +198,7 @@ export default function DashboardContent({
     <div className="flex w-full flex-col gap-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">Inventario de equipos</h1>
-        <p className="max-w-2xl text-sm text-foreground/70">
+        <p className="text-sm text-foreground/70 whitespace-nowrap">
           Resumen general del parque de equipos. Los totales se agrupan por tipo y las tarjetas
           muestran el detalle ordenado por fecha de compra más reciente.
         </p>

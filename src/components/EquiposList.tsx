@@ -739,7 +739,7 @@ export default function EquiposList({
           antiguedad -= 1;
         }
 
-        if (antiguedad < antiguedadMinima) return false;
+        if (antiguedad === null || antiguedad < antiguedadMinima) return false;
       }
 
       if (tipoSeleccionado) {
@@ -1371,7 +1371,7 @@ export default function EquiposList({
 
               {opcionesAntiguedad.map((opcion) => (
                 <option key={opcion} value={opcion}>
-                  {`= ${opcion}`}
+                  {`≥ ${opcion}`}
                 </option>
               ))}
             </select>
