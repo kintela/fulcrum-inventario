@@ -662,6 +662,28 @@ export default function EquiposList({
     setIaPrompt("");
   }
 
+  function limpiarFiltros() {
+    limpiarFiltroIa();
+    setMostrarPanelIa(false);
+    handleSearchInputChange("");
+    setMostrarBoxes(true);
+    setMostrarNoBoxes(true);
+    setMostrarAsignados(true);
+    setMostrarSinAsignar(true);
+    setSistemaOperativoSeleccionado("");
+    setUbicacionSeleccionada("");
+    setFabricanteSeleccionado("");
+    setTipoSeleccionado("");
+    setAntiguedadMinima(null);
+    setMostrarAdmitenUpdate(true);
+    setMostrarNoAdmitenUpdate(true);
+    setMostrarGarbiguneSi(true);
+    setMostrarGarbiguneNo(true);
+    setMostrarEquipos(true);
+    setMostrarPantallas(false);
+    setPantallaPulgadasSeleccionadas("");
+  }
+
   function manejarCambioMostrarEquipos(checked: boolean) {
     if (!checked && !mostrarPantallas) {
       setMostrarPantallas(true);
@@ -1169,6 +1191,15 @@ export default function EquiposList({
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
               />
             </label>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           </div>
         </div>
 
