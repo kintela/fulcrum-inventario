@@ -24,6 +24,10 @@ type PantallaEditFormProps = {
     formData: FormData,
   ) => Promise<PantallaEditFormState>;
   initialState: PantallaEditFormState;
+  mode?: "edit" | "create";
+  submitLabel?: string;
+  title?: string;
+  description?: string;
 };
 
 function formatDateForInput(value: string | null | undefined) {
@@ -35,7 +39,7 @@ function formatDateForInput(value: string | null | undefined) {
   return date.toISOString().split("T")[0] ?? "";
 }
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -44,7 +48,7 @@ function SubmitButton() {
       disabled={pending}
       className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:bg-foreground/80 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Guardando..." : "Guardar cambios"}
+      {pending ? "Guardando..." : label}
     </button>
   );
 }
@@ -69,6 +73,10 @@ export default function PantallaEditForm({
   equipos,
   action,
   initialState,
+  mode = "edit",
+  submitLabel,
+  title,
+  description,
 }: PantallaEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
@@ -82,6 +90,15 @@ export default function PantallaEditForm({
       : pantalla.en_garantia
         ? "true"
         : "false";
+  const submitText =
+    submitLabel ?? (mode === "create" ? "Crear pantalla" : "Guardar cambios");
+  const heading =
+    title ?? (mode === "create" ? "Nueva pantalla" : "Editar pantalla");
+  const descriptionText =
+    description ??
+    (mode === "create"
+      ? "Rellena los datos y guarda la nueva pantalla."
+      : "Actualiza los datos y guarda los cambios cuando termines.");
 
   return (
     <form
@@ -90,12 +107,8 @@ export default function PantallaEditForm({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">
-            Editar pantalla
-          </h2>
-          <p className="text-sm text-foreground/70">
-            Actualiza los datos y guarda los cambios cuando termines.
-          </p>
+          <h2 className="text-xl font-semibold text-foreground">{heading}</h2>
+          <p className="text-sm text-foreground/70">{descriptionText}</p>
         </div>
 
         <Link
@@ -229,7 +242,7 @@ export default function PantallaEditForm({
       </section>
 
       <div className="flex justify-end">
-        <SubmitButton />
+        <SubmitButton label={submitText} />
       </div>
     </form>
   );

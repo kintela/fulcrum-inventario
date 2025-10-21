@@ -545,6 +545,43 @@ export type PantallaUpdatePayload = {
   equipo_id?: string | null;
 };
 
+export type EquipoInsertPayload = {
+  nombre?: string | null;
+  modelo?: string | null;
+  tipo?: string | null;
+  fecha_compra?: string | null;
+  en_garantia?: boolean;
+  precio_compra?: number | null;
+  fabricante_id?: number | null;
+  ubicacion_id?: number | null;
+  usuario_id?: number | null;
+  sistema_operativo?: string | null;
+  so_precio?: number | null;
+  so_serial?: string | null;
+  numero_serie?: string | null;
+  part_number?: string | null;
+  admite_update?: boolean | null;
+  al_garbigune?: boolean | null;
+  procesador?: string | null;
+  ram?: number | null;
+  ssd?: number | null;
+  hdd?: number | null;
+  tarjeta_grafica?: string | null;
+  observaciones?: string | null;
+  url?: string | null;
+  fecha_bios?: string | null;
+};
+
+export type PantallaInsertPayload = {
+  modelo?: string | null;
+  fabricante_id?: number | null;
+  precio?: number | null;
+  fecha_compra?: string | null;
+  en_garantia?: boolean | null;
+  pulgadas?: number | null;
+  equipo_id?: string | null;
+};
+
 export async function deleteEquipo(id: string): Promise<void> {
   const config = getSupabaseConfig();
   const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
@@ -587,6 +624,80 @@ export async function deletePantalla(id: number): Promise<void> {
       `Error al eliminar la pantalla ${id}: ${response.status} ${details}`,
     );
   }
+}
+
+export async function createEquipo(
+  payload: EquipoInsertPayload,
+): Promise<string> {
+  const config = getSupabaseConfig();
+
+  const cuerpo = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+
+  const response = await fetch(`${config.url}/rest/v1/equipos`, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(cuerpo),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al crear el equipo: ${response.status} ${details}`,
+    );
+  }
+
+  const data = (await response.json()) as Array<{ id: string }>;
+  const creado = data[0];
+  if (!creado?.id) {
+    throw new Error("El equipo se creó pero no se recibió su identificador.");
+  }
+
+  return creado.id;
+}
+
+export async function createPantalla(
+  payload: PantallaInsertPayload,
+): Promise<number> {
+  const config = getSupabaseConfig();
+
+  const cuerpo = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+
+  const response = await fetch(`${config.url}/rest/v1/pantallas`, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(cuerpo),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al crear la pantalla: ${response.status} ${details}`,
+    );
+  }
+
+  const data = (await response.json()) as Array<{ id: number }>;
+  const creado = data[0];
+  if (!creado?.id) {
+    throw new Error(
+      "La pantalla se creó pero no se recibió su identificador.",
+    );
+  }
+
+  return creado.id;
 }
 
 export async function updateEquipo(

@@ -26,6 +26,10 @@ type EquipoEditFormProps = {
     formData: FormData,
   ) => Promise<EquipoEditFormState>;
   initialState: EquipoEditFormState;
+  mode?: "edit" | "create";
+  submitLabel?: string;
+  title?: string;
+  description?: string;
 };
 
 type ActuacionFormItem = {
@@ -74,7 +78,7 @@ function obtenerNombreUsuario(usuario: UsuarioCatalogo) {
   return `Usuario #${usuario.id}`;
 }
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -82,7 +86,7 @@ function SubmitButton() {
       disabled={pending}
       className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:bg-foreground/80 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Guardando..." : "Guardar cambios"}
+      {pending ? "Guardando..." : label}
     </button>
   );
 }
@@ -94,6 +98,10 @@ export default function EquipoEditForm({
   usuarios,
   action,
   initialState,
+  mode = "edit",
+  submitLabel,
+  title,
+  description,
 }: EquipoEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
@@ -130,6 +138,16 @@ export default function EquipoEditForm({
       })),
   );
 
+  const submitText =
+    submitLabel ?? (mode === "create" ? "Crear equipo" : "Guardar cambios");
+  const heading =
+    title ?? (mode === "create" ? "Nuevo equipo" : "Editar equipo");
+  const descriptionText =
+    description ??
+    (mode === "create"
+      ? "Rellena los datos y guarda el nuevo equipo."
+      : "Actualiza los datos y guarda los cambios cuando termines.");
+
   const handleAddActuacion = () => {
     setActuacionesForm((prev) => [
       ...prev,
@@ -156,12 +174,8 @@ export default function EquipoEditForm({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">
-            Editar equipo
-          </h2>
-          <p className="text-sm text-foreground/70">
-            Actualiza los datos y guarda los cambios cuando termines.
-          </p>
+          <h2 className="text-xl font-semibold text-foreground">{heading}</h2>
+          <p className="text-sm text-foreground/70">{descriptionText}</p>
         </div>
         <Link
           href="/"
@@ -639,7 +653,7 @@ export default function EquipoEditForm({
       </section>
 
       <div className="flex justify-end">
-        <SubmitButton />
+        <SubmitButton label={submitText} />
       </div>
     </form>
   );
