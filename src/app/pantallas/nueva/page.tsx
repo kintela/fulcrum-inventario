@@ -148,11 +148,11 @@ export default async function NuevaPantallaPage({
       const suffix = from ? `?from=${encodeURIComponent(from)}` : "";
       redirect(`/pantallas/${nuevaId}/editar${suffix}`);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        "digest" in error &&
-        (error as { digest?: string }).digest === "NEXT_REDIRECT"
-      ) {
+      const digest =
+        typeof error === "object" && error !== null && "digest" in error
+          ? (error as { digest?: unknown }).digest
+          : undefined;
+      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
         throw error;
       }
       return {
