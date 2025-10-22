@@ -234,12 +234,6 @@ export default function EquiposList({
   const [searchTerm, setSearchTerm] = useState<string>(() =>
     getStringParam("q"),
   );
-  const [mostrarBoxes, setMostrarBoxes] = useState<boolean>(() =>
-    getBoolParam("boxes", true),
-  );
-  const [mostrarNoBoxes, setMostrarNoBoxes] = useState<boolean>(() =>
-    getBoolParam("noboxes", true),
-  );
   const [mostrarAsignados, setMostrarAsignados] = useState<boolean>(() =>
     getBoolParam("asignados", true),
   );
@@ -295,8 +289,6 @@ export default function EquiposList({
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set("q", searchTerm);
-    if (!mostrarBoxes) params.set("boxes", "0");
-    if (!mostrarNoBoxes) params.set("noboxes", "0");
     if (!mostrarAsignados) params.set("asignados", "0");
     if (!mostrarSinAsignar) params.set("sinAsignar", "0");
     if (sistemaOperativoSeleccionado)
@@ -324,8 +316,6 @@ export default function EquiposList({
     }
   }, [
     searchTerm,
-    mostrarBoxes,
-    mostrarNoBoxes,
     mostrarAsignados,
     mostrarSinAsignar,
     sistemaOperativoSeleccionado,
@@ -666,8 +656,6 @@ export default function EquiposList({
     limpiarFiltroIa();
     setMostrarPanelIa(false);
     handleSearchInputChange("");
-    setMostrarBoxes(true);
-    setMostrarNoBoxes(true);
     setMostrarAsignados(true);
     setMostrarSinAsignar(true);
     setSistemaOperativoSeleccionado("");
@@ -725,12 +713,6 @@ export default function EquiposList({
 
     dataset = dataset.filter((equipo) => {
       const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
-
-      const estaEnBoxes = ubicacion.includes("box");
-
-      if (!mostrarBoxes && estaEnBoxes) return false;
-
-      if (!mostrarNoBoxes && !estaEnBoxes) return false;
 
       const asignado =
         equipo.usuario_id !== null && equipo.usuario_id !== undefined;
@@ -884,10 +866,6 @@ export default function EquiposList({
     filtroTipo,
 
     filtroAnio,
-
-    mostrarBoxes,
-
-    mostrarNoBoxes,
 
     mostrarAsignados,
 
@@ -1204,34 +1182,6 @@ export default function EquiposList({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
-            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
-              Boxes
-            </legend>
-
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={mostrarBoxes}
-                onChange={(event) => setMostrarBoxes(event.target.checked)}
-                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-              />
-
-              <span>En boxes</span>
-            </label>
-
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={mostrarNoBoxes}
-                onChange={(event) => setMostrarNoBoxes(event.target.checked)}
-                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-              />
-
-              <span>Fuera de boxes</span>
-            </label>
-          </fieldset>
-
           <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Asignacion
