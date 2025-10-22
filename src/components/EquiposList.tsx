@@ -1989,6 +1989,42 @@ export default function EquiposList({
                             className="relative flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
                           >
                             {typeof idPantalla === "number" ? (
+                              <Link
+                                href={
+                                  fromQueryParam
+                                    ? `/pantallas/${idPantalla}/editar?${fromQueryParam}`
+                                    : `/pantallas/${idPantalla}/editar`
+                                }
+                                aria-label={`Editar pantalla ${descripcion}`}
+                                title="Editar pantalla"
+                                className="absolute -left-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                              >
+                                <svg
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    d="M4.5 12.75V15.5h2.75L15 7.75 12.25 5l-7.75 7.75Z"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="m11.5 5.5 3 3"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </Link>
+                            ) : null}
+
+                            {typeof idPantalla === "number" ? (
                               <AlertDialogPrimitive.Root>
                                 <AlertDialogPrimitive.Trigger asChild>
                                   <button
