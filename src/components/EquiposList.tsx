@@ -230,6 +230,14 @@ export default function EquiposList({
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) ? parsed : null;
   };
+  const getListParam = (key: string) => {
+    const value = searchParams?.get(key);
+    if (!value) return [];
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  };
 
   const [searchTerm, setSearchTerm] = useState<string>(() =>
     getStringParam("q"),
@@ -264,6 +272,9 @@ export default function EquiposList({
   );
   const [mostrarGarbiguneNo, setMostrarGarbiguneNo] = useState<boolean>(() =>
     getBoolParam("garbiguneNo", true),
+  );
+  const [usuariosSeleccionados, setUsuariosSeleccionados] = useState<string[]>(
+    () => getListParam("usuarios"),
   );
   const [mostrarEquipos, setMostrarEquipos] = useState<boolean>(() =>
     getBoolParam("equipos", true),
@@ -304,6 +315,8 @@ export default function EquiposList({
     if (!mostrarNoAdmitenUpdate) params.set("noadmite", "0");
     if (!mostrarGarbiguneSi) params.set("garbiguneSi", "0");
     if (!mostrarGarbiguneNo) params.set("garbiguneNo", "0");
+    if (usuariosSeleccionados.length > 0)
+      params.set("usuarios", usuariosSeleccionados.join(","));
     if (!mostrarEquipos) params.set("equipos", "0");
     if (mostrarPantallas) params.set("pantallas", "1");
     if (pantallaPulgadasSeleccionadas)
@@ -327,6 +340,7 @@ export default function EquiposList({
     mostrarNoAdmitenUpdate,
     mostrarGarbiguneSi,
     mostrarGarbiguneNo,
+    usuariosSeleccionados,
     mostrarEquipos,
     mostrarPantallas,
     pantallaPulgadasSeleccionadas,
@@ -502,6 +516,25 @@ export default function EquiposList({
     return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
   }, [equipos]);
 
+  const usuariosDisponibles = useMemo(() => {
+    const mapa = new Map<string, string>();
+
+    equipos.forEach((equipo) => {
+      if (equipo.usuario_id === null || equipo.usuario_id === undefined)
+        return;
+
+      const nombre = obtenerNombreUsuario(equipo);
+      if (!nombre) return;
+
+      const id = String(equipo.usuario_id);
+      if (!mapa.has(id)) mapa.set(id, nombre);
+    });
+
+    return Array.from(mapa.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+  }, [equipos]);
+
   const opcionesAntiguedad = useMemo(
     () => Array.from({ length: 20 }, (_, indice) => indice + 1),
 
@@ -667,6 +700,7 @@ export default function EquiposList({
     setMostrarNoAdmitenUpdate(true);
     setMostrarGarbiguneSi(true);
     setMostrarGarbiguneNo(true);
+    setUsuariosSeleccionados([]);
     setMostrarEquipos(true);
     setMostrarPantallas(false);
     setPantallaPulgadasSeleccionadas("");
@@ -690,6 +724,7 @@ export default function EquiposList({
 
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
+    const usuariosSeleccionadosSet = new Set(usuariosSeleccionados);
 
     if (filtroTipo) {
       const tipoNormalizado = filtroTipo.toLowerCase();
@@ -713,6 +748,17 @@ export default function EquiposList({
 
     dataset = dataset.filter((equipo) => {
       const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
+
+      const usuarioId =
+        equipo.usuario_id !== null && equipo.usuario_id !== undefined
+          ? String(equipo.usuario_id)
+          : null;
+
+      if (
+        usuariosSeleccionadosSet.size > 0 &&
+        (!usuarioId || !usuariosSeleccionadosSet.has(usuarioId))
+      )
+        return false;
 
       const asignado =
         equipo.usuario_id !== null && equipo.usuario_id !== undefined;
@@ -888,6 +934,8 @@ export default function EquiposList({
     mostrarGarbiguneSi,
 
     mostrarGarbiguneNo,
+
+    usuariosSeleccionados,
 
     iaResultado,
 
@@ -1272,6 +1320,53 @@ export default function EquiposList({
 
               <span>No</span>
             </label>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-56">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Usuarios
+            </legend>
+
+            {usuariosDisponibles.length > 0 ? (
+              <>
+                <select
+                  multiple
+                  value={usuariosSeleccionados}
+                  onChange={(event) =>
+                    setUsuariosSeleccionados(
+                      Array.from(
+                        event.currentTarget.selectedOptions,
+                        (option) => option.value,
+                      ),
+                    )
+                  }
+                  className="min-h-[3.5rem] rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                >
+                  {usuariosDisponibles.map((usuario) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nombre}
+                    </option>
+                  ))}
+                </select>
+
+                <span className="text-[11px] text-foreground/50">
+                  Usa Ctrl o Cmd para seleccionar varios usuarios.
+                </span>
+
+                {usuariosSeleccionados.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setUsuariosSeleccionados([])}
+                    className="self-start rounded border border-border bg-background px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/30"
+                  >
+                    Limpiar
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-foreground/50">
+                No hay usuarios asignados.
+              </span>
+            )}
           </fieldset>
         </div>
 
