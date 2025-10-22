@@ -1037,14 +1037,15 @@ export default function EquiposList({
       id: number;
       equipoId: string | null;
       equipoNombre: string;
-          modelo: string | null;
-          fabricanteNombre: string | null;
-          pulgadas: number | null;
-          precio: number | null;
-          fechaCompra: string | null;
-          enGarantia: boolean | null;
-          sinEquipo: boolean;
-        }> = [];
+      modelo: string | null;
+      fabricanteNombre: string | null;
+      pulgadas: number | null;
+      precio: number | null;
+      fechaCompra: string | null;
+      enGarantia: boolean | null;
+      sinEquipo: boolean;
+      thumbnailUrl: string | null;
+    }> = [];
 
     const terminoBusqueda = iaResultado
       ? ""
@@ -1082,6 +1083,7 @@ export default function EquiposList({
               ? null
               : pantalla.en_garantia,
           sinEquipo: false,
+          thumbnailUrl: pantalla.thumbnailUrl ?? null,
         });
       });
     });
@@ -1118,6 +1120,7 @@ export default function EquiposList({
             ? null
             : pantalla.en_garantia,
         sinEquipo: true,
+        thumbnailUrl: pantalla.thumbnailUrl ?? null,
       });
     });
 
@@ -1950,21 +1953,23 @@ export default function EquiposList({
                   </div>
                 ) : null}
 
-                {pantallas.length > 0 ? (
+                {pantallas.length > 0 || equipo.thumbnailUrl ? (
                   <div className="border-t border-border/60 pt-3">
                     <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/60">
                       Pantallas conectadas
                     </h4>
 
-                    <div
-                      className="flex flex-wrap gap-3"
-                      aria-label="Pantallas conectadas"
-                    >
-                      {pantallas.map((pantalla, index) => {
-                        const etiquetaFabricante =
-                          pantalla?.fabricanteNombre ?? "";
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div
+                        className="flex min-w-[180px] flex-1 flex-wrap gap-3"
+                        aria-label="Pantallas conectadas"
+                      >
+                        {pantallas.length > 0 ? (
+                          pantallas.map((pantalla, index) => {
+                            const etiquetaFabricante =
+                              pantalla?.fabricanteNombre ?? "";
 
-                        const etiquetaModelo = pantalla?.modelo ?? "";
+                            const etiquetaModelo = pantalla?.modelo ?? "";
 
                         const descripcion =
                           `${etiquetaFabricante} ${etiquetaModelo}`.trim() ||
@@ -1977,28 +1982,30 @@ export default function EquiposList({
                             : "?";
 
                         const idPantalla = pantalla?.id;
+                        const miniaturaUrl =
+                          pantalla?.thumbnailUrl ?? null;
                         const estaDesvinculando =
                           typeof idPantalla === "number" &&
                           pantallaDesvinculandoId === idPantalla;
 
-                        return (
-                          <div
-                            key={
-                              idPantalla ?? `${equipo.id}-pantalla-${index}`
-                            }
-                            className="relative flex w-20 flex-col items-center gap-1 text-center text-foreground/70"
-                          >
-                            {typeof idPantalla === "number" ? (
-                              <Link
-                                href={
-                                  fromQueryParam
-                                    ? `/pantallas/${idPantalla}/editar?${fromQueryParam}`
-                                    : `/pantallas/${idPantalla}/editar`
+                            return (
+                              <div
+                                key={
+                                  idPantalla ?? `${equipo.id}-pantalla-${index}`
                                 }
-                                aria-label={`Editar pantalla ${descripcion}`}
-                                title="Editar pantalla"
-                                className="absolute -left-2 -top-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                                className="relative flex w-24 flex-col items-center gap-1 text-center text-foreground/70"
                               >
+                                {typeof idPantalla === "number" ? (
+                                  <Link
+                                    href={
+                                      fromQueryParam
+                                        ? `/pantallas/${idPantalla}/editar?${fromQueryParam}`
+                                        : `/pantallas/${idPantalla}/editar`
+                                    }
+                                    aria-label={`Editar pantalla ${descripcion}`}
+                                    title="Editar pantalla"
+                                    className="absolute -left-2 -top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                                  >
                                 <svg
                                   viewBox="0 0 20 20"
                                   fill="none"
@@ -2024,15 +2031,15 @@ export default function EquiposList({
                               </Link>
                             ) : null}
 
-                            {typeof idPantalla === "number" ? (
-                              <AlertDialogPrimitive.Root>
-                                <AlertDialogPrimitive.Trigger asChild>
-                                  <button
-                                    type="button"
-                                    aria-label="Desvincular pantalla"
+                                {typeof idPantalla === "number" ? (
+                                  <AlertDialogPrimitive.Root>
+                                    <AlertDialogPrimitive.Trigger asChild>
+                                      <button
+                                        type="button"
+                                        aria-label="Desvincular pantalla"
                                     title="Desvincular pantalla"
                                     disabled={estaDesvinculando}
-                                    className="absolute -right-2 -top-2 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="absolute -right-2 -top-2 z-10 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
                                   >
                                     <svg
                                       viewBox="0 0 20 20"
@@ -2083,16 +2090,54 @@ export default function EquiposList({
                               </AlertDialogPrimitive.Root>
                             ) : null}
 
-                            <div className="flex aspect-[16/10] w-full items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-[11px] font-semibold text-foreground">
-                              {pulgadasTexto}
+                            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-md border border-border bg-foreground/[0.04]">
+                              {miniaturaUrl ? (
+                                <>
+                                  <img
+                                    src={miniaturaUrl}
+                                    alt={`Foto de ${descripcion}`}
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                    loading="lazy"
+                                  />
+                                  <span className="absolute inset-x-0 bottom-0 bg-black/50 px-1 text-[10px] font-semibold text-white">
+                                    {pulgadasTexto}"
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-foreground">
+                                  {pulgadasTexto}
+                                </span>
+                              )}
                             </div>
 
-                            <span className="line-clamp-2 text-[10px] leading-tight text-foreground/60">
-                              {descripcion}
-                            </span>
+                                <span className="line-clamp-2 text-[10px] leading-tight text-foreground/60">
+                                  {descripcion}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <span className="rounded border border-dashed border-border px-3 py-2 text-xs text-foreground/50">
+                            Sin pantallas conectadas
+                          </span>
+                        )}
+                      </div>
+
+                      {equipo.thumbnailUrl ? (
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <div className="h-20 w-28 overflow-hidden rounded-md border border-border/60 bg-background/80 shadow-sm">
+                            <img
+                              src={equipo.thumbnailUrl}
+                              alt={`Foto de ${nombreEquipo}`}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
                           </div>
-                        );
-                      })}
+                          <span className="text-[10px] uppercase tracking-wide text-foreground/50">
+                            Equipo
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -2186,6 +2231,7 @@ export default function EquiposList({
                       : "No";
                 const estaEliminandoPantalla =
                   pantallaEliminandoId === pantalla.id;
+                const miniaturaUrl = pantalla.thumbnailUrl ?? null;
 
                 return (
                   <li
@@ -2224,6 +2270,17 @@ export default function EquiposList({
                         />
                       </svg>
                     </Link>
+
+                    {miniaturaUrl ? (
+                      <div className="absolute bottom-4 left-4 h-12 w-12 overflow-hidden rounded-md border border-border/60 bg-background/80 shadow-sm">
+                        <img
+                          src={miniaturaUrl}
+                          alt={`Foto de ${modelo ?? fabricante ?? `Pantalla ${pantalla.id}`}`}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
 
                     <div className="space-y-1 pr-10">
                       <h3 className="text-lg font-semibold text-foreground">

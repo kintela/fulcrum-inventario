@@ -50,6 +50,7 @@ export type PantallaRecord = {
     fecha_compra?: string | null;
   } | null;
   observaciones?: string | null;
+  thumbnailUrl?: string | null;
 };
 
 export type EquipoRecord = {
@@ -89,6 +90,7 @@ export type EquipoRecord = {
   fecha_bios: string | null;
   pantallas: PantallaRecord[] | null;
   actuaciones?: ActuacionRecord[] | null;
+  thumbnailUrl?: string | null;
 } & Record<string, unknown>;
 
 export type CatalogoItem = {
@@ -108,6 +110,157 @@ export type UsuarioCatalogo = {
   apellidos: string | null;
   nombre_completo: string | null;
 };
+
+function buildStorageProxyUrl(...segments: string[]): string {
+  const encoded = segments
+    .map((segment) =>
+      segment
+        .split("/")
+        .map((part) => encodeURIComponent(part))
+        .join("/"),
+    )
+    .join("/");
+
+  return `/api/storage/image?path=${encoded}`;
+}
+
+async function obtenerMiniaturaDesdeStorage(
+  config: SupabaseConfig,
+  carpeta: "equipos" | "pantallas",
+  identificador: string | number,
+  cache: Map<string, string | null>,
+): Promise<string | null> {
+  const cacheKey = `${carpeta}:${identificador}`;
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey) ?? null;
+  }
+
+  const listUrl = `${config.url}/storage/v1/object/list/fotos`;
+
+  const candidatePrefixes =
+    carpeta === "equipos"
+      ? [
+          `equipos/${identificador}`,
+          `equipos/${identificador}/`,
+        ]
+      : [
+          `pantallas/${identificador}`,
+          `pantallas/${identificador}/`,
+        ];
+
+  const normalizarPrefix = (valor: string) => {
+    const limpio = valor.replace(/\/+/g, "/");
+    if (limpio === "/") return "";
+    if (limpio.startsWith("/")) return limpio.slice(1);
+    if (limpio.endsWith("/")) return limpio;
+    return limpio;
+  };
+
+  const listarPrimerArchivo = async (prefixOriginal: string) => {
+    const prefix = normalizarPrefix(prefixOriginal);
+
+    const response = await fetch(listUrl, {
+      method: "POST",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prefix,
+        limit: 1,
+        offset: 0,
+        sortBy: { column: "name", order: "asc" },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        "[obtenerMiniaturaDesdeStorage] respuesta no OK",
+        carpeta,
+        identificador,
+        prefix,
+        response.status,
+        await response.text().catch(() => "<sin cuerpo>"),
+      );
+      return null;
+    }
+
+    const payload = (await response.json()) as
+      | Array<{ name?: string | null }>
+      | {
+          items?: Array<{ name?: string | null }>;
+          data?: Array<{ name?: string | null }>;
+          error?: unknown;
+        };
+
+    const posiblesItems = (
+      Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.items)
+          ? payload.items
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : []
+    ).filter((archivo) => {
+      if (!archivo?.name || archivo.name.endsWith("/")) return false;
+      return /\.[a-z0-9]+$/i.test(archivo.name);
+    });
+
+    if (posiblesItems.length === 0) {
+      return null;
+    }
+
+    const item = posiblesItems.find(
+      (archivo) =>
+        archivo?.name !== undefined &&
+        archivo.name !== null &&
+        archivo.name.length > 0 &&
+        !archivo.name.endsWith("/"),
+    );
+
+    if (!item || !item.name) {
+      console.warn(
+        "[obtenerMiniaturaDesdeStorage] sin archivo válido",
+        carpeta,
+        identificador,
+        prefix,
+        JSON.stringify(posiblesItems),
+      );
+      return null;
+    }
+
+    const prefixParaRuta = prefix.endsWith("/")
+      ? prefix.slice(0, -1)
+      : prefix;
+    const relativePath = item.name.includes("/")
+      ? item.name
+      : `${prefixParaRuta}/${item.name}`;
+
+    return buildStorageProxyUrl(relativePath);
+  };
+
+  for (const candidato of candidatePrefixes) {
+    try {
+      const url = await listarPrimerArchivo(candidato);
+      if (url) {
+        cache.set(cacheKey, url);
+        return url;
+      }
+    } catch (error) {
+      console.error(
+        "[obtenerMiniaturaDesdeStorage] error al listar",
+        carpeta,
+        identificador,
+        candidato,
+        error,
+      );
+    }
+  }
+
+  cache.set(cacheKey, null);
+  return null;
+}
 
 async function completarFabricantesPantallas(
   equipos: EquipoRecord[],
@@ -185,6 +338,7 @@ async function completarFabricantesPantallas(
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
   const { url, anonKey } = getSupabaseConfig();
   const restUrl = `${url}/rest/v1/equipos`;
+  const config: SupabaseConfig = { url, anonKey };
 
   const requestUrl = new URL(restUrl);
   requestUrl.searchParams.set(
@@ -241,7 +395,35 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
 
   const equipos = (await response.json()) as EquipoRecord[];
 
-  await completarFabricantesPantallas(equipos, { url, anonKey });
+  await completarFabricantesPantallas(equipos, config);
+
+  const miniaturasCache = new Map<string, string | null>();
+
+  await Promise.all(
+    equipos.map(async (equipo) => {
+      equipo.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+        config,
+        "equipos",
+        equipo.id,
+        miniaturasCache,
+      );
+
+      if (Array.isArray(equipo.pantallas)) {
+        await Promise.all(
+          equipo.pantallas.map(async (pantalla) => {
+            if (!pantalla || typeof pantalla.id !== "number") return;
+
+            pantalla.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+              config,
+              "pantallas",
+              pantalla.id,
+              miniaturasCache,
+            );
+          }),
+        );
+      }
+    }),
+  );
 
   return equipos;
 }
@@ -278,6 +460,21 @@ export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
   }
 
   await completarFabricantesPantallas([], config, pantallas);
+
+  const miniaturasCache = new Map<string, string | null>();
+
+  await Promise.all(
+    pantallas.map(async (pantalla) => {
+      if (!pantalla || typeof pantalla.id !== "number") return;
+
+      pantalla.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+        config,
+        "pantallas",
+        pantalla.id,
+        miniaturasCache,
+      );
+    }),
+  );
 
   return pantallas;
 }
