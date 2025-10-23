@@ -1037,6 +1037,7 @@ export default function EquiposList({
       id: number;
       equipoId: string | null;
       equipoNombre: string;
+      usuarioId: string | null;
       modelo: string | null;
       fabricanteNombre: string | null;
       pulgadas: number | null;
@@ -1072,6 +1073,10 @@ export default function EquiposList({
           id: pantalla.id,
           equipoId: equipo.id,
           equipoNombre: equipo.nombre ?? "Equipo sin nombre",
+          usuarioId:
+            equipo.usuario_id !== null && equipo.usuario_id !== undefined
+              ? String(equipo.usuario_id)
+              : null,
           modelo: pantalla.modelo ?? null,
           fabricanteNombre: pantalla.fabricanteNombre ?? null,
           pulgadas:
@@ -1109,6 +1114,10 @@ export default function EquiposList({
         id: pantalla.id,
         equipoId: pantalla.equipo_id ?? null,
         equipoNombre: "Sin equipo asignado",
+        usuarioId:
+          pantalla.equipo_id !== null && pantalla.equipo_id !== undefined
+            ? String(pantalla.equipo_id)
+            : null,
         modelo: pantalla.modelo ?? null,
         fabricanteNombre: pantalla.fabricanteNombre ?? null,
         pulgadas:
@@ -1124,7 +1133,17 @@ export default function EquiposList({
       });
     });
 
+    const usuariosSeleccionadosSet = new Set(usuariosSeleccionados);
+
     const listaFiltrada = lista.filter((pantalla) => {
+      if (!mostrarAsignados && !pantalla.sinEquipo) return false;
+      if (!mostrarSinAsignar && pantalla.sinEquipo) return false;
+
+      if (usuariosSeleccionadosSet.size > 0) {
+        if (!pantalla.usuarioId) return false;
+        if (!usuariosSeleccionadosSet.has(pantalla.usuarioId)) return false;
+      }
+
       if (!pantallaPulgadasSeleccionadas) return true;
 
       if (pantalla.pulgadas === null) {
@@ -1144,6 +1163,9 @@ export default function EquiposList({
     searchTerm,
     iaResultado,
     pantallaPulgadasSeleccionadas,
+    mostrarAsignados,
+    mostrarSinAsignar,
+    usuariosSeleccionados,
   ]);
 
   const pantallasPulgadasDisponibles = useMemo(() => {
