@@ -393,6 +393,7 @@ export default function DashboardContent({
         filtroPantallasAnio={
           typeof selectedPantallasYear === "number" ? selectedPantallasYear : null
         }
+        forzarMostrarPantallas={selectedPantallasYear !== null}
         pantallasSinEquipo={pantallasSinEquipo}
       />
     </div>

@@ -43,6 +43,8 @@ type EquiposListProps = {
   filtroAnio?: number | null;
 
   filtroPantallasAnio?: number | null;
+
+  forzarMostrarPantallas?: boolean;
 };
 
 type IaFilters = {
@@ -213,6 +215,7 @@ export default function EquiposList({
 
   filtroAnio = null,
   filtroPantallasAnio = null,
+  forzarMostrarPantallas = false,
 }: EquiposListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -292,6 +295,13 @@ export default function EquiposList({
     ? `from=${encodeURIComponent(currentQueryString)}`
     : "";
   const router = useRouter();
+
+  useEffect(() => {
+    if (!forzarMostrarPantallas) return;
+    setMostrarPantallas(true);
+    setMostrarEquipos(false);
+  }, [forzarMostrarPantallas]);
+
   const handleSearchInputChange = (value: string) => {
     setSearchTerm(value);
     setIaResultado(null);
