@@ -1018,6 +1018,8 @@ export default function EquiposList({
 
       if (equipo.part_number) valores.push(equipo.part_number);
 
+      if (equipo.ip) valores.push(equipo.ip);
+
       if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
         valores.push(
           equipo.admite_update ? "admite update" : "no admite update",
@@ -1735,6 +1737,8 @@ export default function EquiposList({
 
             const partNumber = equipo.part_number ?? "Sin part number";
 
+            const ipEquipo = equipo.ip ?? null;
+
             const admiteUpdateTexto =
               equipo.admite_update === null ||
               equipo.admite_update === undefined
@@ -1866,6 +1870,10 @@ export default function EquiposList({
                   <p className="text-sm text-foreground/70">
                     Part number: {partNumber}
                   </p>
+
+                  {ipEquipo ? (
+                    <p className="text-sm text-foreground/70">IP: {ipEquipo}</p>
+                  ) : null}
 
                   <p className="text-sm text-foreground/70">
                     Admite update: {admiteUpdateTexto}

@@ -69,6 +69,7 @@ export type EquipoRecord = {
   so_serial: string | null;
   numero_serie: string | null;
   part_number: string | null;
+  ip: string | null;
   admite_update: boolean | null;
   al_garbigune: boolean | null;
   fabricante: { nombre: string | null } | null;
@@ -359,6 +360,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "so_serial",
       "numero_serie",
       "part_number",
+      "ip",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -575,6 +577,7 @@ export async function fetchEquipoById(
       "so_serial",
       "numero_serie",
       "part_number",
+      "ip",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -697,6 +700,7 @@ export type EquipoUpdatePayload = {
   so_serial?: string | null;
   numero_serie?: string | null;
   part_number?: string | null;
+  ip?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
@@ -759,6 +763,7 @@ export type EquipoInsertPayload = {
   so_serial?: string | null;
   numero_serie?: string | null;
   part_number?: string | null;
+  ip?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
