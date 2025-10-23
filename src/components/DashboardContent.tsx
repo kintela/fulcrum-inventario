@@ -83,6 +83,8 @@ type PantallasResumen = {
   pantallasPorAnio: Record<number, number>;
 };
 
+type PantallasYearFilter = number | "total" | null;
+
 function crearPantallasResumenBase(): PantallasResumen {
   const valoresIniciales = Object.fromEntries(
     aniosReferencia.map((anio) => [anio, 0]),
@@ -165,6 +167,8 @@ export default function DashboardContent({
     : "";
   const [selectedTipo, setSelectedTipo] = useState<TipoClave | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedPantallasYear, setSelectedPantallasYear] =
+    useState<PantallasYearFilter>(null);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
   const resumenPantallas = useMemo(
@@ -173,6 +177,7 @@ export default function DashboardContent({
   );
 
   const handleFilter = (tipo: TipoClave, year: number | null = null) => {
+    setSelectedPantallasYear(null);
     if (selectedTipo === tipo && selectedYear === year) {
       setSelectedTipo(null);
       setSelectedYear(null);
@@ -183,16 +188,38 @@ export default function DashboardContent({
     setSelectedYear(year);
   };
 
+  const handlePantallasFilter = (year: PantallasYearFilter = null) => {
+    setSelectedTipo(null);
+    setSelectedYear(null);
+
+    if (selectedPantallasYear === year) {
+      setSelectedPantallasYear(null);
+      return;
+    }
+
+    setSelectedPantallasYear(year);
+  };
+
   const limpiarFiltro = () => {
     setSelectedTipo(null);
     setSelectedYear(null);
+    setSelectedPantallasYear(null);
   };
 
   const filtroActivoTexto = useMemo(() => {
-    if (!selectedTipo) return null;
-    const base = tipoLabels[selectedTipo];
-    return selectedYear ? `${base} · ${selectedYear}` : base;
-  }, [selectedTipo, selectedYear]);
+    if (selectedTipo) {
+      const base = tipoLabels[selectedTipo];
+      return selectedYear ? `${base} – ${selectedYear}` : base;
+    }
+
+    if (selectedPantallasYear === "total") return "Pantallas – Total";
+
+    if (typeof selectedPantallasYear === "number") {
+      return `Pantallas – ${selectedPantallasYear}`;
+    }
+
+    return null;
+  }, [selectedTipo, selectedYear, selectedPantallasYear]);
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -307,20 +334,36 @@ export default function DashboardContent({
             <div className="mt-4 grid grid-cols-4 gap-3 text-xs sm:text-sm">
               <div className="space-y-1">
                 <p className="font-medium text-foreground/60">Gasto total</p>
-                <span className="inline-flex w-full justify-start font-semibold text-foreground transition">
+                <button
+                  type="button"
+                  onClick={() => handlePantallasFilter("total")}
+                  className={`inline-flex w-full cursor-pointer justify-start font-semibold underline-offset-4 transition ${
+                    selectedPantallasYear === "total"
+                      ? "text-blue-800 underline"
+                      : "text-blue-600 hover:text-blue-700 hover:underline"
+                  }`}
+                >
                   {formatearImporte(resumenPantallas.gastoTotalCents / 100)}
-                </span>
+                </button>
               </div>
               {aniosReferencia.map((anio) => (
                 <div key={`pantallas-${anio}`} className="space-y-1">
                   <p className="font-medium text-foreground/60">
                     {anio} ({resumenPantallas.pantallasPorAnio[anio] ?? 0})
                   </p>
-                  <span className="inline-flex w-full justify-start font-semibold text-foreground transition">
+                  <button
+                    type="button"
+                    onClick={() => handlePantallasFilter(anio)}
+                    className={`inline-flex w-full cursor-pointer justify-start font-semibold underline-offset-4 transition ${
+                      selectedPantallasYear === anio
+                        ? "text-blue-800 underline"
+                        : "text-blue-600 hover:text-blue-700 hover:underline"
+                    }`}
+                  >
                     {formatearImporte(
                       (resumenPantallas.gastoPorAnioCents[anio] ?? 0) / 100,
                     )}
-                  </span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -347,8 +390,12 @@ export default function DashboardContent({
         equipos={equipos}
         filtroTipo={selectedTipo}
         filtroAnio={selectedYear}
+        filtroPantallasAnio={
+          typeof selectedPantallasYear === "number" ? selectedPantallasYear : null
+        }
         pantallasSinEquipo={pantallasSinEquipo}
       />
     </div>
   );
 }
+

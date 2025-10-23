@@ -41,6 +41,8 @@ type EquiposListProps = {
   filtroTipo?: string | null;
 
   filtroAnio?: number | null;
+
+  filtroPantallasAnio?: number | null;
 };
 
 type IaFilters = {
@@ -210,6 +212,7 @@ export default function EquiposList({
   filtroTipo = null,
 
   filtroAnio = null,
+  filtroPantallasAnio = null,
 }: EquiposListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -1043,6 +1046,7 @@ export default function EquiposList({
       pulgadas: number | null;
       precio: number | null;
       fechaCompra: string | null;
+      anioCompra: number | null;
       enGarantia: boolean | null;
       sinEquipo: boolean;
       thumbnailUrl: string | null;
@@ -1068,6 +1072,14 @@ export default function EquiposList({
 
         const precio =
           typeof pantalla.precio === "number" ? pantalla.precio : null;
+        const fechaCompra = pantalla.fecha_compra ?? null;
+        let anioCompra: number | null = null;
+        if (fechaCompra) {
+          const fecha = new Date(fechaCompra);
+          if (!Number.isNaN(fecha.getTime())) {
+            anioCompra = fecha.getFullYear();
+          }
+        }
 
         lista.push({
           id: pantalla.id,
@@ -1082,7 +1094,8 @@ export default function EquiposList({
           pulgadas:
             typeof pantalla.pulgadas === "number" ? pantalla.pulgadas : null,
           precio,
-          fechaCompra: pantalla.fecha_compra ?? null,
+          fechaCompra,
+          anioCompra,
           enGarantia:
             pantalla.en_garantia === null || pantalla.en_garantia === undefined
               ? null
@@ -1109,21 +1122,27 @@ export default function EquiposList({
 
       const precio =
         typeof pantalla.precio === "number" ? pantalla.precio : null;
+      const fechaCompra = pantalla.fecha_compra ?? null;
+      let anioCompra: number | null = null;
+      if (fechaCompra) {
+        const fecha = new Date(fechaCompra);
+        if (!Number.isNaN(fecha.getTime())) {
+          anioCompra = fecha.getFullYear();
+        }
+      }
 
       lista.push({
         id: pantalla.id,
         equipoId: pantalla.equipo_id ?? null,
         equipoNombre: "Sin equipo asignado",
-        usuarioId:
-          pantalla.equipo_id !== null && pantalla.equipo_id !== undefined
-            ? String(pantalla.equipo_id)
-            : null,
+        usuarioId: null,
         modelo: pantalla.modelo ?? null,
         fabricanteNombre: pantalla.fabricanteNombre ?? null,
         pulgadas:
           typeof pantalla.pulgadas === "number" ? pantalla.pulgadas : null,
         precio,
-        fechaCompra: pantalla.fecha_compra ?? null,
+        fechaCompra,
+        anioCompra,
         enGarantia:
           pantalla.en_garantia === null || pantalla.en_garantia === undefined
             ? null
@@ -1142,6 +1161,14 @@ export default function EquiposList({
       if (usuariosSeleccionadosSet.size > 0) {
         if (!pantalla.usuarioId) return false;
         if (!usuariosSeleccionadosSet.has(pantalla.usuarioId)) return false;
+      }
+
+      if (
+        filtroPantallasAnio !== null &&
+        filtroPantallasAnio !== undefined
+      ) {
+        if (pantalla.anioCompra === null) return false;
+        if (pantalla.anioCompra !== filtroPantallasAnio) return false;
       }
 
       if (!pantallaPulgadasSeleccionadas) return true;
@@ -1166,6 +1193,7 @@ export default function EquiposList({
     mostrarAsignados,
     mostrarSinAsignar,
     usuariosSeleccionados,
+    filtroPantallasAnio,
   ]);
 
   const pantallasPulgadasDisponibles = useMemo(() => {
