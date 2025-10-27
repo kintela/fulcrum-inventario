@@ -53,6 +53,21 @@ export type PantallaRecord = {
   thumbnailUrl?: string | null;
 };
 
+export type SwitchRecord = {
+  id: string;
+  nombre: string | null;
+  modelo: string | null;
+  fabricante_id: number | null;
+  fabricante?: { nombre: string | null } | null;
+  ancho_banda_gbps: number | null;
+  ip: string | null;
+  puertos_totales: number | null;
+  precio: number | null;
+  precio_compra?: number | null;
+  fecha_compra: string | null;
+  en_garantia: boolean | null;
+};
+
 export type EquipoRecord = {
   id: string;
   nombre: string | null;
@@ -492,6 +507,33 @@ export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
   );
 
   return pantallas;
+}
+
+export async function fetchSwitches(): Promise<SwitchRecord[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/switches`);
+  requestUrl.searchParams.set(
+    "select",
+    "*,fabricante:fabricantes(nombre)",
+  );
+  requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar switches: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as SwitchRecord[];
 }
 
 export async function fetchPantallaById(

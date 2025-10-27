@@ -4,8 +4,15 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import EquiposList from "@/components/EquiposList";
+import SwitchesList, {
+  type SwitchesYearFilter,
+} from "@/components/SwitchesList";
 import { formatearImporte } from "@/lib/format";
-import type { EquipoRecord, PantallaRecord } from "@/lib/supabase";
+import type {
+  EquipoRecord,
+  PantallaRecord,
+  SwitchRecord,
+} from "@/lib/supabase";
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
@@ -151,14 +158,61 @@ function calcularResumenPantallas(
   return resumen;
 }
 
+type SwitchesResumen = {
+  cantidad: number;
+  gastoTotalCents: number;
+  gastoPorAnioCents: Record<number, number>;
+  switchesPorAnio: Record<number, number>;
+};
+
+function crearSwitchesResumenBase(): SwitchesResumen {
+  const valoresIniciales = Object.fromEntries(
+    aniosReferencia.map((anio) => [anio, 0]),
+  ) as Record<number, number>;
+
+  return {
+    cantidad: 0,
+    gastoTotalCents: 0,
+    gastoPorAnioCents: { ...valoresIniciales },
+    switchesPorAnio: { ...valoresIniciales },
+  };
+}
+
+function calcularResumenSwitches(switches: SwitchRecord[]): SwitchesResumen {
+  const resumen = crearSwitchesResumenBase();
+
+  switches.forEach((item) => {
+    resumen.cantidad += 1;
+
+    const precio = Number(item.precio ?? item.precio_compra ?? 0);
+    const precioCents = Number.isFinite(precio) ? Math.round(precio * 100) : 0;
+    resumen.gastoTotalCents += precioCents;
+
+    if (item.fecha_compra) {
+      const fecha = new Date(item.fecha_compra);
+      if (!Number.isNaN(fecha.getTime())) {
+        const anio = fecha.getFullYear();
+        if (anio in resumen.switchesPorAnio) {
+          resumen.switchesPorAnio[anio] += 1;
+          resumen.gastoPorAnioCents[anio] += precioCents;
+        }
+      }
+    }
+  });
+
+  return resumen;
+}
+
 type DashboardContentProps = {
   equipos: EquipoRecord[];
   pantallasSinEquipo: PantallaRecord[];
+  switches: SwitchRecord[];
 };
 
 export default function DashboardContent({
   equipos,
   pantallasSinEquipo,
+  switches,
 }: DashboardContentProps) {
   const searchParams = useSearchParams();
   const currentQueryString = searchParams?.toString() ?? "";
@@ -169,15 +223,22 @@ export default function DashboardContent({
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedPantallasYear, setSelectedPantallasYear] =
     useState<PantallasYearFilter>(null);
+  const [selectedSwitchesYear, setSelectedSwitchesYear] =
+    useState<SwitchesYearFilter>(null);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
   const resumenPantallas = useMemo(
     () => calcularResumenPantallas(equipos, pantallasSinEquipo),
     [equipos, pantallasSinEquipo],
   );
+  const resumenSwitches = useMemo(
+    () => calcularResumenSwitches(switches),
+    [switches],
+  );
 
   const handleFilter = (tipo: TipoClave, year: number | null = null) => {
     setSelectedPantallasYear(null);
+    setSelectedSwitchesYear(null);
     if (selectedTipo === tipo && selectedYear === year) {
       setSelectedTipo(null);
       setSelectedYear(null);
@@ -191,6 +252,7 @@ export default function DashboardContent({
   const handlePantallasFilter = (year: PantallasYearFilter = null) => {
     setSelectedTipo(null);
     setSelectedYear(null);
+    setSelectedSwitchesYear(null);
 
     if (selectedPantallasYear === year) {
       setSelectedPantallasYear(null);
@@ -200,26 +262,46 @@ export default function DashboardContent({
     setSelectedPantallasYear(year);
   };
 
+  const handleSwitchesFilter = (year: SwitchesYearFilter = null) => {
+    setSelectedTipo(null);
+    setSelectedYear(null);
+    setSelectedPantallasYear(null);
+
+    if (selectedSwitchesYear === year) {
+      setSelectedSwitchesYear(null);
+      return;
+    }
+
+    setSelectedSwitchesYear(year);
+  };
+
   const limpiarFiltro = () => {
     setSelectedTipo(null);
     setSelectedYear(null);
     setSelectedPantallasYear(null);
+    setSelectedSwitchesYear(null);
   };
 
   const filtroActivoTexto = useMemo(() => {
     if (selectedTipo) {
       const base = tipoLabels[selectedTipo];
-      return selectedYear ? `${base} – ${selectedYear}` : base;
+      return selectedYear ? `${base} - ${selectedYear}` : base;
     }
 
-    if (selectedPantallasYear === "total") return "Pantallas – Total";
+    if (selectedPantallasYear === "total") return "Pantallas - Total";
 
     if (typeof selectedPantallasYear === "number") {
-      return `Pantallas – ${selectedPantallasYear}`;
+      return `Pantallas - ${selectedPantallasYear}`;
+    }
+
+    if (selectedSwitchesYear === "total") return "Switches - Total";
+
+    if (typeof selectedSwitchesYear === "number") {
+      return `Switches - ${selectedSwitchesYear}`;
     }
 
     return null;
-  }, [selectedTipo, selectedYear, selectedPantallasYear]);
+  }, [selectedTipo, selectedYear, selectedPantallasYear, selectedSwitchesYear]);
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -302,11 +384,11 @@ export default function DashboardContent({
                   </div>
                 ))}
               </div>
-            </article>
-          ))}
+          </article>
+        ))}
 
-          <article className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
-            <Link
+        <article className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+          <Link
               href={fromQuery ? `/pantallas/nueva?${fromQuery}` : "/pantallas/nueva"}
               aria-label="Añadir pantalla"
               title="Añadir pantalla"
@@ -368,6 +450,48 @@ export default function DashboardContent({
               ))}
             </div>
           </article>
+
+          <article className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+            <h2 className="text-sm font-medium text-foreground/70">Switches</h2>
+            <p className="mt-2 text-3xl font-semibold">{resumenSwitches.cantidad}</p>
+
+            <div className="mt-4 grid grid-cols-4 gap-3 text-xs sm:text-sm">
+              <div className="space-y-1">
+                <p className="font-medium text-foreground/60">Gasto total</p>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchesFilter("total")}
+                  className={`inline-flex w-full cursor-pointer justify-start font-semibold underline-offset-4 transition ${
+                    selectedSwitchesYear === "total"
+                      ? "text-blue-800 underline"
+                      : "text-blue-600 hover:text-blue-700 hover:underline"
+                  }`}
+                >
+                  {formatearImporte(resumenSwitches.gastoTotalCents / 100)}
+                </button>
+              </div>
+              {aniosReferencia.map((anio) => (
+                <div key={`switches-${anio}`} className="space-y-1">
+                  <p className="font-medium text-foreground/60">
+                    {anio} ({resumenSwitches.switchesPorAnio[anio] ?? 0})
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchesFilter(anio)}
+                    className={`inline-flex w-full cursor-pointer justify-start font-semibold underline-offset-4 transition ${
+                      selectedSwitchesYear === anio
+                        ? "text-blue-800 underline"
+                        : "text-blue-600 hover:text-blue-700 hover:underline"
+                    }`}
+                  >
+                    {formatearImporte(
+                      (resumenSwitches.gastoPorAnioCents[anio] ?? 0) / 100,
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </article>
         </div>
       </section>
 
@@ -396,7 +520,10 @@ export default function DashboardContent({
         forzarMostrarPantallas={selectedPantallasYear !== null}
         pantallasSinEquipo={pantallasSinEquipo}
       />
+
+      {switches.length > 0 ? (
+        <SwitchesList switches={switches} filtro={selectedSwitchesYear} />
+      ) : null}
     </div>
   );
 }
-

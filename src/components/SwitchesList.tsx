@@ -1,0 +1,183 @@
+"use client";
+
+import { useMemo } from "react";
+
+import { formatearFecha, formatearImporte } from "@/lib/format";
+import type { SwitchRecord } from "@/lib/supabase";
+
+export type SwitchesYearFilter = number | "total" | null;
+
+type SwitchesListProps = {
+  switches: SwitchRecord[];
+  filtro: SwitchesYearFilter;
+};
+
+function obtenerTimestamp(fecha: string | null | undefined): number {
+  if (!fecha) return Number.NEGATIVE_INFINITY;
+  const date = new Date(fecha);
+  if (Number.isNaN(date.getTime())) return Number.NEGATIVE_INFINITY;
+  return date.getTime();
+}
+
+export default function SwitchesList({
+  switches,
+  filtro,
+}: SwitchesListProps) {
+  const ordenados = useMemo(() => {
+    return [...switches].sort((a, b) => {
+      const fechaA = obtenerTimestamp(a.fecha_compra);
+      const fechaB = obtenerTimestamp(b.fecha_compra);
+
+      if (fechaA !== fechaB) {
+        return fechaB - fechaA;
+      }
+
+      const nombreA = (a.nombre ?? "").toLowerCase();
+      const nombreB = (b.nombre ?? "").toLowerCase();
+      return nombreA.localeCompare(nombreB, "es");
+    });
+  }, [switches]);
+
+  const filtrados = useMemo(() => {
+    if (typeof filtro !== "number") {
+      return ordenados;
+    }
+
+    return ordenados.filter((item) => {
+      if (!item.fecha_compra) return false;
+      const fecha = new Date(item.fecha_compra);
+      if (Number.isNaN(fecha.getTime())) return false;
+      return fecha.getFullYear() === filtro;
+    });
+  }, [filtro, ordenados]);
+
+  const descripcionFiltro = useMemo(() => {
+    if (filtro === "total") {
+      return `Total switches contabilizados: ${filtrados.length}`;
+    }
+    if (typeof filtro === "number") {
+      return `Switches comprados en ${filtro}: ${filtrados.length}`;
+    }
+    return null;
+  }, [filtro, filtrados.length]);
+
+  if (switches.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-4">
+      <header className="space-y-1">
+        <h2 className="text-xl font-semibold text-foreground">Switches</h2>
+        <p className="text-sm text-foreground/70">
+          {descripcionFiltro ??
+            `Inventario general de switches. Total actuales: ${switches.length}.`}
+        </p>
+      </header>
+
+      {filtrados.length === 0 ? (
+        <p className="text-sm text-foreground/60">
+          No hay switches que coincidan con el filtro seleccionado.
+        </p>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+          {filtrados.map((item) => {
+            const nombre =
+              item.nombre && item.nombre.trim().length > 0
+                ? item.nombre.trim()
+                : "Switch sin nombre";
+            const fabricante =
+              item.fabricante?.nombre && item.fabricante.nombre.trim().length > 0
+                ? item.fabricante.nombre.trim()
+                : "Sin fabricante";
+            const modelo =
+              item.modelo && item.modelo.trim().length > 0
+                ? item.modelo.trim()
+                : null;
+            const banda =
+              item.ancho_banda_gbps !== null &&
+              item.ancho_banda_gbps !== undefined &&
+              Number.isFinite(Number(item.ancho_banda_gbps))
+                ? `${item.ancho_banda_gbps} Gbps`
+                : null;
+
+            const partesDescripcion = [fabricante];
+            if (modelo) {
+              partesDescripcion.push(modelo);
+            }
+            const cabeceraDetalle = `${partesDescripcion.join(" - ")}${
+              banda ? ` (${banda})` : ""
+            }`;
+
+            const ipTexto =
+              item.ip && item.ip.trim().length > 0 ? item.ip.trim() : "Sin IP";
+            const puertosTexto =
+              typeof item.puertos_totales === "number" &&
+              Number.isFinite(item.puertos_totales)
+                ? `${item.puertos_totales}`
+                : "Sin dato";
+            const garantiaTexto =
+              item.en_garantia === null || item.en_garantia === undefined
+                ? "Desconocido"
+                : item.en_garantia
+                  ? "Sí"
+                  : "No";
+            const precioReferencia =
+              item.precio ?? item.precio_compra ?? null;
+
+            return (
+              <article
+                key={item.id}
+                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+              >
+                <header className="space-y-1">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {nombre}
+                  </h3>
+                  <p className="text-sm text-foreground/70">{cabeceraDetalle}</p>
+                </header>
+
+                <dl className="grid gap-2 text-sm text-foreground/80">
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">IP</dt>
+                    <dd className="text-foreground">{ipTexto}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">
+                      Puertos totales
+                    </dt>
+                    <dd className="text-foreground">{puertosTexto}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">Precio</dt>
+                    <dd className="text-foreground">
+                      {formatearImporte(precioReferencia)}
+                    </dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">
+                      Fecha compra
+                    </dt>
+                    <dd className="text-foreground">
+                      {formatearFecha(item.fecha_compra)}
+                    </dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">
+                      En garantía
+                    </dt>
+                    <dd className="text-foreground">{garantiaTexto}</dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
