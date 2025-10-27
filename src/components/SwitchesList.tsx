@@ -53,7 +53,7 @@ export default function SwitchesList({
 
   const descripcionFiltro = useMemo(() => {
     if (filtro === "total") {
-      return `Total switches contabilizados: ${filtrados.length}`;
+      return `Mostrando todos los switches (${filtrados.length})`;
     }
     if (typeof filtro === "number") {
       return `Switches comprados en ${filtro}: ${filtrados.length}`;

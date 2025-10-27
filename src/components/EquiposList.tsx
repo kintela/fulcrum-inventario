@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -45,6 +46,10 @@ type EquiposListProps = {
   filtroPantallasAnio?: number | null;
 
   forzarMostrarPantallas?: boolean;
+
+  mostrarSwitches?: boolean;
+
+  onToggleSwitches?: (next: boolean) => void;
 };
 
 type IaFilters = {
@@ -216,6 +221,8 @@ export default function EquiposList({
   filtroAnio = null,
   filtroPantallasAnio = null,
   forzarMostrarPantallas = false,
+  mostrarSwitches = false,
+  onToggleSwitches,
 }: EquiposListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -301,6 +308,20 @@ export default function EquiposList({
     setMostrarPantallas(true);
     setMostrarEquipos(false);
   }, [forzarMostrarPantallas]);
+
+  const prevMostrarSwitches = useRef(mostrarSwitches);
+  useEffect(() => {
+    const anterior = prevMostrarSwitches.current;
+    if (!anterior && mostrarSwitches) {
+      setMostrarEquipos(false);
+      setMostrarPantallas(false);
+    } else if (anterior && !mostrarSwitches) {
+      if (!mostrarEquipos && !mostrarPantallas) {
+        setMostrarEquipos(true);
+      }
+    }
+    prevMostrarSwitches.current = mostrarSwitches;
+  }, [mostrarSwitches, mostrarEquipos, mostrarPantallas]);
 
   const handleSearchInputChange = (value: string) => {
     setSearchTerm(value);
@@ -720,16 +741,20 @@ export default function EquiposList({
   }
 
   function manejarCambioMostrarEquipos(checked: boolean) {
-    if (!checked && !mostrarPantallas) {
+    if (!checked && !mostrarPantallas && !mostrarSwitches) {
       setMostrarPantallas(true);
+      setMostrarEquipos(false);
+      return;
     }
 
     setMostrarEquipos(checked);
   }
 
   function manejarCambioMostrarPantallas(checked: boolean) {
-    if (!checked && !mostrarEquipos) {
+    if (!checked && !mostrarEquipos && !mostrarSwitches) {
       setMostrarEquipos(true);
+      setMostrarPantallas(false);
+      return;
     }
 
     setMostrarPantallas(checked);
@@ -1676,6 +1701,20 @@ export default function EquiposList({
 
             <span>Pantallas</span>
           </label>
+
+          {onToggleSwitches ? (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarSwitches}
+                onChange={(event) =>
+                  onToggleSwitches(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+              <span>Switches</span>
+            </label>
+          ) : null}
         </div>
       </div>
 

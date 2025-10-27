@@ -225,6 +225,7 @@ export default function DashboardContent({
     useState<PantallasYearFilter>(null);
   const [selectedSwitchesYear, setSelectedSwitchesYear] =
     useState<SwitchesYearFilter>(null);
+  const [mostrarSwitches, setMostrarSwitches] = useState(false);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
   const resumenPantallas = useMemo(
@@ -239,6 +240,7 @@ export default function DashboardContent({
   const handleFilter = (tipo: TipoClave, year: number | null = null) => {
     setSelectedPantallasYear(null);
     setSelectedSwitchesYear(null);
+    setMostrarSwitches(false);
     if (selectedTipo === tipo && selectedYear === year) {
       setSelectedTipo(null);
       setSelectedYear(null);
@@ -253,6 +255,7 @@ export default function DashboardContent({
     setSelectedTipo(null);
     setSelectedYear(null);
     setSelectedSwitchesYear(null);
+    setMostrarSwitches(false);
 
     if (selectedPantallasYear === year) {
       setSelectedPantallasYear(null);
@@ -262,17 +265,19 @@ export default function DashboardContent({
     setSelectedPantallasYear(year);
   };
 
-  const handleSwitchesFilter = (year: SwitchesYearFilter = null) => {
+  const handleSwitchesFilter = (year: SwitchesYearFilter = "total") => {
     setSelectedTipo(null);
     setSelectedYear(null);
     setSelectedPantallasYear(null);
 
-    if (selectedSwitchesYear === year) {
+    if (selectedSwitchesYear === year && mostrarSwitches) {
       setSelectedSwitchesYear(null);
+      setMostrarSwitches(false);
       return;
     }
 
     setSelectedSwitchesYear(year);
+    setMostrarSwitches(true);
   };
 
   const limpiarFiltro = () => {
@@ -280,6 +285,7 @@ export default function DashboardContent({
     setSelectedYear(null);
     setSelectedPantallasYear(null);
     setSelectedSwitchesYear(null);
+    setMostrarSwitches(false);
   };
 
   const filtroActivoTexto = useMemo(() => {
@@ -294,14 +300,37 @@ export default function DashboardContent({
       return `Pantallas - ${selectedPantallasYear}`;
     }
 
-    if (selectedSwitchesYear === "total") return "Switches - Total";
+    if (mostrarSwitches && selectedSwitchesYear === "total")
+      return "Switches - Total";
 
-    if (typeof selectedSwitchesYear === "number") {
+    if (mostrarSwitches && typeof selectedSwitchesYear === "number") {
       return `Switches - ${selectedSwitchesYear}`;
     }
 
     return null;
-  }, [selectedTipo, selectedYear, selectedPantallasYear, selectedSwitchesYear]);
+  }, [
+    selectedTipo,
+    selectedYear,
+    selectedPantallasYear,
+    selectedSwitchesYear,
+    mostrarSwitches,
+  ]);
+
+  const handleToggleSwitches = (next: boolean) => {
+    if (next) {
+      setSelectedTipo(null);
+      setSelectedYear(null);
+      setSelectedPantallasYear(null);
+      if (selectedSwitchesYear === null) {
+        setSelectedSwitchesYear("total");
+      }
+      setMostrarSwitches(true);
+      return;
+    }
+
+    setMostrarSwitches(false);
+    setSelectedSwitchesYear(null);
+  };
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -519,9 +548,11 @@ export default function DashboardContent({
         }
         forzarMostrarPantallas={selectedPantallasYear !== null}
         pantallasSinEquipo={pantallasSinEquipo}
+        mostrarSwitches={mostrarSwitches}
+        onToggleSwitches={handleToggleSwitches}
       />
 
-      {switches.length > 0 ? (
+      {switches.length > 0 && mostrarSwitches ? (
         <SwitchesList switches={switches} filtro={selectedSwitchesYear} />
       ) : null}
     </div>
