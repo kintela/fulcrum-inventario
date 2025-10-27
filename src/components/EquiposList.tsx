@@ -760,8 +760,6 @@ export default function EquiposList({
     }
 
     dataset = dataset.filter((equipo) => {
-      const ubicacion = equipo.ubicacion?.nombre?.toLowerCase() ?? "";
-
       const usuarioId =
         equipo.usuario_id !== null && equipo.usuario_id !== undefined
           ? String(equipo.usuario_id)
@@ -2192,7 +2190,7 @@ export default function EquiposList({
                                     loading="lazy"
                                   />
                                   <span className="absolute inset-x-0 bottom-0 bg-black/50 px-1 text-[10px] font-semibold text-white">
-                                    {pulgadasTexto}"
+                                    {pulgadasTexto}&quot;
                                   </span>
                                 </>
                               ) : (
