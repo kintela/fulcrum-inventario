@@ -286,6 +286,7 @@ export default async function EditarEquipoPage({
       numero_serie: getStringOrNull("numero_serie"),
       part_number: getStringOrNull("part_number"),
       ip: getStringOrNull("ip"),
+      toma_red: getStringOrNull("toma_red"),
       admite_update: admiteUpdate,
       al_garbigune: alGarbigune,
       procesador: getStringOrNull("procesador"),

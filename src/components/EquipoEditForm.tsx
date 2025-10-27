@@ -421,6 +421,17 @@ export default function EquipoEditForm({
           </label>
 
           <label className="flex flex-col gap-1 text-sm text-foreground/80">
+            <span className="font-medium text-foreground">Toma de red</span>
+            <input
+              type="text"
+              name="toma_red"
+              defaultValue={equipo.toma_red ?? ""}
+              placeholder="Armario 1 - Puerto 24"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm text-foreground/80">
             <span className="font-medium text-foreground">Admite update</span>
             <select
               name="admite_update"

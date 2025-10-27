@@ -839,8 +839,20 @@ export default function EquiposList({
       }
 
       if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
-
       if (!mostrarNoAdmitenUpdate && equipo.admite_update === false)
+        return false;
+      if (
+        mostrarAdmitenUpdate &&
+        !mostrarNoAdmitenUpdate &&
+        equipo.admite_update !== true
+      )
+        return false;
+
+      if (
+        !mostrarAdmitenUpdate &&
+        mostrarNoAdmitenUpdate &&
+        equipo.admite_update !== false
+      )
         return false;
 
       if (!mostrarGarbiguneSi && equipo.al_garbigune === true) return false;
@@ -1019,6 +1031,7 @@ export default function EquiposList({
       if (equipo.part_number) valores.push(equipo.part_number);
 
       if (equipo.ip) valores.push(equipo.ip);
+      if (equipo.toma_red) valores.push(equipo.toma_red);
 
       if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
         valores.push(
@@ -1738,6 +1751,11 @@ export default function EquiposList({
             const partNumber = equipo.part_number ?? "Sin part number";
 
             const ipEquipo = equipo.ip ?? null;
+            const tomaRed =
+              typeof equipo.toma_red === "string" &&
+              equipo.toma_red.trim().length > 0
+                ? equipo.toma_red.trim()
+                : null;
 
             const admiteUpdateTexto =
               equipo.admite_update === null ||
@@ -1873,6 +1891,12 @@ export default function EquiposList({
 
                   {ipEquipo ? (
                     <p className="text-sm text-foreground/70">IP: {ipEquipo}</p>
+                  ) : null}
+
+                  {tomaRed ? (
+                    <p className="text-sm text-foreground/70">
+                      Toma red: {tomaRed}
+                    </p>
                   ) : null}
 
                   <p className="text-sm text-foreground/70">

@@ -70,6 +70,7 @@ export type EquipoRecord = {
   numero_serie: string | null;
   part_number: string | null;
   ip: string | null;
+  toma_red: string | null;
   admite_update: boolean | null;
   al_garbigune: boolean | null;
   fabricante: { nombre: string | null } | null;
@@ -160,32 +161,43 @@ async function obtenerMiniaturaDesdeStorage(
   const listarPrimerArchivo = async (prefixOriginal: string) => {
     const prefix = normalizarPrefix(prefixOriginal);
 
-    const response = await fetch(listUrl, {
-      method: "POST",
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prefix,
-        limit: 1,
-        offset: 0,
-        sortBy: { column: "name", order: "asc" },
-      }),
-    });
+    let response: Response | null = null;
+    for (let intento = 0; intento < 2; intento += 1) {
+      response = await fetch(listUrl, {
+        method: "POST",
+        headers: {
+          apikey: config.anonKey,
+          Authorization: `Bearer ${config.anonKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prefix,
+          limit: 1,
+          offset: 0,
+          sortBy: { column: "name", order: "asc" },
+        }),
+      });
 
-    if (!response.ok) {
+      if (response.ok) break;
+
+      const status = response.status;
+      if (status >= 500 && intento === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        continue;
+      }
+
       console.error(
         "[obtenerMiniaturaDesdeStorage] respuesta no OK",
         carpeta,
         identificador,
         prefix,
-        response.status,
+        status,
         await response.text().catch(() => "<sin cuerpo>"),
       );
       return null;
     }
+
+    if (!response || !response.ok) return null;
 
     const payload = (await response.json()) as
       | Array<{ name?: string | null }>
@@ -361,6 +373,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "numero_serie",
       "part_number",
       "ip",
+      "toma_red",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -578,6 +591,7 @@ export async function fetchEquipoById(
       "numero_serie",
       "part_number",
       "ip",
+      "toma_red",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -701,6 +715,7 @@ export type EquipoUpdatePayload = {
   numero_serie?: string | null;
   part_number?: string | null;
   ip?: string | null;
+  toma_red?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
@@ -764,6 +779,7 @@ export type EquipoInsertPayload = {
   numero_serie?: string | null;
   part_number?: string | null;
   ip?: string | null;
+  toma_red?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
