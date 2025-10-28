@@ -66,6 +66,32 @@ export type SwitchRecord = {
   precio_compra?: number | null;
   fecha_compra: string | null;
   en_garantia: boolean | null;
+  puertos?: SwitchPortRecord[] | null;
+};
+
+export type SwitchPortRecord = {
+  id: number;
+  switch_id: number;
+  numero: number;
+  nombre: string | null;
+  vlan: number | null;
+  poe: boolean | null;
+  velocidad_mbps: number | null;
+  equipo_id: string | null;
+  equipo?: { id: string; nombre: string | null; modelo: string | null } | null;
+  observaciones: string | null;
+};
+
+export type SwitchPortUpsert = {
+  id?: number;
+  switch_id: number;
+  numero: number;
+  nombre?: string | null;
+  vlan?: number | null;
+  poe?: boolean | null;
+  velocidad_mbps?: number | null;
+  equipo_id?: string | null;
+  observaciones?: string | null;
 };
 
 export type EquipoRecord = {
@@ -534,6 +560,102 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
   }
 
   return (await response.json()) as SwitchRecord[];
+}
+
+export async function fetchSwitchById(
+  id: string,
+): Promise<SwitchRecord | null> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/switches`);
+  requestUrl.searchParams.set(
+    "select",
+    [
+      "id",
+      "nombre",
+        "modelo",
+        "fabricante_id",
+        "ancho_banda_gbps",
+        "ip",
+        "puertos_totales",
+        "precio",
+        "fecha_compra",
+        "en_garantia",
+        "fabricante:fabricantes(nombre)",
+        "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo))",
+      ].join(","),
+  );
+  requestUrl.searchParams.set("id", `eq.${id}`);
+  requestUrl.searchParams.set("limit", "1");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar el switch ${id}: ${response.status} ${details}`,
+    );
+  }
+
+  const switches = (await response.json()) as SwitchRecord[];
+  return switches.length > 0 ? switches[0] : null;
+}
+
+export async function upsertSwitchPorts(
+  ports: SwitchPortUpsert[],
+): Promise<void> {
+  if (ports.length === 0) return;
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/puertos`);
+  requestUrl.searchParams.set("on_conflict", "switch_id,numero");
+
+  const payload = ports.map(({ id, ...rest }) => rest);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al guardar puertos: ${response.status} ${details}`,
+    );
+  }
+}
+
+export async function deleteSwitchPorts(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/puertos`);
+  requestUrl.searchParams.set("id", `in.(${ids.join(",")})`);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al eliminar puertos: ${response.status} ${details}`,
+    );
+  }
 }
 
 export async function fetchPantallaById(

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
@@ -111,11 +112,13 @@ export default function SwitchesList({
 
             const ipTexto =
               item.ip && item.ip.trim().length > 0 ? item.ip.trim() : "Sin IP";
-            const puertosTexto =
+            const puertosTotalesNumero =
               typeof item.puertos_totales === "number" &&
               Number.isFinite(item.puertos_totales)
-                ? `${item.puertos_totales}`
-                : "Sin dato";
+                ? Number(item.puertos_totales)
+                : null;
+            const puertosTexto =
+              puertosTotalesNumero !== null ? `${puertosTotalesNumero}` : "Sin dato";
             const garantiaTexto =
               item.en_garantia === null || item.en_garantia === undefined
                 ? "Desconocido"
@@ -147,7 +150,18 @@ export default function SwitchesList({
                     <dt className="font-medium text-foreground/60">
                       Puertos totales
                     </dt>
-                    <dd className="text-foreground">{puertosTexto}</dd>
+                    <dd className="text-foreground">
+                      {puertosTotalesNumero !== null ? (
+                        <Link
+                          href={`/switches/${item.id}/puertos`}
+                          className="text-blue-600 underline underline-offset-4 transition hover:text-blue-700"
+                        >
+                          {puertosTexto}
+                        </Link>
+                      ) : (
+                        puertosTexto
+                      )}
+                    </dd>
                   </div>
 
                   <div className="flex justify-between gap-3">
