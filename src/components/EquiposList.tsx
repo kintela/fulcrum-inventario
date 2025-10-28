@@ -1102,6 +1102,7 @@ export default function EquiposList({
       enGarantia: boolean | null;
       sinEquipo: boolean;
       thumbnailUrl: string | null;
+      observaciones: string | null;
     }> = [];
 
     const terminoBusqueda = iaResultado
@@ -1148,13 +1149,17 @@ export default function EquiposList({
           precio,
           fechaCompra,
           anioCompra,
-          enGarantia:
-            pantalla.en_garantia === null || pantalla.en_garantia === undefined
-              ? null
-              : pantalla.en_garantia,
-          sinEquipo: false,
-          thumbnailUrl: pantalla.thumbnailUrl ?? null,
-        });
+        enGarantia:
+          pantalla.en_garantia === null || pantalla.en_garantia === undefined
+            ? null
+            : pantalla.en_garantia,
+        sinEquipo: false,
+        thumbnailUrl: pantalla.thumbnailUrl ?? null,
+        observaciones:
+          typeof pantalla.observaciones === "string"
+            ? pantalla.observaciones
+            : null,
+      });
       });
     });
 
@@ -1201,6 +1206,10 @@ export default function EquiposList({
             : pantalla.en_garantia,
         sinEquipo: true,
         thumbnailUrl: pantalla.thumbnailUrl ?? null,
+        observaciones:
+          typeof pantalla.observaciones === "string"
+            ? pantalla.observaciones
+            : null,
       });
     });
 
@@ -2151,11 +2160,16 @@ export default function EquiposList({
                         const estaDesvinculando =
                           typeof idPantalla === "number" &&
                           pantallaDesvinculandoId === idPantalla;
+                        const observacionesPantalla =
+                          typeof pantalla?.observaciones === "string" &&
+                          pantalla.observaciones.trim().length > 0
+                            ? pantalla.observaciones.trim()
+                            : null;
 
-                            return (
-                              <div
-                                key={
-                                  idPantalla ?? `${equipo.id}-pantalla-${index}`
+                        return (
+                          <div
+                            key={
+                              idPantalla ?? `${equipo.id}-pantalla-${index}`
                                 }
                                 className="relative flex w-24 flex-col items-center gap-1 text-center text-foreground/70"
                               >
@@ -2274,14 +2288,19 @@ export default function EquiposList({
                               )}
                             </div>
 
-                                <span className="line-clamp-2 text-[10px] leading-tight text-foreground/60">
-                                  {descripcion}
+                            <div className="flex flex-col gap-1 text-[10px] leading-tight text-foreground/60">
+                              <span className="line-clamp-2">{descripcion}</span>
+                              {observacionesPantalla ? (
+                                <span className="line-clamp-3 whitespace-pre-line text-foreground/70">
+                                  {observacionesPantalla}
                                 </span>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <span className="rounded border border-dashed border-border px-3 py-2 text-xs text-foreground/50">
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span className="rounded border border-dashed border-border px-3 py-2 text-xs text-foreground/50">
                             Sin pantallas conectadas
                           </span>
                         )}
@@ -2393,6 +2412,12 @@ export default function EquiposList({
                     : pantalla.enGarantia
                       ? "Si"
                       : "No";
+                const observacionesTextoRaw =
+                  typeof pantalla.observaciones === "string"
+                    ? pantalla.observaciones.trim()
+                    : "";
+                const observacionesTexto =
+                  observacionesTextoRaw.length > 0 ? observacionesTextoRaw : null;
                 const estaEliminandoPantalla =
                   pantallaEliminandoId === pantalla.id;
                 const miniaturaUrl = pantalla.thumbnailUrl ?? null;
@@ -2477,6 +2502,12 @@ export default function EquiposList({
                       {precioTexto ? (
                         <p className="text-sm text-foreground/70">
                           Precio: {precioTexto}
+                        </p>
+                      ) : null}
+
+                      {observacionesTexto ? (
+                        <p className="text-sm text-foreground/70 whitespace-pre-line">
+                          {observacionesTexto}
                         </p>
                       ) : null}
                     </div>
