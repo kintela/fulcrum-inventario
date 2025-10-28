@@ -148,15 +148,13 @@ export default function SwitchPortsForm({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-sm">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="bg-foreground/5 text-left text-foreground/70">
               <th className="px-3 py-2 font-medium">Puerto</th>
-              <th className="px-3 py-2 font-medium">Nombre</th>
               <th className="px-3 py-2 font-medium">Equipo</th>
               <th className="px-3 py-2 font-medium">VLAN</th>
               <th className="px-3 py-2 font-medium">Velocidad (Mbps)</th>
-              <th className="px-3 py-2 font-medium">PoE</th>
               <th className="px-3 py-2 font-medium">Observaciones</th>
             </tr>
           </thead>
@@ -180,6 +178,7 @@ export default function SwitchPortsForm({
                 typeof puerto?.observaciones === "string"
                   ? puerto.observaciones
                   : "";
+              const poeDefaultValue = puerto?.poe === true ? "true" : "false";
 
               return (
                 <tr key={numero} className="align-top">
@@ -195,15 +194,15 @@ export default function SwitchPortsForm({
                       name={`${campoBase}_id`}
                       defaultValue={puerto?.id ?? ""}
                     />
-                  </td>
-                  <td className="px-3 py-2">
                     <input
-                      type="text"
+                      type="hidden"
                       name={`${campoBase}_nombre`}
-                      key={`${campoBase}_nombre_${nombreDefaultValue}`}
-                      defaultValue={nombreDefaultValue}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
-                      placeholder="Etiqueta"
+                      value={nombreDefaultValue}
+                    />
+                    <input
+                      type="hidden"
+                      name={`${campoBase}_poe`}
+                      value={poeDefaultValue}
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -245,23 +244,12 @@ export default function SwitchPortsForm({
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <label className="flex items-center justify-center gap-2 text-sm text-foreground/80">
-                      <input
-                        type="checkbox"
-                        name={`${campoBase}_poe`}
-                        defaultChecked={puerto?.poe === true}
-                        className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-                      />
-                      <span>PoE</span>
-                    </label>
-                  </td>
-                  <td className="px-3 py-2">
                     <textarea
                       name={`${campoBase}_observaciones`}
                       key={`${campoBase}_observaciones_${observacionesDefaultValue}`}
                       defaultValue={observacionesDefaultValue}
                       rows={2}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                      className="w-full min-w-[260px] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                     />
                   </td>
                 </tr>
