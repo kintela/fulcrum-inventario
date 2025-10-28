@@ -1316,6 +1316,90 @@ export default function EquiposList({
     resumenResultados = pantallasResultadosTexto;
   }
 
+  const filtrosActivos: string[] = [];
+
+  if (searchTerm.trim().length > 0) {
+    filtrosActivos.push(`Búsqueda: "${searchTerm.trim()}"`);
+  }
+
+  if (sistemaOperativoSeleccionado) {
+    filtrosActivos.push(`SO: ${sistemaOperativoSeleccionado}`);
+  }
+
+  if (fabricanteSeleccionado) {
+    filtrosActivos.push(`Fabricante: ${fabricanteSeleccionado}`);
+  }
+
+  if (ubicacionSeleccionada) {
+    filtrosActivos.push(`Ubicación: ${ubicacionSeleccionada}`);
+  }
+
+  if (tipoSeleccionado) {
+    filtrosActivos.push(
+      `Tipo: ${tipoLabels[tipoSeleccionado] ?? tipoSeleccionado}`,
+    );
+  }
+
+  if (antiguedadMinima !== null) {
+    filtrosActivos.push(`Antigüedad ≥ ${antiguedadMinima}`);
+  }
+
+  if (pantallaPulgadasSeleccionadas) {
+    const pulgadasTexto =
+      pantallaPulgadasSeleccionadas === "sin_dato"
+        ? "Sin dato"
+        : `${pantallaPulgadasSeleccionadas}"`;
+    filtrosActivos.push(`Pulgadas: ${pulgadasTexto}`);
+  }
+
+  if (usuariosSeleccionados.length > 0) {
+    const usuariosSeleccionadosNombres = usuariosDisponibles
+      .filter((usuario) => usuariosSeleccionados.includes(usuario.id))
+      .map((usuario) => usuario.nombre);
+    const textoUsuarios =
+      usuariosSeleccionadosNombres.length > 0
+        ? usuariosSeleccionadosNombres
+            .slice(0, 3)
+            .join(", ")
+            .concat(
+              usuariosSeleccionadosNombres.length > 3
+                ? ` (+${usuariosSeleccionadosNombres.length - 3})`
+                : "",
+            )
+        : `${usuariosSeleccionados.length} seleccionado(s)`;
+    filtrosActivos.push(`Usuarios: ${textoUsuarios}`);
+  }
+
+  if (mostrarAsignados !== mostrarSinAsignar) {
+    if (mostrarAsignados && !mostrarSinAsignar) {
+      filtrosActivos.push("Asignación: solo asignados");
+    } else if (!mostrarAsignados && mostrarSinAsignar) {
+      filtrosActivos.push("Asignación: sin asignar");
+    } else {
+      filtrosActivos.push("Asignación: ninguno");
+    }
+  }
+
+  if (mostrarAdmitenUpdate !== mostrarNoAdmitenUpdate) {
+    if (mostrarAdmitenUpdate && !mostrarNoAdmitenUpdate) {
+      filtrosActivos.push("Admite update: sí");
+    } else if (!mostrarAdmitenUpdate && mostrarNoAdmitenUpdate) {
+      filtrosActivos.push("Admite update: no");
+    } else {
+      filtrosActivos.push("Admite update: ninguno");
+    }
+  }
+
+  if (mostrarGarbiguneSi !== mostrarGarbiguneNo) {
+    if (mostrarGarbiguneSi && !mostrarGarbiguneNo) {
+      filtrosActivos.push("Garbigune: sí");
+    } else if (!mostrarGarbiguneSi && mostrarGarbiguneNo) {
+      filtrosActivos.push("Garbigune: no");
+    } else {
+      filtrosActivos.push("Garbigune: ninguno");
+    }
+  }
+
   return (
     <section aria-label="Listado de equipos" className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
@@ -1685,10 +1769,24 @@ export default function EquiposList({
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2 text-sm text-foreground/60 sm:flex-row sm:items-center sm:justify-between">
-        <div>{resumenResultados}</div>
+      <div className="flex flex-col gap-3 text-sm text-foreground/60">
+        <div className="flex flex-wrap items-center gap-3">
+          <div>{resumenResultados}</div>
+          {filtrosActivos.length > 0 ? (
+            <ul className="flex flex-wrap items-center gap-2 text-xs text-foreground/70 sm:text-sm">
+              {filtrosActivos.map((texto, index) => (
+                <li
+                  key={`${texto}-${index}`}
+                  className="rounded-full border border-border bg-card/60 px-3 py-1"
+                >
+                  {texto}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
 
-        <div className="flex items-center gap-4 text-xs text-foreground/70 sm:text-sm">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-foreground/70 sm:text-sm">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
