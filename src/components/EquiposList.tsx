@@ -1415,15 +1415,7 @@ export default function EquiposList({
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base text-foreground shadow-sm focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
               />
             </label>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={limpiarFiltros}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
-              >
-                Limpiar filtros
-              </button>
-            </div>
+            <div className="flex justify-end" />
           </div>
         </div>
 
@@ -1773,16 +1765,25 @@ export default function EquiposList({
         <div className="flex flex-wrap items-center gap-3">
           <div>{resumenResultados}</div>
           {filtrosActivos.length > 0 ? (
-            <ul className="flex flex-wrap items-center gap-2 text-xs text-foreground/70 sm:text-sm">
-              {filtrosActivos.map((texto, index) => (
-                <li
-                  key={`${texto}-${index}`}
-                  className="rounded-full border border-border bg-card/60 px-3 py-1"
-                >
-                  {texto}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-wrap items-center gap-2">
+              <ul className="flex flex-wrap items-center gap-2 text-xs text-foreground/70 sm:text-sm">
+                {filtrosActivos.map((texto, index) => (
+                  <li
+                    key={`${texto}-${index}`}
+                    className="rounded-full border border-border bg-card/60 px-3 py-1"
+                  >
+                    {texto}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           ) : null}
         </div>
 
