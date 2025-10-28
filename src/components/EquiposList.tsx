@@ -14,7 +14,11 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
 
-import type { EquipoRecord, PantallaRecord } from "@/lib/supabase";
+import type {
+  EquipoRecord,
+  PantallaRecord,
+  SwitchPortRecord,
+} from "@/lib/supabase";
 
 function obtenerTimestamp(fecha: string | null | undefined): number {
   if (!fecha) return Number.NEGATIVE_INFINITY;
@@ -1794,6 +1798,34 @@ export default function EquiposList({
                 ? equipo.toma_red.trim()
                 : null;
 
+            const puertosConectados = Array.isArray(equipo.puertos_conectados)
+              ? equipo.puertos_conectados.filter(
+                  (puerto): puerto is SwitchPortRecord =>
+                    Boolean(puerto) && typeof puerto.numero === "number",
+                )
+              : [];
+
+            const detallesPuertos = puertosConectados.map((puerto) => {
+              const nombreSwitchCrudo = puerto.switch?.nombre ?? null;
+              const nombreSwitch =
+                nombreSwitchCrudo && nombreSwitchCrudo.trim().length > 0
+                  ? nombreSwitchCrudo.trim()
+                  : `Switch #${puerto.switch_id}`;
+              const numeroTexto =
+                typeof puerto.numero === "number" && Number.isFinite(puerto.numero)
+                  ? `Puerto ${puerto.numero}`
+                  : "Puerto sin dato";
+              const velocidadTexto =
+                typeof puerto.velocidad_mbps === "number" &&
+                Number.isFinite(puerto.velocidad_mbps)
+                  ? `${puerto.velocidad_mbps} Mbps`
+                  : "Velocidad sin dato";
+              return `${nombreSwitch} · ${numeroTexto} · ${velocidadTexto}`;
+            });
+
+            const tieneDatosRed =
+              Boolean(ipEquipo) || Boolean(tomaRed) || detallesPuertos.length > 0;
+
             const admiteUpdateTexto =
               equipo.admite_update === null ||
               equipo.admite_update === undefined
@@ -1926,16 +1958,6 @@ export default function EquiposList({
                     Part number: {partNumber}
                   </p>
 
-                  {ipEquipo ? (
-                    <p className="text-sm text-foreground/70">IP: {ipEquipo}</p>
-                  ) : null}
-
-                  {tomaRed ? (
-                    <p className="text-sm text-foreground/70">
-                      Toma red: {tomaRed}
-                    </p>
-                  ) : null}
-
                   <p className="text-sm text-foreground/70">
                     Admite update: {admiteUpdateTexto}
                   </p>
@@ -2004,6 +2026,19 @@ export default function EquiposList({
 
                     <dd className="text-foreground">{alGarbiguneTexto}</dd>
                   </div>
+
+                  {tieneDatosRed ? (
+                    <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
+                      <dt className="font-medium text-foreground/70">Red</dt>
+                      <dd className="text-foreground space-y-1">
+                        {ipEquipo ? <p>IP: {ipEquipo}</p> : null}
+                        {detallesPuertos.map((texto, index) => (
+                          <p key={`${equipo.id}-puerto-${index}`}>{texto}</p>
+                        ))}
+                        {tomaRed ? <p>Toma red: {tomaRed}</p> : null}
+                      </dd>
+                    </div>
+                  ) : null}
 
                   {observaciones ? (
                     <div className="flex flex-col gap-1 border-t border-border/60 pt-2">

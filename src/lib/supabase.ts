@@ -79,6 +79,7 @@ export type SwitchPortRecord = {
   velocidad_mbps: number | null;
   equipo_id: string | null;
   equipo?: { id: string; nombre: string | null; modelo: string | null } | null;
+  switch?: { id: number; nombre: string | null } | null;
   observaciones: string | null;
 };
 
@@ -132,6 +133,7 @@ export type EquipoRecord = {
   url: string | null;
   fecha_bios: string | null;
   pantallas: PantallaRecord[] | null;
+  puertos_conectados?: SwitchPortRecord[] | null;
   actuaciones?: ActuacionRecord[] | null;
   thumbnailUrl?: string | null;
 } & Record<string, unknown>;
@@ -426,7 +428,8 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "fecha_bios",
       "url",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
-        "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones)",
+      "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones)",
+      "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,switch:switches(id,nombre))",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
