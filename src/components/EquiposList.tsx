@@ -1343,36 +1343,36 @@ export default function EquiposList({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[minmax(0,1fr)]">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:row-start-1">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Asignacion
             </legend>
 
             <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarAsignados}
-              onChange={(event) => setMostrarAsignados(event.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
+              <input
+                type="checkbox"
+                checked={mostrarAsignados}
+                onChange={(event) => setMostrarAsignados(event.target.checked)}
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
 
               <span>Asignados</span>
             </label>
 
             <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={mostrarSinAsignar}
-              onChange={(event) => setMostrarSinAsignar(event.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
-            />
+              <input
+                type="checkbox"
+                checked={mostrarSinAsignar}
+                onChange={(event) => setMostrarSinAsignar(event.target.checked)}
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
 
               <span>Sin asignar</span>
             </label>
           </fieldset>
 
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-2 lg:row-start-1">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Admite update
             </legend>
@@ -1404,7 +1404,7 @@ export default function EquiposList({
             </label>
           </fieldset>
 
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-44">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-1">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Al garbigune
             </legend>
@@ -1435,7 +1435,141 @@ export default function EquiposList({
               <span>No</span>
             </label>
           </fieldset>
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-56">
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:row-start-2">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Fabricante
+            </span>
+
+            <select
+              value={fabricanteSeleccionado}
+              onChange={(event) =>
+                setFabricanteSeleccionado(event.target.value)
+              }
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+
+              {fabricantesDisponibles.map((fabricante) => (
+                <option key={fabricante} value={fabricante}>
+                  {fabricante}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-2 lg:row-start-2">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Sistema operativo
+            </span>
+
+            <select
+              value={sistemaOperativoSeleccionado}
+              onChange={(event) =>
+                setSistemaOperativoSeleccionado(event.target.value)
+              }
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+
+              {sistemasOperativos.map((so) => (
+                <option key={so} value={so}>
+                  {so}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {mostrarPantallas ? (
+            <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-3">
+              <span className="font-semibold uppercase tracking-wide text-foreground/60">
+                Pulgadas pantalla
+              </span>
+
+              <select
+                value={pantallaPulgadasSeleccionadas}
+                onChange={(event) =>
+                  setPantallaPulgadasSeleccionadas(event.target.value)
+                }
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              >
+                <option value="">Todas</option>
+                {pantallasPulgadasDisponibles.map((opcion) => (
+                  <option key={opcion.value} value={opcion.value}>
+                    {opcion.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="hidden lg:col-start-3 lg:row-start-3 lg:block" aria-hidden="true" />
+          )}
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-2">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Tipo
+            </span>
+
+            <select
+              value={tipoSeleccionado}
+              onChange={(event) => setTipoSeleccionado(event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todos</option>
+
+              {tiposDisponibles.map((tipoClave) => (
+                <option key={tipoClave} value={tipoClave}>
+                  {tipoLabels[tipoClave] ?? tipoClave}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:row-start-3">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Ubicacion
+            </span>
+
+            <select
+              value={ubicacionSeleccionada}
+              onChange={(event) => setUbicacionSeleccionada(event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todas</option>
+
+              {ubicacionesDisponibles.map((ubic) => (
+                <option key={ubic} value={ubic}>
+                  {ubic}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-2 lg:row-start-3">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Antiguedad
+            </span>
+
+            <select
+              value={antiguedadMinima ?? ""}
+              onChange={(event) =>
+                setAntiguedadMinima(
+                  event.target.value ? Number(event.target.value) : null,
+                )
+              }
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todas</option>
+
+              {opcionesAntiguedad.map((opcion) => (
+                <option key={opcion} value={opcion}>
+                  {`= ${opcion}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-4 lg:row-start-1 lg:row-span-3">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Usuarios
             </legend>
@@ -1453,7 +1587,7 @@ export default function EquiposList({
                       ),
                     )
                   }
-                  className="min-h-[3.5rem] rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  className="min-h-[14rem] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 >
                   {usuariosDisponibles.map((usuario) => (
                     <option key={usuario.id} value={usuario.id}>
@@ -1483,140 +1617,6 @@ export default function EquiposList({
             )}
           </fieldset>
         </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Sistema operativo
-            </span>
-
-            <select
-              value={sistemaOperativoSeleccionado}
-              onChange={(event) =>
-                setSistemaOperativoSeleccionado(event.target.value)
-              }
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todos</option>
-
-              {sistemasOperativos.map((so) => (
-                <option key={so} value={so}>
-                  {so}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {mostrarPantallas && (
-            <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-              <span className="font-semibold uppercase tracking-wide text-foreground/60">
-                Pulgadas pantalla
-              </span>
-
-              <select
-                value={pantallaPulgadasSeleccionadas}
-                onChange={(event) =>
-                  setPantallaPulgadasSeleccionadas(event.target.value)
-                }
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
-              >
-                <option value="">Todas</option>
-                {pantallasPulgadasDisponibles.map((opcion) => (
-                  <option key={opcion.value} value={opcion.value}>
-                    {opcion.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Ubicacion
-            </span>
-
-            <select
-              value={ubicacionSeleccionada}
-              onChange={(event) => setUbicacionSeleccionada(event.target.value)}
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todas</option>
-
-              {ubicacionesDisponibles.map((ubic) => (
-                <option key={ubic} value={ubic}>
-                  {ubic}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-48">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Fabricante
-            </span>
-
-            <select
-              value={fabricanteSeleccionado}
-              onChange={(event) =>
-                setFabricanteSeleccionado(event.target.value)
-              }
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todos</option>
-
-              {fabricantesDisponibles.map((fabricante) => (
-                <option key={fabricante} value={fabricante}>
-                  {fabricante}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Tipo
-            </span>
-
-            <select
-              value={tipoSeleccionado}
-              onChange={(event) => setTipoSeleccionado(event.target.value)}
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todos</option>
-
-              {tiposDisponibles.map((tipoClave) => (
-                <option key={tipoClave} value={tipoClave}>
-                  {tipoLabels[tipoClave] ?? tipoClave}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 rounded-lg border border-border bg-card/40 px-3 py-2 text-xs text-foreground/80 sm:w-40">
-            <span className="font-semibold uppercase tracking-wide text-foreground/60">
-              Antiguedad
-            </span>
-
-            <select
-              value={antiguedadMinima ?? ""}
-              onChange={(event) =>
-                setAntiguedadMinima(
-                  event.target.value ? Number(event.target.value) : null,
-                )
-              }
-              className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-            >
-              <option value="">Todas</option>
-
-              {opcionesAntiguedad.map((opcion) => (
-                <option key={opcion} value={opcion}>
-                  {`≥ ${opcion}`}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
         {cargandoIa || errorIa || respuestaIa || iaResultado ? (
           <div className="rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-foreground/80">
             <div className="mb-1 flex items-center justify-between">
@@ -2667,4 +2667,5 @@ export default function EquiposList({
     </section>
   );
 }
+
 
