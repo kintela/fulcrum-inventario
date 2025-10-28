@@ -105,6 +105,15 @@ export default function SwitchPortsForm({
   });
 
   const numeros = Array.from({ length: puertosTotales }, (_, index) => index + 1);
+  const nombreNormalizado = (switchNombre ?? "").trim().toLowerCase();
+  const switchIdNormalizado = switchId.trim();
+  const showNombreColumn =
+    nombreNormalizado === "modular" ||
+    switchIdNormalizado === "8" ||
+    Number.parseInt(switchIdNormalizado, 10) === 8;
+  const tablaMinWidthClass = showNombreColumn
+    ? "min-w-[720px]"
+    : "min-w-[640px]";
 
   return (
     <form
@@ -148,10 +157,15 @@ export default function SwitchPortsForm({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+        <table
+          className={`w-full ${tablaMinWidthClass} border-collapse text-sm`}
+        >
           <thead>
             <tr className="bg-foreground/5 text-left text-foreground/70">
               <th className="px-3 py-2 font-medium">Puerto</th>
+              {showNombreColumn ? (
+                <th className="px-3 py-2 font-medium">Nombre</th>
+              ) : null}
               <th className="px-3 py-2 font-medium">Equipo</th>
               <th className="px-3 py-2 font-medium">VLAN</th>
               <th className="px-3 py-2 font-medium">Velocidad (Mbps)</th>
@@ -194,17 +208,31 @@ export default function SwitchPortsForm({
                       name={`${campoBase}_id`}
                       defaultValue={puerto?.id ?? ""}
                     />
-                    <input
-                      type="hidden"
-                      name={`${campoBase}_nombre`}
-                      value={nombreDefaultValue}
-                    />
+                    {showNombreColumn ? null : (
+                      <input
+                        type="hidden"
+                        name={`${campoBase}_nombre`}
+                        value={nombreDefaultValue}
+                      />
+                    )}
                     <input
                       type="hidden"
                       name={`${campoBase}_poe`}
                       value={poeDefaultValue}
                     />
                   </td>
+                  {showNombreColumn ? (
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        name={`${campoBase}_nombre`}
+                        key={`${campoBase}_nombre_${nombreDefaultValue}`}
+                        defaultValue={nombreDefaultValue}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                        placeholder="Etiqueta"
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2">
                     <select
                       key={`${campoBase}_equipo_${equipoDefaultValue}`}
