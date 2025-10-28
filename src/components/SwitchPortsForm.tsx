@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 
 import type {
   EquipoCatalogoItem,
@@ -51,7 +52,50 @@ export default function SwitchPortsForm({
   initialState,
   backHref,
 }: SwitchPortsFormProps) {
+  const router = useRouter();
   const [state, formAction] = useActionState(action, initialState);
+  const [flashMessage, setFlashMessage] =
+    useState<SwitchPortsFormState | null>(null);
+  const storageKey = `switchPortsFlash:${switchId}`;
+  const hasTriggeredRefreshRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.sessionStorage.getItem(storageKey);
+    if (!stored) return;
+    setFlashMessage({ status: "success", message: stored });
+    window.sessionStorage.removeItem(storageKey);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (state.status === "idle") {
+      hasTriggeredRefreshRef.current = false;
+    }
+
+    if (state.status === "success" && state.message) {
+      if (hasTriggeredRefreshRef.current) return;
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(storageKey, state.message);
+      }
+      hasTriggeredRefreshRef.current = true;
+      router.refresh();
+      return;
+    }
+
+    if (
+      state.status === "error" &&
+      state.message &&
+      (flashMessage?.status !== "error" ||
+        flashMessage.message !== state.message)
+    ) {
+      setFlashMessage({ status: "error", message: state.message });
+    }
+  }, [state, flashMessage, router, storageKey]);
+
+  const messageToShow =
+    flashMessage ??
+    (state.status !== "idle" && state.message ? state : null);
 
   const mapaPuertos = new Map<number, SwitchPortRecord>();
   puertos.forEach((puerto) => {
@@ -84,15 +128,15 @@ export default function SwitchPortsForm({
         </Link>
       </header>
 
-      {state.status === "success" && state.message ? (
+      {messageToShow?.status === "success" && messageToShow.message ? (
         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          {state.message}
+          {messageToShow.message}
         </p>
       ) : null}
 
-      {state.status === "error" && state.message ? (
+      {messageToShow?.status === "error" && messageToShow.message ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {state.message}
+          {messageToShow.message}
         </p>
       ) : null}
 
@@ -120,6 +164,23 @@ export default function SwitchPortsForm({
             {numeros.map((numero) => {
               const puerto = mapaPuertos.get(numero);
               const campoBase = `puerto_${numero}`;
+              const equipoDefaultValue =
+                puerto?.equipo_id && puerto.equipo_id.toString().trim().length > 0
+                  ? String(puerto.equipo_id)
+                  : "";
+              const nombreDefaultValue =
+                typeof puerto?.nombre === "string" ? puerto.nombre : "";
+              const vlanDefaultValue =
+                typeof puerto?.vlan === "number" ? puerto.vlan : "";
+              const velocidadDefaultValue =
+                typeof puerto?.velocidad_mbps === "number"
+                  ? puerto.velocidad_mbps
+                  : "";
+              const observacionesDefaultValue =
+                typeof puerto?.observaciones === "string"
+                  ? puerto.observaciones
+                  : "";
+
               return (
                 <tr key={numero} className="align-top">
                   <td className="px-3 py-3 text-sm font-semibold text-foreground">
@@ -139,17 +200,17 @@ export default function SwitchPortsForm({
                     <input
                       type="text"
                       name={`${campoBase}_nombre`}
-                      defaultValue={puerto?.nombre ?? ""}
+                      key={`${campoBase}_nombre_${nombreDefaultValue}`}
+                      defaultValue={nombreDefaultValue}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                       placeholder="Etiqueta"
                     />
                   </td>
                   <td className="px-3 py-2">
                     <select
+                      key={`${campoBase}_equipo_${equipoDefaultValue}`}
                       name={`${campoBase}_equipo_id`}
-                      defaultValue={
-                        puerto?.equipo_id ? String(puerto.equipo_id) : ""
-                      }
+                      defaultValue={equipoDefaultValue}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                     >
                       <option value="">Sin equipo</option>
@@ -166,9 +227,8 @@ export default function SwitchPortsForm({
                     <input
                       type="number"
                       name={`${campoBase}_vlan`}
-                      defaultValue={
-                        typeof puerto?.vlan === "number" ? puerto.vlan : ""
-                      }
+                      key={`${campoBase}_vlan_${vlanDefaultValue}`}
+                      defaultValue={vlanDefaultValue}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                       min="1"
                     />
@@ -177,11 +237,8 @@ export default function SwitchPortsForm({
                     <input
                       type="number"
                       name={`${campoBase}_velocidad`}
-                      defaultValue={
-                        typeof puerto?.velocidad_mbps === "number"
-                          ? puerto.velocidad_mbps
-                          : ""
-                      }
+                      key={`${campoBase}_velocidad_${velocidadDefaultValue}`}
+                      defaultValue={velocidadDefaultValue}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                       min="0"
                       step="10"
@@ -201,7 +258,8 @@ export default function SwitchPortsForm({
                   <td className="px-3 py-2">
                     <textarea
                       name={`${campoBase}_observaciones`}
-                      defaultValue={puerto?.observaciones ?? ""}
+                      key={`${campoBase}_observaciones_${observacionesDefaultValue}`}
+                      defaultValue={observacionesDefaultValue}
                       rows={2}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                     />
