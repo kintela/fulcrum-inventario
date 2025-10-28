@@ -59,6 +59,8 @@ export type SwitchRecord = {
   modelo: string | null;
   fabricante_id: number | null;
   fabricante?: { nombre: string | null } | null;
+  ubicacion_id: number | null;
+  ubicacion?: { nombre: string | null } | null;
   ancho_banda_gbps: number | null;
   ip: string | null;
   puertos_totales: number | null;
@@ -93,6 +95,19 @@ export type SwitchPortUpsert = {
   velocidad_mbps?: number | null;
   equipo_id?: string | null;
   observaciones?: string | null;
+};
+
+export type SwitchInsertPayload = {
+  nombre?: string | null;
+  modelo?: string | null;
+  fabricante_id?: number | null;
+  ubicacion_id?: number | null;
+  ip?: string | null;
+  ancho_banda_gbps?: number | null;
+  puertos_totales?: number | null;
+  precio?: number | null;
+  fecha_compra?: string | null;
+  en_garantia?: boolean | null;
 };
 
 export type EquipoRecord = {
@@ -543,7 +558,7 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
   const requestUrl = new URL(`${config.url}/rest/v1/switches`);
   requestUrl.searchParams.set(
     "select",
-    "*,fabricante:fabricantes(nombre)",
+    "*,fabricante:fabricantes(nombre),ubicacion:ubicaciones(nombre)",
   );
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
 
@@ -574,9 +589,10 @@ export async function fetchSwitchById(
     "select",
     [
       "id",
-      "nombre",
+        "nombre",
         "modelo",
         "fabricante_id",
+        "ubicacion_id",
         "ancho_banda_gbps",
         "ip",
         "puertos_totales",
@@ -584,6 +600,7 @@ export async function fetchSwitchById(
         "fecha_compra",
         "en_garantia",
         "fabricante:fabricantes(nombre)",
+        "ubicacion:ubicaciones(nombre)",
         "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo))",
       ].join(","),
   );
@@ -1082,6 +1099,44 @@ export async function createPantalla(
   if (!creado?.id) {
     throw new Error(
       "La pantalla se creó pero no se recibió su identificador.",
+    );
+  }
+
+  return creado.id;
+}
+
+export async function createSwitch(
+  payload: SwitchInsertPayload,
+): Promise<number> {
+  const config = getSupabaseConfig();
+
+  const cuerpo = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+
+  const response = await fetch(`${config.url}/rest/v1/switches`, {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(cuerpo),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al crear el switch: ${response.status} ${details}`,
+    );
+  }
+
+  const data = (await response.json()) as Array<{ id?: number }>;
+  const creado = data[0];
+  if (!creado?.id) {
+    throw new Error(
+      "El switch se creó pero no se recibió su identificador.",
     );
   }
 

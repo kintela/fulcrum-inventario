@@ -480,7 +480,29 @@ export default function DashboardContent({
             </div>
           </article>
 
-          <article className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+          <article className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+            <Link
+              href={fromQuery ? `/switches/nuevo?${fromQuery}` : "/switches/nuevo"}
+              aria-label="Añadir switch"
+              title="Añadir switch"
+              className="absolute right-4 top-4 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/70 transition hover:bg-background/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 4v12M4 10h12"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
             <h2 className="text-sm font-medium text-foreground/70">Switches</h2>
             <p className="mt-2 text-3xl font-semibold">{resumenSwitches.cantidad}</p>
 
