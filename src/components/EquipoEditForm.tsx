@@ -421,6 +421,27 @@ export default function EquipoEditForm({
           </label>
 
           <label className="flex flex-col gap-1 text-sm text-foreground/80">
+            <span className="font-medium text-foreground">
+              Tarjeta de red (velocidad)
+            </span>
+            <input
+              type="text"
+              name="tarjeta_red"
+              defaultValue={
+                equipo.tarjeta_red !== null && equipo.tarjeta_red !== undefined
+                  ? String(equipo.tarjeta_red)
+                  : ""
+              }
+              placeholder="1 Gbps, 10 Gbps, etc."
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+            />
+            <span className="text-[11px] text-foreground/50">
+              Indica la velocidad nominal de la tarjeta (por ejemplo, 1 Gbps o
+              10 Gbps).
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm text-foreground/80">
             <span className="font-medium text-foreground">Toma de red</span>
             <input
               type="text"
