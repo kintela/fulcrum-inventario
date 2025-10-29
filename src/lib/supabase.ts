@@ -141,6 +141,7 @@ export type EquipoRecord = {
   part_number: string | null;
   ip: string | null;
   toma_red: string | null;
+  tarjeta_red: string | number | null;
   admite_update: boolean | null;
   al_garbigune: boolean | null;
   fabricante: { nombre: string | null } | null;
@@ -445,6 +446,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "part_number",
       "ip",
       "toma_red",
+      "tarjeta_red",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -789,6 +791,7 @@ export async function fetchEquipoById(
       "part_number",
       "ip",
       "toma_red",
+      "tarjeta_red",
       "admite_update",
       "al_garbigune",
       "procesador",
@@ -913,6 +916,7 @@ export type EquipoUpdatePayload = {
   part_number?: string | null;
   ip?: string | null;
   toma_red?: string | null;
+  tarjeta_red?: string | number | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
@@ -977,6 +981,7 @@ export type EquipoInsertPayload = {
   part_number?: string | null;
   ip?: string | null;
   toma_red?: string | null;
+  tarjeta_red?: string | number | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;

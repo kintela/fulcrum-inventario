@@ -1083,6 +1083,9 @@ export default function EquiposList({
 
       if (equipo.ip) valores.push(equipo.ip);
       if (equipo.toma_red) valores.push(equipo.toma_red);
+      if (equipo.tarjeta_red !== null && equipo.tarjeta_red !== undefined) {
+        valores.push(String(equipo.tarjeta_red));
+      }
 
       if (equipo.admite_update !== null && equipo.admite_update !== undefined) {
         valores.push(
@@ -1969,6 +1972,22 @@ export default function EquiposList({
               equipo.toma_red.trim().length > 0
                 ? equipo.toma_red.trim()
                 : null;
+            let tarjetaRedVelocidad: string | null = null;
+            if (typeof equipo.tarjeta_red === "string") {
+              const limpio = equipo.tarjeta_red.trim();
+              tarjetaRedVelocidad = limpio.length > 0 ? limpio : null;
+            } else if (
+              typeof equipo.tarjeta_red === "number" &&
+              Number.isFinite(equipo.tarjeta_red)
+            ) {
+              const valor = equipo.tarjeta_red;
+              tarjetaRedVelocidad =
+                valor >= 1000
+                  ? `${valor} Mbps`
+                  : valor >= 1
+                    ? `${valor} Gbps`
+                    : String(valor);
+            }
 
             const puertosConectados = Array.isArray(equipo.puertos_conectados)
               ? equipo.puertos_conectados.filter(
@@ -2202,13 +2221,16 @@ export default function EquiposList({
                   {tieneDatosRed ? (
                     <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
                       <dt className="font-medium text-foreground/70">Red</dt>
-                      <dd className="text-foreground space-y-1">
-                        {ipEquipo ? <p>IP: {ipEquipo}</p> : null}
-                        {detallesPuertos.map((texto, index) => (
-                          <p key={`${equipo.id}-puerto-${index}`}>{texto}</p>
-                        ))}
-                        {tomaRed ? <p>Toma red: {tomaRed}</p> : null}
-                      </dd>
+                    <dd className="text-foreground space-y-1">
+                      {ipEquipo ? <p>IP: {ipEquipo}</p> : null}
+                      {detallesPuertos.map((texto, index) => (
+                        <p key={`${equipo.id}-puerto-${index}`}>{texto}</p>
+                      ))}
+                      {tarjetaRedVelocidad ? (
+                        <p>Tarjeta red: {tarjetaRedVelocidad}</p>
+                      ) : null}
+                      {tomaRed ? <p>Toma red: {tomaRed}</p> : null}
+                    </dd>
                     </div>
                   ) : null}
 
