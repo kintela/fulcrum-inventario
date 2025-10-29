@@ -175,6 +175,12 @@ export default function SwitchesList({
                     {nombre}
                   </h3>
                   <p className="text-sm text-foreground/70">{cabeceraDetalle}</p>
+                  <p className="text-xs text-foreground/60">
+                    Ubicacion:{" "}
+                    <span className="font-medium text-foreground/70">
+                      {ubicacion}
+                    </span>
+                  </p>
                 </header>
 
                 <dl className="grid gap-2 text-sm text-foreground/80 pr-4">
