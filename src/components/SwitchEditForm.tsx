@@ -79,12 +79,7 @@ export default function SwitchEditForm({
   const submitText =
     submitLabel ?? (mode === "create" ? "Crear switch" : "Guardar cambios");
 
-  const enGarantiaDefault =
-    values.en_garantia === null || values.en_garantia === undefined
-      ? "unknown"
-      : values.en_garantia
-        ? "true"
-        : "false";
+  const enGarantiaDefault = values.en_garantia ? "true" : "false";
 
   return (
     <form
@@ -96,7 +91,7 @@ export default function SwitchEditForm({
           <h1 className="text-xl font-semibold text-foreground">{heading}</h1>
           <p className="text-sm text-foreground/70">
             {description ??
-              "Completa los datos básicos del switch y guarda los cambios."}
+              "Completa los datos basicos del switch y guarda los cambios."}
           </p>
         </div>
         <Link
@@ -106,6 +101,12 @@ export default function SwitchEditForm({
           Volver
         </Link>
       </header>
+
+      {state.status === "success" && state.message ? (
+        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {state.message}
+        </p>
+      ) : null}
 
       {state.status === "error" && state.message ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -157,7 +158,7 @@ export default function SwitchEditForm({
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-foreground/80">
-          <span className="font-semibold text-foreground/70">Ubicación</span>
+          <span className="font-semibold text-foreground/70">Ubicacionn</span>
           <select
             name="ubicacion_id"
             defaultValue={
@@ -167,10 +168,10 @@ export default function SwitchEditForm({
             }
             className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
           >
-            <option value="">Sin ubicación</option>
+            <option value="">Sin ubicacion</option>
             {ubicaciones.map((ubicacion) => (
               <option key={ubicacion.id} value={ubicacion.id}>
-                {ubicacion.nombre ?? `Ubicación #${ubicacion.id}`}
+                {ubicacion.nombre ?? `Ubicacionn #${ubicacion.id}`}
               </option>
             ))}
           </select>
@@ -224,7 +225,7 @@ export default function SwitchEditForm({
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-foreground/80">
-          <span className="font-semibold text-foreground/70">Precio (€)</span>
+          <span className="font-semibold text-foreground/70">Precio (EUR)</span>
           <input
             type="number"
             name="precio"
@@ -251,15 +252,14 @@ export default function SwitchEditForm({
 
         <label className="flex flex-col gap-1 text-sm text-foreground/80">
           <span className="font-semibold text-foreground/70">
-            En garantía
+            En garantia
           </span>
           <select
             name="en_garantia"
             defaultValue={enGarantiaDefault}
             className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
           >
-            <option value="unknown">Desconocido</option>
-            <option value="true">Sí</option>
+            <option value="true">Si</option>
             <option value="false">No</option>
           </select>
         </label>
@@ -271,4 +271,3 @@ export default function SwitchEditForm({
     </form>
   );
 }
-

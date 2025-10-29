@@ -1,33 +1,53 @@
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import SwitchEditForm, {
   type SwitchEditFormState,
   type SwitchFormValues,
 } from "@/components/SwitchEditForm";
 import {
-  createSwitch,
   fetchFabricantesCatalogo,
+  fetchSwitchById,
   fetchUbicacionesCatalogo,
-  type SwitchInsertPayload,
+  updateSwitch,
+  type SwitchUpdatePayload,
 } from "@/lib/supabase";
+
+type Params = {
+  id: string;
+};
 
 const INITIAL_STATE: SwitchEditFormState = {
   status: "idle",
   message: null,
 };
 
-type SearchParams = {
-  from?: string;
-};
+function toNumberOrNull(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
 
-export default async function NuevoSwitchPage({
+export default async function EditarSwitchPage({
+  params,
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  params: Promise<Params>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { from } = await searchParams;
-  const backHref = from ? `/?${from}` : "/";
+  const { id } = await params;
+  const resolvedSearch = await searchParams;
+  const fromParamRaw = resolvedSearch?.from;
+  const fromParam = Array.isArray(fromParamRaw)
+    ? fromParamRaw[0]
+    : fromParamRaw ?? null;
+  const backHref = fromParam ? `/?${fromParam}` : "/";
+
+  const switchInfo = await fetchSwitchById(id);
+  if (!switchInfo) {
+    notFound();
+  }
 
   const [fabricantes, ubicaciones] = await Promise.all([
     fetchFabricantesCatalogo(),
@@ -35,23 +55,32 @@ export default async function NuevoSwitchPage({
   ]);
 
   const valoresIniciales: SwitchFormValues = {
-    nombre: null,
-    modelo: null,
-    fabricante_id: null,
-    ubicacion_id: null,
-    ip: null,
-    ancho_banda_gbps: null,
-    puertos_totales: null,
-    precio: null,
-    fecha_compra: null,
-    en_garantia: null,
+    nombre: switchInfo.nombre ?? null,
+    modelo: switchInfo.modelo ?? null,
+    fabricante_id:
+      typeof switchInfo.fabricante_id === "number"
+        ? switchInfo.fabricante_id
+        : null,
+    ubicacion_id:
+      typeof switchInfo.ubicacion_id === "number"
+        ? switchInfo.ubicacion_id
+        : null,
+    ip: switchInfo.ip ?? null,
+    ancho_banda_gbps: toNumberOrNull(switchInfo.ancho_banda_gbps),
+    puertos_totales: toNumberOrNull(switchInfo.puertos_totales),
+    precio: toNumberOrNull(switchInfo.precio),
+    fecha_compra: switchInfo.fecha_compra ?? null,
+    en_garantia: Boolean(switchInfo.en_garantia),
   };
 
-  async function crearSwitchAction(
+  async function actualizarSwitchAction(
     _prevState: SwitchEditFormState,
     formData: FormData,
   ): Promise<SwitchEditFormState> {
     "use server";
+
+    const idNumber = Number.parseInt(id, 10);
+    const switchIdentifier = Number.isNaN(idNumber) ? id : idNumber;
 
     const getStringOrNull = (field: string) => {
       const value = formData.get(field);
@@ -73,7 +102,7 @@ export default async function NuevoSwitchPage({
       if (Number.isNaN(parsed)) {
         return {
           ok: false,
-          message: `Introduce un Numero valido en "${etiqueta}".`,
+          message: `Introduce un numero valido en "${etiqueta}".`,
         };
       }
       return { ok: true, value: parsed };
@@ -92,16 +121,13 @@ export default async function NuevoSwitchPage({
       if (Number.isNaN(integerValue)) {
         return {
           ok: false,
-          message: `Introduce un Numero entero valido en "${etiqueta}".`,
+          message: `Introduce un numero entero valido en "${etiqueta}".`,
         };
       }
       return { ok: true, value: integerValue };
     };
 
-    const fabricanteId = parseIntegerField(
-      "fabricante_id",
-      "Fabricante",
-    );
+    const fabricanteId = parseIntegerField("fabricante_id", "Fabricante");
     if (!fabricanteId.ok) {
       return { status: "error", message: fabricanteId.message };
     }
@@ -111,10 +137,7 @@ export default async function NuevoSwitchPage({
       return { status: "error", message: ubicacionId.message };
     }
 
-    const anchoBanda = parseNumberField(
-      "ancho_banda_gbps",
-      "Ancho de banda",
-    );
+    const anchoBanda = parseNumberField("ancho_banda_gbps", "Ancho de banda");
     if (!anchoBanda.ok) {
       return { status: "error", message: anchoBanda.message };
     }
@@ -132,11 +155,9 @@ export default async function NuevoSwitchPage({
       return { status: "error", message: precio.message };
     }
 
-    const enGarantiaRaw = formData.get("en_garantia");
-    const enGarantia =
-      enGarantiaRaw === "true" ? true : enGarantiaRaw === "false" ? false : false;
+    const enGarantia = formData.get("en_garantia") === "true";
 
-    const payload: SwitchInsertPayload = {
+    const payload: SwitchUpdatePayload = {
       nombre: getStringOrNull("nombre"),
       modelo: getStringOrNull("modelo"),
       fabricante_id: fabricanteId.value,
@@ -150,47 +171,40 @@ export default async function NuevoSwitchPage({
     };
 
     try {
-      const nuevoId = await createSwitch(payload);
+      await updateSwitch(switchIdentifier, payload);
       revalidatePath("/");
-      const suffix = from ? `?from=${encodeURIComponent(from)}` : "";
-      redirect(`/switches/${nuevoId}/puertos${suffix}`);
+      revalidatePath(`/switches/${id}/editar`);
+      revalidatePath(`/switches/${id}/puertos`);
+      return {
+        status: "success",
+        message: "Switch actualizado correctamente.",
+      };
     } catch (error) {
-      const digest =
-        typeof error === "object" && error !== null && "digest" in error
-          ? (error as { digest?: unknown }).digest
-          : undefined;
-      if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
-        throw error;
-      }
       return {
         status: "error",
         message:
           error instanceof Error
             ? error.message
-            : "No se pudo crear el switch.",
+            : "No se pudo actualizar el switch.",
       };
     }
-
-    return {
-      status: "success",
-      message: null,
-    };
   }
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-10">
       <SwitchEditForm
-        mode="create"
-        submitLabel="Crear switch"
-        title="Nuevo switch"
-        description="Introduce los detalles del switch y guarda para continuar con la configuracion de puertos."
+        mode="edit"
+        submitLabel="Guardar cambios"
+        title="Editar switch"
+        description="Actualiza la informacion general del switch."
         values={valoresIniciales}
         fabricantes={fabricantes}
         ubicaciones={ubicaciones}
-        action={crearSwitchAction}
+        action={actualizarSwitchAction}
         initialState={INITIAL_STATE}
         backHref={backHref}
       />
     </main>
   );
 }
+

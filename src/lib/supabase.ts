@@ -110,6 +110,19 @@ export type SwitchInsertPayload = {
   en_garantia?: boolean | null;
 };
 
+export type SwitchUpdatePayload = {
+  nombre?: string | null;
+  modelo?: string | null;
+  fabricante_id?: number | null;
+  ubicacion_id?: number | null;
+  ip?: string | null;
+  ancho_banda_gbps?: number | null;
+  puertos_totales?: number | null;
+  precio?: number | null;
+  fecha_compra?: string | null;
+  en_garantia?: boolean | null;
+};
+
 export type EquipoRecord = {
   id: string;
   nombre: string | null;
@@ -1141,6 +1154,41 @@ export async function createSwitch(
   }
 
   return creado.id;
+}
+
+export async function updateSwitch(
+  id: string | number,
+  payload: SwitchUpdatePayload,
+): Promise<void> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/switches`);
+  requestUrl.searchParams.set("id", `eq.${id}`);
+
+  const cuerpo = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined),
+  );
+
+  if (Object.keys(cuerpo).length === 0) {
+    return;
+  }
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "PATCH",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(cuerpo),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al actualizar el switch ${id}: ${response.status} ${details}`,
+    );
+  }
 }
 
 export async function updateEquipo(

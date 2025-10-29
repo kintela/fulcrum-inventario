@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
 import type { SwitchRecord } from "@/lib/supabase";
@@ -24,6 +25,9 @@ export default function SwitchesList({
   switches,
   filtro,
 }: SwitchesListProps) {
+  const searchParams = useSearchParams();
+  const fromQueryParam = searchParams?.toString();
+
   const ordenados = useMemo(() => {
     return [...switches].sort((a, b) => {
       const fechaA = obtenerTimestamp(a.fecha_compra);
@@ -101,6 +105,10 @@ export default function SwitchesList({
               Number.isFinite(Number(item.ancho_banda_gbps))
                 ? `${item.ancho_banda_gbps} Gbps`
                 : null;
+            const ubicacion =
+              item.ubicacion?.nombre && item.ubicacion.nombre.trim().length > 0
+                ? item.ubicacion.nombre.trim()
+                : "Sin ubicacion";
 
             const partesDescripcion = [fabricante];
             if (modelo) {
@@ -119,28 +127,62 @@ export default function SwitchesList({
                 : null;
             const puertosTexto =
               puertosTotalesNumero !== null ? `${puertosTotalesNumero}` : "Sin dato";
-            const garantiaTexto =
-              item.en_garantia === null || item.en_garantia === undefined
-                ? "Desconocido"
-                : item.en_garantia
-                  ? "Sí"
-                  : "No";
+            const garantiaTexto = item.en_garantia ? "Si" : "No";
             const precioReferencia =
               item.precio ?? item.precio_compra ?? null;
+
+            const editHref =
+              fromQueryParam && fromQueryParam.length > 0
+                ? `/switches/${item.id}/editar?from=${encodeURIComponent(fromQueryParam)}`
+                : `/switches/${item.id}/editar`;
 
             return (
               <article
                 key={item.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
               >
-                <header className="space-y-1">
+                <Link
+                  href={editHref}
+                  aria-label={`Editar ${nombre}`}
+                  className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
+                >
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4.5 12.75V15.5h2.75L15 7.75 12.25 5l-7.75 7.75Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="m11.5 5.5 3 3"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
+
+                <header className="space-y-1 pr-10">
                   <h3 className="text-lg font-semibold text-foreground">
                     {nombre}
                   </h3>
                   <p className="text-sm text-foreground/70">{cabeceraDetalle}</p>
                 </header>
 
-                <dl className="grid gap-2 text-sm text-foreground/80">
+                <dl className="grid gap-2 text-sm text-foreground/80 pr-4">
+                  <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">Ubicacion</dt>
+                    <dd className="text-foreground">{ubicacion}</dd>
+                  </div>
+
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/60">IP</dt>
                     <dd className="text-foreground">{ipTexto}</dd>
@@ -165,6 +207,13 @@ export default function SwitchesList({
                   </div>
 
                   <div className="flex justify-between gap-3">
+                    <dt className="font-medium text-foreground/60">
+                      Ancho de banda
+                    </dt>
+                    <dd className="text-foreground">{banda ?? "Sin dato"}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/60">Precio</dt>
                     <dd className="text-foreground">
                       {formatearImporte(precioReferencia)}
@@ -182,7 +231,7 @@ export default function SwitchesList({
 
                   <div className="flex justify-between gap-3">
                     <dt className="font-medium text-foreground/60">
-                      En garantía
+                      En garantia
                     </dt>
                     <dd className="text-foreground">{garantiaTexto}</dd>
                   </div>
