@@ -301,6 +301,10 @@ export default function EquiposList({
   );
   const [pantallaPulgadasSeleccionadas, setPantallaPulgadasSeleccionadas] =
     useState<string>(() => getStringParam("pulgadas"));
+  const [mostrarEquiposConUnaPantalla, setMostrarEquiposConUnaPantalla] =
+    useState<boolean>(() => getBoolParam("pantallas1", false));
+  const [mostrarEquiposConDosPantallas, setMostrarEquiposConDosPantallas] =
+    useState<boolean>(() => getBoolParam("pantallas2", false));
   const currentQueryString = searchParams?.toString() ?? "";
   const fromQueryParam = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
@@ -357,6 +361,8 @@ export default function EquiposList({
       params.set("usuarios", usuariosSeleccionados.join(","));
     if (!mostrarEquipos) params.set("equipos", "0");
     if (mostrarPantallas) params.set("pantallas", "1");
+    if (mostrarEquiposConUnaPantalla) params.set("pantallas1", "1");
+    if (mostrarEquiposConDosPantallas) params.set("pantallas2", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -381,6 +387,8 @@ export default function EquiposList({
     usuariosSeleccionados,
     mostrarEquipos,
     mostrarPantallas,
+    mostrarEquiposConUnaPantalla,
+    mostrarEquiposConDosPantallas,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -741,6 +749,8 @@ export default function EquiposList({
     setUsuariosSeleccionados([]);
     setMostrarEquipos(true);
     setMostrarPantallas(false);
+    setMostrarEquiposConUnaPantalla(false);
+    setMostrarEquiposConDosPantallas(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
@@ -886,6 +896,16 @@ export default function EquiposList({
 
       if (!mostrarGarbiguneNo && equipo.al_garbigune === false) return false;
 
+      if (mostrarEquiposConUnaPantalla || mostrarEquiposConDosPantallas) {
+        const totalPantallas = Array.isArray(equipo.pantallas)
+          ? equipo.pantallas.length
+          : 0;
+        const coincideFiltro =
+          (mostrarEquiposConUnaPantalla && totalPantallas === 1) ||
+          (mostrarEquiposConDosPantallas && totalPantallas === 2);
+        if (!coincideFiltro) return false;
+      }
+
       return true;
     });
 
@@ -988,6 +1008,10 @@ export default function EquiposList({
     mostrarGarbiguneNo,
 
     usuariosSeleccionados,
+
+    mostrarEquiposConUnaPantalla,
+
+    mostrarEquiposConDosPantallas,
 
     iaResultado,
 
@@ -1352,6 +1376,17 @@ export default function EquiposList({
     filtrosActivos.push(`Pulgadas: ${pulgadasTexto}`);
   }
 
+  if (mostrarEquiposConUnaPantalla || mostrarEquiposConDosPantallas) {
+    const partes: string[] = [];
+    if (mostrarEquiposConUnaPantalla) partes.push("1");
+    if (mostrarEquiposConDosPantallas) partes.push("2");
+    const textoPantallas =
+      partes.length === 1
+        ? `${partes[0]} ${partes[0] === "1" ? "pantalla" : "pantallas"}`
+        : `${partes.join(" y ")} pantallas`;
+    filtrosActivos.push(`Pantallas conectadas: ${textoPantallas}`);
+  }
+
   if (usuariosSeleccionados.length > 0) {
     const usuariosSeleccionadosNombres = usuariosDisponibles
       .filter((usuario) => usuariosSeleccionados.includes(usuario.id))
@@ -1556,31 +1591,6 @@ export default function EquiposList({
             </select>
           </label>
 
-          {mostrarPantallas ? (
-            <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-3">
-              <span className="font-semibold uppercase tracking-wide text-foreground/60">
-                Pulgadas pantalla
-              </span>
-
-              <select
-                value={pantallaPulgadasSeleccionadas}
-                onChange={(event) =>
-                  setPantallaPulgadasSeleccionadas(event.target.value)
-                }
-                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
-              >
-                <option value="">Todas</option>
-                {pantallasPulgadasDisponibles.map((opcion) => (
-                  <option key={opcion.value} value={opcion.value}>
-                    {opcion.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <div className="hidden lg:col-start-3 lg:row-start-3 lg:block" aria-hidden="true" />
-          )}
-
           <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-2">
             <span className="font-semibold uppercase tracking-wide text-foreground/60">
               Tipo
@@ -1596,6 +1606,28 @@ export default function EquiposList({
               {tiposDisponibles.map((tipoClave) => (
                 <option key={tipoClave} value={tipoClave}>
                   {tipoLabels[tipoClave] ?? tipoClave}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-3">
+            <span className="font-semibold uppercase tracking-wide text-foreground/60">
+              Pulgadas pantalla
+            </span>
+
+            <select
+              value={pantallaPulgadasSeleccionadas}
+              onChange={(event) =>
+                setPantallaPulgadasSeleccionadas(event.target.value)
+              }
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+            >
+              <option value="">Todas</option>
+
+              {pantallasPulgadasDisponibles.map((opcion) => (
+                <option key={opcion.value} value={opcion.value}>
+                  {opcion.label}
                 </option>
               ))}
             </select>
@@ -1645,7 +1677,39 @@ export default function EquiposList({
             </select>
           </label>
 
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-4 lg:row-start-1 lg:row-span-3">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:col-span-3 lg:row-start-4">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Pantallas conectadas
+            </legend>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarEquiposConUnaPantalla}
+                onChange={(event) =>
+                  setMostrarEquiposConUnaPantalla(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>1 pantalla</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarEquiposConDosPantallas}
+                onChange={(event) =>
+                  setMostrarEquiposConDosPantallas(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>2 pantallas</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-4 lg:row-start-1 lg:row-span-4">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Usuarios
             </legend>
