@@ -357,6 +357,9 @@ export default function EquiposList({
   );
   const [mostrarTarjetaRed10Gbps, setMostrarTarjetaRed10Gbps] =
     useState<boolean>(() => getBoolParam("tarjeta10g", false));
+  const [mostrarSoloServidores, setMostrarSoloServidores] = useState<boolean>(
+    () => getBoolParam("servidores", false),
+  );
   const currentQueryString = searchParams?.toString() ?? "";
   const fromQueryParam = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
@@ -376,12 +379,12 @@ export default function EquiposList({
       setMostrarEquipos(false);
       setMostrarPantallas(false);
     } else if (anterior && !mostrarSwitches) {
-      if (!mostrarEquipos && !mostrarPantallas) {
+      if (!mostrarEquipos && !mostrarPantallas && !mostrarSoloServidores) {
         setMostrarEquipos(true);
       }
     }
     prevMostrarSwitches.current = mostrarSwitches;
-  }, [mostrarSwitches, mostrarEquipos, mostrarPantallas]);
+  }, [mostrarSwitches, mostrarEquipos, mostrarPantallas, mostrarSoloServidores]);
 
   const handleSearchInputChange = (value: string) => {
     setSearchTerm(value);
@@ -417,6 +420,7 @@ export default function EquiposList({
     if (mostrarEquiposConDosPantallas) params.set("pantallas2", "1");
     if (mostrarTarjetaRed1Gbps) params.set("tarjeta1g", "1");
     if (mostrarTarjetaRed10Gbps) params.set("tarjeta10g", "1");
+    if (mostrarSoloServidores) params.set("servidores", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -445,6 +449,7 @@ export default function EquiposList({
     mostrarEquiposConDosPantallas,
     mostrarTarjetaRed1Gbps,
     mostrarTarjetaRed10Gbps,
+    mostrarSoloServidores,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -809,26 +814,15 @@ export default function EquiposList({
     setMostrarEquiposConDosPantallas(false);
     setMostrarTarjetaRed1Gbps(false);
     setMostrarTarjetaRed10Gbps(false);
+    setMostrarSoloServidores(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
   function manejarCambioMostrarEquipos(checked: boolean) {
-    if (!checked && !mostrarPantallas && !mostrarSwitches) {
-      setMostrarPantallas(true);
-      setMostrarEquipos(false);
-      return;
-    }
-
     setMostrarEquipos(checked);
   }
 
   function manejarCambioMostrarPantallas(checked: boolean) {
-    if (!checked && !mostrarEquipos && !mostrarSwitches) {
-      setMostrarEquipos(true);
-      setMostrarPantallas(false);
-      return;
-    }
-
     setMostrarPantallas(checked);
   }
 
@@ -931,6 +925,13 @@ export default function EquiposList({
           equipo.tipo.trim().toLowerCase() !== tipoSeleccionado
         )
           return false;
+      }
+
+      if (
+        mostrarSoloServidores &&
+        (!equipo.tipo || equipo.tipo.trim().toLowerCase() !== "servidor")
+      ) {
+        return false;
       }
 
       if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
@@ -1086,6 +1087,8 @@ export default function EquiposList({
     mostrarTarjetaRed1Gbps,
 
     mostrarTarjetaRed10Gbps,
+
+    mostrarSoloServidores,
 
     iaResultado,
 
@@ -1411,10 +1414,14 @@ export default function EquiposList({
 
   let resumenResultados = equiposResultadosTexto;
 
+  const mostrarListadoEquipos = mostrarEquipos || mostrarSoloServidores;
+
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
   } else if (!mostrarEquipos && mostrarPantallas) {
     resumenResultados = pantallasResultadosTexto;
+  } else if (!mostrarEquipos && mostrarSoloServidores) {
+    resumenResultados = equiposResultadosTexto;
   }
 
   const filtrosActivos: string[] = [];
@@ -1471,6 +1478,10 @@ export default function EquiposList({
     const textoTarjeta =
       partes.length === 1 ? partes[0] : partes.join(" o ");
     filtrosActivos.push(`Tarjeta red: ${textoTarjeta}`);
+  }
+
+  if (mostrarSoloServidores) {
+    filtrosActivos.push("Tipo: solo servidores");
   }
 
   if (usuariosSeleccionados.length > 0) {
@@ -1996,6 +2007,17 @@ export default function EquiposList({
             <span>Pantallas</span>
           </label>
 
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloServidores}
+              onChange={(event) => setMostrarSoloServidores(event.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Servidores</span>
+          </label>
+
           {onToggleSwitches ? (
             <label className="flex items-center gap-2">
               <input
@@ -2012,7 +2034,7 @@ export default function EquiposList({
         </div>
       </div>
 
-      {mostrarEquipos &&
+      {mostrarListadoEquipos &&
         (equipos.length === 0 ? (
           <p className="text-sm text-foreground/60">
             No hay equipos registrados todavia. Anade el primero desde el panel
