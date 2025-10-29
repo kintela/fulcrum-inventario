@@ -1677,7 +1677,7 @@ export default function EquiposList({
             </select>
           </label>
 
-          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:col-span-3 lg:row-start-4">
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-1 lg:row-start-4">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Pantallas conectadas
             </legend>
@@ -1727,7 +1727,7 @@ export default function EquiposList({
                       ),
                     )
                   }
-                  className="min-h-[14rem] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  className="min-h-[22rem] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 >
                   {usuariosDisponibles.map((usuario) => (
                     <option key={usuario.id} value={usuario.id}>
