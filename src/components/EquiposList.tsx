@@ -38,6 +38,53 @@ const tipoLabels: Record<string, string> = {
   servidor: "Servidor",
 };
 
+const TARJETA_RED_TOLERANCIA_GBPS = 0.001;
+
+function obtenerTarjetaRedGbps(valor: unknown): number | null {
+  if (valor === null || valor === undefined) return null;
+
+  if (typeof valor === "number") {
+    if (!Number.isFinite(valor)) return null;
+    if (valor >= 1000) return valor / 1000;
+    return valor;
+  }
+
+  if (typeof valor === "string") {
+    const limpio = valor.trim();
+    if (!limpio) return null;
+
+    const match = limpio.match(/([\d.,]+)/);
+    if (!match) return null;
+    const parsed = Number.parseFloat(match[1].replace(",", "."));
+    if (!Number.isFinite(parsed)) return null;
+
+    const lower = limpio.toLowerCase();
+    if (lower.includes("tbps") || lower.includes("tbit")) {
+      return parsed * 1000;
+    }
+    if (lower.includes("gbps") || lower.includes("gbit") || lower.includes("giga")) {
+      return parsed;
+    }
+    if (lower.includes("mbps") || lower.includes("mbit") || lower.includes("mega")) {
+      return parsed / 1000;
+    }
+    if (lower.includes("kbps") || lower.includes("kbit")) {
+      return parsed / 1_000_000;
+    }
+    if (lower.includes("bps")) {
+      return parsed / 1_000_000_000;
+    }
+    return parsed;
+  }
+
+  return null;
+}
+
+function coincideVelocidadGbps(valor: number | null, objetivo: number): boolean {
+  if (valor === null) return false;
+  return Math.abs(valor - objetivo) < TARJETA_RED_TOLERANCIA_GBPS;
+}
+
 type EquiposListProps = {
   equipos: EquipoRecord[];
 
@@ -305,6 +352,11 @@ export default function EquiposList({
     useState<boolean>(() => getBoolParam("pantallas1", false));
   const [mostrarEquiposConDosPantallas, setMostrarEquiposConDosPantallas] =
     useState<boolean>(() => getBoolParam("pantallas2", false));
+  const [mostrarTarjetaRed1Gbps, setMostrarTarjetaRed1Gbps] = useState<boolean>(
+    () => getBoolParam("tarjeta1g", false),
+  );
+  const [mostrarTarjetaRed10Gbps, setMostrarTarjetaRed10Gbps] =
+    useState<boolean>(() => getBoolParam("tarjeta10g", false));
   const currentQueryString = searchParams?.toString() ?? "";
   const fromQueryParam = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
@@ -363,6 +415,8 @@ export default function EquiposList({
     if (mostrarPantallas) params.set("pantallas", "1");
     if (mostrarEquiposConUnaPantalla) params.set("pantallas1", "1");
     if (mostrarEquiposConDosPantallas) params.set("pantallas2", "1");
+    if (mostrarTarjetaRed1Gbps) params.set("tarjeta1g", "1");
+    if (mostrarTarjetaRed10Gbps) params.set("tarjeta10g", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -389,6 +443,8 @@ export default function EquiposList({
     mostrarPantallas,
     mostrarEquiposConUnaPantalla,
     mostrarEquiposConDosPantallas,
+    mostrarTarjetaRed1Gbps,
+    mostrarTarjetaRed10Gbps,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -751,6 +807,8 @@ export default function EquiposList({
     setMostrarPantallas(false);
     setMostrarEquiposConUnaPantalla(false);
     setMostrarEquiposConDosPantallas(false);
+    setMostrarTarjetaRed1Gbps(false);
+    setMostrarTarjetaRed10Gbps(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
@@ -896,6 +954,18 @@ export default function EquiposList({
 
       if (!mostrarGarbiguneNo && equipo.al_garbigune === false) return false;
 
+      const tarjetaRedGbps = obtenerTarjetaRedGbps(equipo.tarjeta_red);
+      if (mostrarTarjetaRed1Gbps || mostrarTarjetaRed10Gbps) {
+        const coincidencias: boolean[] = [];
+        if (mostrarTarjetaRed1Gbps) {
+          coincidencias.push(coincideVelocidadGbps(tarjetaRedGbps, 1));
+        }
+        if (mostrarTarjetaRed10Gbps) {
+          coincidencias.push(coincideVelocidadGbps(tarjetaRedGbps, 10));
+        }
+        if (!coincidencias.some(Boolean)) return false;
+      }
+
       if (mostrarEquiposConUnaPantalla || mostrarEquiposConDosPantallas) {
         const totalPantallas = Array.isArray(equipo.pantallas)
           ? equipo.pantallas.length
@@ -1012,6 +1082,10 @@ export default function EquiposList({
     mostrarEquiposConUnaPantalla,
 
     mostrarEquiposConDosPantallas,
+
+    mostrarTarjetaRed1Gbps,
+
+    mostrarTarjetaRed10Gbps,
 
     iaResultado,
 
@@ -1390,6 +1464,15 @@ export default function EquiposList({
     filtrosActivos.push(`Pantallas conectadas: ${textoPantallas}`);
   }
 
+  if (mostrarTarjetaRed1Gbps || mostrarTarjetaRed10Gbps) {
+    const partes: string[] = [];
+    if (mostrarTarjetaRed1Gbps) partes.push("1 Gbps");
+    if (mostrarTarjetaRed10Gbps) partes.push("10 Gbps");
+    const textoTarjeta =
+      partes.length === 1 ? partes[0] : partes.join(" o ");
+    filtrosActivos.push(`Tarjeta red: ${textoTarjeta}`);
+  }
+
   if (usuariosSeleccionados.length > 0) {
     const usuariosSeleccionadosNombres = usuariosDisponibles
       .filter((usuario) => usuariosSeleccionados.includes(usuario.id))
@@ -1712,6 +1795,38 @@ export default function EquiposList({
             </label>
           </fieldset>
 
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-2 lg:row-start-4">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Tarjeta de red
+            </legend>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarTarjetaRed1Gbps}
+                onChange={(event) =>
+                  setMostrarTarjetaRed1Gbps(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>1 Gbps</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarTarjetaRed10Gbps}
+                onChange={(event) =>
+                  setMostrarTarjetaRed10Gbps(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>10 Gbps</span>
+            </label>
+          </fieldset>
+
           <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-4 lg:row-start-1 lg:row-span-4">
             <legend className="font-semibold uppercase tracking-wide text-foreground/60">
               Usuarios
@@ -1972,6 +2087,9 @@ export default function EquiposList({
               equipo.toma_red.trim().length > 0
                 ? equipo.toma_red.trim()
                 : null;
+            const tarjetaRedGbpsValor = obtenerTarjetaRedGbps(
+              equipo.tarjeta_red,
+            );
             let tarjetaRedVelocidad: string | null = null;
             if (typeof equipo.tarjeta_red === "string") {
               const limpio = equipo.tarjeta_red.trim();
@@ -1987,6 +2105,15 @@ export default function EquiposList({
                   : valor >= 1
                     ? `${valor} Gbps`
                     : String(valor);
+            }
+            if (!tarjetaRedVelocidad && tarjetaRedGbpsValor !== null) {
+              const aproximado = Math.round(tarjetaRedGbpsValor);
+              const esEntero =
+                Math.abs(aproximado - tarjetaRedGbpsValor) <
+                TARJETA_RED_TOLERANCIA_GBPS;
+              tarjetaRedVelocidad = esEntero
+                ? `${aproximado} Gbps`
+                : `${tarjetaRedGbpsValor.toFixed(2)} Gbps`;
             }
 
             const puertosConectados = Array.isArray(equipo.puertos_conectados)
@@ -2015,7 +2142,10 @@ export default function EquiposList({
             });
 
             const tieneDatosRed =
-              Boolean(ipEquipo) || Boolean(tomaRed) || detallesPuertos.length > 0;
+              Boolean(ipEquipo) ||
+              Boolean(tomaRed) ||
+              Boolean(tarjetaRedVelocidad) ||
+              detallesPuertos.length > 0;
 
             const admiteUpdateTexto =
               equipo.admite_update === null ||
