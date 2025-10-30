@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   const adminPasswordRaw = process.env.ADMIN_LOCAL_PASSWORD;
-  console.log("ADMIN_LOCAL_PASSWORD (process env):", adminPasswordRaw);
   if (!adminPasswordRaw) {
     console.warn(
       "ADMIN_LOCAL_PASSWORD no está configurada en el servidor; denegando acceso.",
@@ -18,7 +17,9 @@ export async function POST(request: Request) {
 
   let password: string | null = null;
   try {
-    const payload = (await request.json()) as { password?: unknown } | null;
+    const payload = (await request.json().catch(() => null)) as
+      | { password?: unknown }
+      | null;
     if (payload && typeof payload.password === "string") {
       password = payload.password;
     }
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
     // ignore parse errors
   }
 
-  const provided = password.trim();
+  const provided =
+    typeof password === "string" && password.length > 0 ? password.trim() : "";
   if (!provided) {
     return NextResponse.json(
       { ok: false, error: "Contraseña requerida" },

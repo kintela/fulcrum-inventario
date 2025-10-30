@@ -651,7 +651,8 @@ export async function upsertSwitchPorts(
   const requestUrl = new URL(`${config.url}/rest/v1/puertos`);
   requestUrl.searchParams.set("on_conflict", "switch_id,numero");
 
-  const payload = ports.map(({ id, ...rest }) => rest);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const payload = ports.map(({ id: _id, ...rest }) => rest);
 
   const response = await fetch(requestUrl.toString(), {
     method: "POST",
