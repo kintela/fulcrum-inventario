@@ -344,7 +344,9 @@ export default function DashboardContent({
 
       <section aria-label="Totales por tipo">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
-          {tipoClaves.map((clave) => (
+          {tipoClaves
+            .filter((clave) => !(clave === "tablet" && indicadores[clave].cantidad <= 1))
+            .map((clave) => (
             <article
               key={clave}
               className="relative rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
