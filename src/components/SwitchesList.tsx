@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { FormEvent, MouseEvent } from "react";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
+import { verifyAdminPassword } from "@/lib/verifyAdminPassword";
 import type { SwitchRecord } from "@/lib/supabase";
 
 export type SwitchesYearFilter = number | "total" | null;
@@ -26,7 +28,70 @@ export default function SwitchesList({
   filtro,
 }: SwitchesListProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const fromQueryParam = searchParams?.toString();
+  const [editDialog, setEditDialog] = useState<{
+    href: string;
+    context: string;
+  } | null>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isVerifyingEdit, setIsVerifyingEdit] = useState(false);
+
+  const abrirProteccionEdicion = useCallback(
+    (
+      event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+      href: string,
+      context: string,
+    ) => {
+      event.preventDefault();
+      setEditDialog({ href, context });
+      setEditPassword("");
+      setShowEditPassword(false);
+      setEditError(null);
+      setIsVerifyingEdit(false);
+    },
+    [],
+  );
+
+  const cerrarProteccionEdicion = useCallback(() => {
+    setEditDialog(null);
+    setEditPassword("");
+    setShowEditPassword(false);
+    setEditError(null);
+    setIsVerifyingEdit(false);
+  }, []);
+
+  const manejarSubmitEdicion = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!editDialog) return;
+      const trimmed = editPassword.trim();
+      if (!trimmed) {
+        setEditError("Introduce la contrasena.");
+        return;
+      }
+      setIsVerifyingEdit(true);
+      setEditError(null);
+      try {
+        await verifyAdminPassword(trimmed);
+        const destino = editDialog.href;
+        cerrarProteccionEdicion();
+        router.push(destino);
+      } catch (error) {
+        console.error(error);
+        setEditError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo verificar la contrasena.",
+        );
+      } finally {
+        setIsVerifyingEdit(false);
+      }
+    },
+    [cerrarProteccionEdicion, editDialog, editPassword, router],
+  );
 
   const ordenados = useMemo(() => {
     return [...switches].sort((a, b) => {
@@ -135,6 +200,7 @@ export default function SwitchesList({
               fromQueryParam && fromQueryParam.length > 0
                 ? `/switches/${item.id}/editar?from=${encodeURIComponent(fromQueryParam)}`
                 : `/switches/${item.id}/editar`;
+            const contextoEdicion = nombre;
 
             return (
               <article
@@ -143,6 +209,9 @@ export default function SwitchesList({
               >
                 <Link
                   href={editHref}
+                  onClick={(event) =>
+                    abrirProteccionEdicion(event, editHref, contextoEdicion)
+                  }
                   aria-label={`Editar ${nombre}`}
                   className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
                 >
@@ -247,6 +316,70 @@ export default function SwitchesList({
           })}
         </div>
       )}
+
+      {editDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-foreground">
+                Confirmar contrasena
+              </h2>
+              <p className="text-xs text-foreground/60">
+                Introduce la contrasena para editar {editDialog.context}.
+              </p>
+            </div>
+
+            <form
+              className="space-y-4"
+              onSubmit={manejarSubmitEdicion}
+              autoComplete="off"
+            >
+              <label className="flex flex-col gap-1 text-xs text-foreground/70">
+                Contrasena
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showEditPassword ? "text" : "password"}
+                    value={editPassword}
+                    onChange={(event) => setEditPassword(event.target.value)}
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    placeholder="Introduce la contrasena"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((prev) => !prev)}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    {showEditPassword ? "Ocultar" : "Ver"}
+                  </button>
+                </div>
+              </label>
+
+              {editError ? (
+                <p className="text-xs text-red-500">{editError}</p>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarProteccionEdicion}
+                  className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={isVerifyingEdit}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingEdit}
+                  className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isVerifyingEdit ? "Verificando..." : "Editar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

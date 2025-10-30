@@ -265,9 +265,9 @@ export default function SwitchEditForm({
         </label>
       </div>
 
-      <div className="flex justify-end">
-        <SubmitButton label={submitText} />
-      </div>
-    </form>
+        <div className="flex justify-end">
+          <SubmitButton label={submitText} />
+        </div>
+      </form>
   );
 }

@@ -259,9 +259,9 @@ export default function PantallaEditForm({
         </label>
       </section>
 
-      <div className="flex justify-end">
-        <SubmitButton label={submitText} />
-      </div>
-    </form>
+        <div className="flex justify-end">
+          <SubmitButton label={submitText} />
+        </div>
+      </form>
   );
 }

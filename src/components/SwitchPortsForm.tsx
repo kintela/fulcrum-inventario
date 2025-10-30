@@ -287,9 +287,9 @@ export default function SwitchPortsForm({
         </table>
       </div>
 
-      <div className="flex justify-end">
-        <SubmitButton label="Guardar puertos" />
-      </div>
-    </form>
+        <div className="flex justify-end">
+          <SubmitButton label="Guardar puertos" />
+        </div>
+      </form>
   );
 }

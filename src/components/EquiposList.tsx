@@ -11,10 +11,12 @@ import {
   useRef,
   useState,
 } from "react";
+import type { FormEvent, MouseEvent } from "react";
 
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { formatearFecha, formatearImporte } from "@/lib/format";
+import { verifyAdminPassword } from "@/lib/verifyAdminPassword";
 
 import type {
   EquipoRecord,
@@ -384,6 +386,17 @@ export default function EquiposList({
     ? `from=${encodeURIComponent(currentQueryString)}`
     : "";
   const router = useRouter();
+  const [editPasswordDialog, setEditPasswordDialog] = useState<{
+    href: string;
+    context: string;
+  } | null>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [editShowPassword, setEditShowPassword] = useState(false);
+  const [editPasswordError, setEditPasswordError] = useState<string | null>(
+    null,
+  );
+  const [isVerifyingEditPassword, setIsVerifyingEditPassword] =
+    useState(false);
 
   useEffect(() => {
     if (!forzarMostrarPantallas) return;
@@ -424,6 +437,65 @@ export default function EquiposList({
     setErrorIa(null);
   };
 
+  const abrirProteccionEdicion = useCallback(
+    (
+      event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+      href: string,
+      context: string,
+    ) => {
+      event.preventDefault();
+      setEditPasswordDialog({ href, context });
+      setEditPassword("");
+      setEditShowPassword(false);
+      setEditPasswordError(null);
+      setIsVerifyingEditPassword(false);
+    },
+    [],
+  );
+
+  const cerrarDialogoEdicionProtegida = useCallback(() => {
+    setEditPasswordDialog(null);
+    setEditPassword("");
+    setEditShowPassword(false);
+    setEditPasswordError(null);
+    setIsVerifyingEditPassword(false);
+  }, []);
+
+  const manejarSubmitEdicionProtegida = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!editPasswordDialog) return;
+      const trimmed = editPassword.trim();
+      if (!trimmed) {
+        setEditPasswordError("Introduce la contraseña.");
+        return;
+      }
+      setIsVerifyingEditPassword(true);
+      setEditPasswordError(null);
+      try {
+        await verifyAdminPassword(trimmed);
+        const destino = editPasswordDialog.href;
+        cerrarDialogoEdicionProtegida();
+        router.push(destino);
+      } catch (error) {
+        console.error(error);
+        setEditPasswordError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo verificar la contraseña.",
+        );
+      } finally {
+        setIsVerifyingEditPassword(false);
+      }
+    },
+    [
+      cerrarDialogoEdicionProtegida,
+      editPassword,
+      editPasswordDialog,
+      router,
+    ],
+  );
+
   const abrirDialogoAdminLocal = useCallback(
     (equipoId: string, adminLocal: string | null) => {
       if (!adminLocal || adminLocal.trim().length === 0) {
@@ -461,32 +533,22 @@ export default function EquiposList({
       }
 
       setAdminLocalError(null);
+      setAdminLocalInfo(null);
       setAdminLocalVerificandoId(adminLocalDialog.equipoId);
       try {
-        const response = await fetch("/api/admin-local/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: trimmed }),
-        });
-        if (!response.ok) {
-          setAdminLocalError("Contraseña incorrecta.");
-          return;
-        }
-        const data = (await response.json().catch(() => null)) as
-          | { ok?: boolean }
-          | null;
-        if (data?.ok) {
-          setAdminLocalResultado(adminLocalDialog.adminLocal);
-          setAdminLocalPassword("");
-          setAdminLocalInfo(
-            "Contraseña verificada. Puedes copiar el valor si lo necesitas.",
-          );
-        } else {
-          setAdminLocalError("No se pudo verificar la contraseña.");
-        }
+        await verifyAdminPassword(trimmed);
+        setAdminLocalResultado(adminLocalDialog.adminLocal);
+        setAdminLocalPassword("");
+        setAdminLocalInfo(
+          "Contraseña verificada. Puedes copiar el valor si lo necesitas.",
+        );
       } catch (error) {
         console.error(error);
-        setAdminLocalError("Se produjo un error al verificar la contraseña.");
+        setAdminLocalError(
+          error instanceof Error
+            ? error.message
+            : "Se produjo un error al verificar la contraseña.",
+        );
       } finally {
         setAdminLocalVerificandoId(null);
       }
@@ -2359,6 +2421,10 @@ export default function EquiposList({
                   )
               : [];
             const estaEliminandoEquipo = equipoEliminandoId === equipo.id;
+            const enlaceEdicion =
+              fromQueryParam
+                ? `/equipos/${equipo.id}/editar?${fromQueryParam}`
+                : `/equipos/${equipo.id}/editar`;
 
             return (
               <li
@@ -2366,10 +2432,9 @@ export default function EquiposList({
                 className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
               >
                 <Link
-                  href={
-                    fromQueryParam
-                      ? `/equipos/${equipo.id}/editar?${fromQueryParam}`
-                      : `/equipos/${equipo.id}/editar`
+                  href={enlaceEdicion}
+                  onClick={(event) =>
+                    abrirProteccionEdicion(event, enlaceEdicion, nombreEquipo)
                   }
                   aria-label={`Editar ${nombreEquipo}`}
                   className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
@@ -2681,6 +2746,12 @@ export default function EquiposList({
                             : "?";
 
                         const idPantalla = pantalla?.id;
+                        const enlacePantallaEdicion =
+                          typeof idPantalla === "number"
+                            ? fromQueryParam
+                              ? `/pantallas/${idPantalla}/editar?${fromQueryParam}`
+                              : `/pantallas/${idPantalla}/editar`
+                            : null;
                         const miniaturaUrl =
                           pantalla?.thumbnailUrl ?? null;
                         const estaDesvinculando =
@@ -2696,20 +2767,26 @@ export default function EquiposList({
                           <div
                             key={
                               idPantalla ?? `${equipo.id}-pantalla-${index}`
+                            }
+                            className="relative flex w-24 flex-col items-center gap-1 text-center text-foreground/70"
+                          >
+                            {typeof idPantalla === "number" &&
+                            enlacePantallaEdicion ? (
+                              <Link
+                                href={enlacePantallaEdicion}
+                                onClick={(event) =>
+                                  abrirProteccionEdicion(
+                                    event,
+                                    enlacePantallaEdicion,
+                                    descripcion.trim().length > 0
+                                      ? `pantalla ${descripcion}`
+                                      : "esta pantalla",
+                                  )
                                 }
-                                className="relative flex w-24 flex-col items-center gap-1 text-center text-foreground/70"
+                                aria-label={`Editar pantalla ${descripcion}`}
+                                title="Editar pantalla"
+                                className="absolute -left-2 -top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
                               >
-                                {typeof idPantalla === "number" ? (
-                                  <Link
-                                    href={
-                                      fromQueryParam
-                                        ? `/pantallas/${idPantalla}/editar?${fromQueryParam}`
-                                        : `/pantallas/${idPantalla}/editar`
-                                    }
-                                    aria-label={`Editar pantalla ${descripcion}`}
-                                    title="Editar pantalla"
-                                    className="absolute -left-2 -top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
-                                  >
                                 <svg
                                   viewBox="0 0 20 20"
                                   fill="none"
@@ -2947,6 +3024,14 @@ export default function EquiposList({
                 const estaEliminandoPantalla =
                   pantallaEliminandoId === pantalla.id;
                 const miniaturaUrl = pantalla.thumbnailUrl ?? null;
+                const enlacePantallaEdicion =
+                  fromQueryParam
+                    ? `/pantallas/${pantalla.id}/editar?${fromQueryParam}`
+                    : `/pantallas/${pantalla.id}/editar`;
+                const contextoPantalla =
+                  modelo && modelo.length > 0
+                    ? `pantalla ${modelo}`
+                    : "esta pantalla";
 
                 return (
                   <li
@@ -2954,10 +3039,13 @@ export default function EquiposList({
                     className="relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 pb-14 text-card-foreground shadow-sm"
                   >
                     <Link
-                      href={
-                        fromQueryParam
-                          ? `/pantallas/${pantalla.id}/editar?${fromQueryParam}`
-                          : `/pantallas/${pantalla.id}/editar`
+                      href={enlacePantallaEdicion}
+                      onClick={(event) =>
+                        abrirProteccionEdicion(
+                          event,
+                          enlacePantallaEdicion,
+                          contextoPantalla,
+                        )
                       }
                       aria-label={`Editar pantalla ${modelo}`}
                       className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
@@ -3098,6 +3186,69 @@ export default function EquiposList({
               })}
             </ul>
           )}
+        </div>
+      ) : null}
+
+      {editPasswordDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-foreground">
+                Confirmar contrasena
+              </h2>
+              <p className="text-xs text-foreground/60">
+                Introduce la contrasena para editar {editPasswordDialog.context}.
+              </p>
+            </div>
+            <form
+              className="space-y-4"
+              onSubmit={manejarSubmitEdicionProtegida}
+              autoComplete="off"
+            >
+              <label className="flex flex-col gap-1 text-xs text-foreground/70">
+                Contrasena
+                <div className="flex items-center gap-2">
+                  <input
+                    type={editShowPassword ? "text" : "password"}
+                    value={editPassword}
+                    onChange={(event) => setEditPassword(event.target.value)}
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    placeholder="Introduce la contrasena"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditShowPassword((prev) => !prev)}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    {editShowPassword ? "Ocultar" : "Ver"}
+                  </button>
+                </div>
+              </label>
+
+              {editPasswordError ? (
+                <p className="text-xs text-red-500">{editPasswordError}</p>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarDialogoEdicionProtegida}
+                  className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={isVerifyingEditPassword}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingEditPassword}
+                  className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isVerifyingEditPassword ? "Verificando..." : "Editar"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : null}
 
