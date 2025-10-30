@@ -360,6 +360,9 @@ export default function EquiposList({
   const [mostrarSoloServidores, setMostrarSoloServidores] = useState<boolean>(
     () => getBoolParam("servidores", false),
   );
+  const [mostrarSoloTablets, setMostrarSoloTablets] = useState<boolean>(
+    () => getBoolParam("tablets", false),
+  );
   const currentQueryString = searchParams?.toString() ?? "";
   const fromQueryParam = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
@@ -379,12 +382,23 @@ export default function EquiposList({
       setMostrarEquipos(false);
       setMostrarPantallas(false);
     } else if (anterior && !mostrarSwitches) {
-      if (!mostrarEquipos && !mostrarPantallas && !mostrarSoloServidores) {
+      if (
+        !mostrarEquipos &&
+        !mostrarPantallas &&
+        !mostrarSoloServidores &&
+        !mostrarSoloTablets
+      ) {
         setMostrarEquipos(true);
       }
     }
     prevMostrarSwitches.current = mostrarSwitches;
-  }, [mostrarSwitches, mostrarEquipos, mostrarPantallas, mostrarSoloServidores]);
+  }, [
+    mostrarSwitches,
+    mostrarEquipos,
+    mostrarPantallas,
+    mostrarSoloServidores,
+    mostrarSoloTablets,
+  ]);
 
   const handleSearchInputChange = (value: string) => {
     setSearchTerm(value);
@@ -421,6 +435,7 @@ export default function EquiposList({
     if (mostrarTarjetaRed1Gbps) params.set("tarjeta1g", "1");
     if (mostrarTarjetaRed10Gbps) params.set("tarjeta10g", "1");
     if (mostrarSoloServidores) params.set("servidores", "1");
+    if (mostrarSoloTablets) params.set("tablets", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -450,6 +465,7 @@ export default function EquiposList({
     mostrarTarjetaRed1Gbps,
     mostrarTarjetaRed10Gbps,
     mostrarSoloServidores,
+    mostrarSoloTablets,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -815,6 +831,7 @@ export default function EquiposList({
     setMostrarTarjetaRed1Gbps(false);
     setMostrarTarjetaRed10Gbps(false);
     setMostrarSoloServidores(false);
+    setMostrarSoloTablets(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
@@ -851,6 +868,10 @@ export default function EquiposList({
     }
 
     dataset = dataset.filter((equipo) => {
+      const tipoEquipo =
+        typeof equipo.tipo === "string"
+          ? equipo.tipo.trim().toLowerCase()
+          : null;
       const usuarioId =
         equipo.usuario_id !== null && equipo.usuario_id !== undefined
           ? String(equipo.usuario_id)
@@ -920,18 +941,14 @@ export default function EquiposList({
       }
 
       if (tipoSeleccionado) {
-        if (
-          !equipo.tipo ||
-          equipo.tipo.trim().toLowerCase() !== tipoSeleccionado
-        )
-          return false;
+        if (!tipoEquipo || tipoEquipo !== tipoSeleccionado) return false;
       }
 
-      if (
-        mostrarSoloServidores &&
-        (!equipo.tipo || equipo.tipo.trim().toLowerCase() !== "servidor")
-      ) {
-        return false;
+      const tiposRequeridos: string[] = [];
+      if (mostrarSoloServidores) tiposRequeridos.push("servidor");
+      if (mostrarSoloTablets) tiposRequeridos.push("tablet");
+      if (tiposRequeridos.length > 0) {
+        if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
       }
 
       if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
@@ -1089,6 +1106,8 @@ export default function EquiposList({
     mostrarTarjetaRed10Gbps,
 
     mostrarSoloServidores,
+
+    mostrarSoloTablets,
 
     iaResultado,
 
@@ -1414,13 +1433,17 @@ export default function EquiposList({
 
   let resumenResultados = equiposResultadosTexto;
 
-  const mostrarListadoEquipos = mostrarEquipos || mostrarSoloServidores;
+  const mostrarListadoEquipos =
+    mostrarEquipos || mostrarSoloServidores || mostrarSoloTablets;
 
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
   } else if (!mostrarEquipos && mostrarPantallas) {
     resumenResultados = pantallasResultadosTexto;
-  } else if (!mostrarEquipos && mostrarSoloServidores) {
+  } else if (
+    !mostrarEquipos &&
+    (mostrarSoloServidores || mostrarSoloTablets)
+  ) {
     resumenResultados = equiposResultadosTexto;
   }
 
@@ -1480,8 +1503,15 @@ export default function EquiposList({
     filtrosActivos.push(`Tarjeta red: ${textoTarjeta}`);
   }
 
-  if (mostrarSoloServidores) {
-    filtrosActivos.push("Tipo: solo servidores");
+  if (mostrarSoloServidores || mostrarSoloTablets) {
+    const partes: string[] = [];
+    if (mostrarSoloServidores) partes.push("Servidores");
+    if (mostrarSoloTablets) partes.push("Tablets");
+    const textoTipo =
+      partes.length === 1
+        ? partes[0]
+        : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+    filtrosActivos.push(`Tipo: solo ${textoTipo}`);
   }
 
   if (usuariosSeleccionados.length > 0) {
@@ -2005,6 +2035,17 @@ export default function EquiposList({
             />
 
             <span>Pantallas</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloTablets}
+              onChange={(event) => setMostrarSoloTablets(event.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Tablets</span>
           </label>
 
           <label className="flex items-center gap-2">
