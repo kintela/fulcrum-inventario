@@ -361,6 +361,10 @@ export default function EquiposList({
   );
   const [mostrarTarjetaRed10Gbps, setMostrarTarjetaRed10Gbps] =
     useState<boolean>(() => getBoolParam("tarjeta10g", false));
+  const [mostrarAdminLocalConValor, setMostrarAdminLocalConValor] =
+    useState<boolean>(() => getBoolParam("adminLocalCon", true));
+  const [mostrarAdminLocalSinValor, setMostrarAdminLocalSinValor] =
+    useState<boolean>(() => getBoolParam("adminLocalSin", true));
   const [mostrarSoloServidores, setMostrarSoloServidores] = useState<boolean>(
     () => getBoolParam("servidores", false),
   );
@@ -593,6 +597,8 @@ export default function EquiposList({
     if (mostrarEquiposConDosPantallas) params.set("pantallas2", "1");
     if (mostrarTarjetaRed1Gbps) params.set("tarjeta1g", "1");
     if (mostrarTarjetaRed10Gbps) params.set("tarjeta10g", "1");
+    if (!mostrarAdminLocalConValor) params.set("adminLocalCon", "0");
+    if (!mostrarAdminLocalSinValor) params.set("adminLocalSin", "0");
     if (mostrarSoloServidores) params.set("servidores", "1");
     if (mostrarSoloTablets) params.set("tablets", "1");
     if (pantallaPulgadasSeleccionadas)
@@ -623,6 +629,8 @@ export default function EquiposList({
     mostrarEquiposConDosPantallas,
     mostrarTarjetaRed1Gbps,
     mostrarTarjetaRed10Gbps,
+    mostrarAdminLocalConValor,
+    mostrarAdminLocalSinValor,
     mostrarSoloServidores,
     mostrarSoloTablets,
     pantallaPulgadasSeleccionadas,
@@ -989,6 +997,8 @@ export default function EquiposList({
     setMostrarEquiposConDosPantallas(false);
     setMostrarTarjetaRed1Gbps(false);
     setMostrarTarjetaRed10Gbps(false);
+    setMostrarAdminLocalConValor(true);
+    setMostrarAdminLocalSinValor(true);
     setMostrarSoloServidores(false);
     setMostrarSoloTablets(false);
     setPantallaPulgadasSeleccionadas("");
@@ -1035,6 +1045,9 @@ export default function EquiposList({
         typeof equipo.tipo === "string"
           ? equipo.tipo.trim().toLowerCase()
           : null;
+      const tieneAdminLocal =
+        typeof equipo.admin_local === "string" &&
+        equipo.admin_local.trim().length > 0;
       const usuarioId =
         equipo.usuario_id !== null && equipo.usuario_id !== undefined
           ? String(equipo.usuario_id)
@@ -1145,6 +1158,20 @@ export default function EquiposList({
           coincidencias.push(coincideVelocidadGbps(tarjetaRedGbps, 10));
         }
         if (!coincidencias.some(Boolean)) return false;
+      }
+
+      const filtroAdminLocalActivo =
+        !mostrarAdminLocalConValor || !mostrarAdminLocalSinValor;
+      if (filtroAdminLocalActivo) {
+        if (!mostrarAdminLocalConValor && !mostrarAdminLocalSinValor) {
+          return false;
+        }
+        if (mostrarAdminLocalConValor && !tieneAdminLocal) {
+          return false;
+        }
+        if (mostrarAdminLocalSinValor && tieneAdminLocal) {
+          return false;
+        }
       }
 
       if (mostrarEquiposConUnaPantalla || mostrarEquiposConDosPantallas) {
@@ -1267,6 +1294,8 @@ export default function EquiposList({
     mostrarTarjetaRed1Gbps,
 
     mostrarTarjetaRed10Gbps,
+    mostrarAdminLocalConValor,
+    mostrarAdminLocalSinValor,
 
     mostrarSoloServidores,
 
@@ -1666,6 +1695,16 @@ export default function EquiposList({
     filtrosActivos.push(`Tarjeta red: ${textoTarjeta}`);
   }
 
+  if (!mostrarAdminLocalConValor || !mostrarAdminLocalSinValor) {
+    if (mostrarAdminLocalConValor && !mostrarAdminLocalSinValor) {
+      filtrosActivos.push("Admin local: con valor");
+    } else if (!mostrarAdminLocalConValor && mostrarAdminLocalSinValor) {
+      filtrosActivos.push("Admin local: sin valor");
+    } else if (!mostrarAdminLocalConValor && !mostrarAdminLocalSinValor) {
+      filtrosActivos.push("Admin local: ninguno");
+    }
+  }
+
   if (mostrarSoloServidores || mostrarSoloTablets) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
@@ -2028,6 +2067,38 @@ export default function EquiposList({
               />
 
               <span>10 Gbps</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-card/40 px-3 py-3 text-xs text-foreground/80 lg:col-start-3 lg:row-start-4">
+            <legend className="font-semibold uppercase tracking-wide text-foreground/60">
+              Admin local
+            </legend>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarAdminLocalConValor}
+                onChange={(event) =>
+                  setMostrarAdminLocalConValor(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>Con valor</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={mostrarAdminLocalSinValor}
+                onChange={(event) =>
+                  setMostrarAdminLocalSinValor(event.target.checked)
+                }
+                className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+              />
+
+              <span>Sin valor</span>
             </label>
           </fieldset>
 
