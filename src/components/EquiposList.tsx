@@ -3115,7 +3115,7 @@ export default function EquiposList({
                 type="button"
                 onClick={cerrarDialogoAdminLocal}
                 title="Cerrar"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
               >
                 <span className="text-lg leading-none">&times;</span>
               </button>
