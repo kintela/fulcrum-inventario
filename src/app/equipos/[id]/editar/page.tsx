@@ -288,6 +288,7 @@ export default async function EditarEquipoPage({
       ip: getStringOrNull("ip"),
       tarjeta_red: getStringOrNull("tarjeta_red"),
       toma_red: getStringOrNull("toma_red"),
+      admin_local: getStringOrNull("admin_local"),
       admite_update: admiteUpdate,
       al_garbigune: alGarbigune,
       procesador: getStringOrNull("procesador"),

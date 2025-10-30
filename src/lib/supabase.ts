@@ -142,6 +142,7 @@ export type EquipoRecord = {
   ip: string | null;
   toma_red: string | null;
   tarjeta_red: string | number | null;
+  admin_local: string | null;
   admite_update: boolean | null;
   al_garbigune: boolean | null;
   fabricante: { nombre: string | null } | null;
@@ -455,6 +456,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "hdd",
       "tarjeta_grafica",
       "observaciones",
+      "admin_local",
       "fecha_bios",
       "url",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
@@ -802,6 +804,7 @@ export async function fetchEquipoById(
       "observaciones",
       "url",
       "fecha_bios",
+      "admin_local",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
         "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia)",
       "fabricante:fabricantes(nombre)",
@@ -917,6 +920,7 @@ export type EquipoUpdatePayload = {
   ip?: string | null;
   toma_red?: string | null;
   tarjeta_red?: string | number | null;
+  admin_local?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;
@@ -982,6 +986,7 @@ export type EquipoInsertPayload = {
   ip?: string | null;
   toma_red?: string | null;
   tarjeta_red?: string | number | null;
+  admin_local?: string | null;
   admite_update?: boolean | null;
   al_garbigune?: boolean | null;
   procesador?: string | null;

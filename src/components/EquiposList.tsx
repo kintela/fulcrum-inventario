@@ -363,6 +363,20 @@ export default function EquiposList({
   const [mostrarSoloTablets, setMostrarSoloTablets] = useState<boolean>(
     () => getBoolParam("tablets", false),
   );
+  const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
+    useState<string | null>(null);
+  const [adminLocalDialog, setAdminLocalDialog] = useState<{
+    equipoId: string;
+    adminLocal: string;
+  } | null>(null);
+  const [adminLocalPassword, setAdminLocalPassword] = useState<string>("");
+  const [adminLocalShowPassword, setAdminLocalShowPassword] =
+    useState<boolean>(false);
+  const [adminLocalError, setAdminLocalError] = useState<string | null>(null);
+  const [adminLocalResultado, setAdminLocalResultado] = useState<string | null>(
+    null,
+  );
+  const [adminLocalInfo, setAdminLocalInfo] = useState<string | null>(null);
   const currentQueryString = searchParams?.toString() ?? "";
   const fromQueryParam = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
@@ -407,6 +421,87 @@ export default function EquiposList({
     setRespuestaIa(null);
     setErrorIa(null);
   };
+
+  const abrirDialogoAdminLocal = useCallback(
+    (equipoId: string, adminLocal: string | null) => {
+      if (!adminLocal || adminLocal.trim().length === 0) {
+        window.alert("Este equipo no tiene un admin local registrado.");
+        return;
+      }
+      setAdminLocalDialog({ equipoId, adminLocal: adminLocal.trim() });
+      setAdminLocalPassword("");
+      setAdminLocalShowPassword(false);
+      setAdminLocalError(null);
+      setAdminLocalResultado(null);
+      setAdminLocalInfo(null);
+    },
+    [],
+  );
+
+  const cerrarDialogoAdminLocal = useCallback(() => {
+    setAdminLocalDialog(null);
+    setAdminLocalPassword("");
+    setAdminLocalShowPassword(false);
+    setAdminLocalError(null);
+    setAdminLocalResultado(null);
+    setAdminLocalInfo(null);
+    setAdminLocalVerificandoId(null);
+  }, []);
+
+  const manejarSubmitAdminLocal = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!adminLocalDialog) return;
+      const trimmed = adminLocalPassword.trim();
+      if (!trimmed) {
+        setAdminLocalError("Introduce la contraseña.");
+        return;
+      }
+
+      setAdminLocalError(null);
+      setAdminLocalVerificandoId(adminLocalDialog.equipoId);
+      try {
+        const response = await fetch("/api/admin-local/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: trimmed }),
+        });
+        if (!response.ok) {
+          setAdminLocalError("Contraseña incorrecta.");
+          return;
+        }
+        const data = (await response.json().catch(() => null)) as
+          | { ok?: boolean }
+          | null;
+        if (data?.ok) {
+          setAdminLocalResultado(adminLocalDialog.adminLocal);
+          setAdminLocalPassword("");
+          setAdminLocalInfo(
+            "Contraseña verificada. Puedes copiar el valor si lo necesitas.",
+          );
+        } else {
+          setAdminLocalError("No se pudo verificar la contraseña.");
+        }
+      } catch (error) {
+        console.error(error);
+        setAdminLocalError("Se produjo un error al verificar la contraseña.");
+      } finally {
+        setAdminLocalVerificandoId(null);
+      }
+    },
+    [adminLocalDialog, adminLocalPassword],
+  );
+
+  const manejarCopiarAdminLocal = useCallback(async () => {
+    if (!adminLocalResultado) return;
+    try {
+      await navigator.clipboard.writeText(adminLocalResultado);
+      setAdminLocalInfo("Admin local copiado al portapapeles.");
+    } catch (error) {
+      console.error(error);
+      setAdminLocalError("No se pudo copiar al portapapeles.");
+    }
+  }, [adminLocalResultado]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -842,6 +937,10 @@ export default function EquiposList({
   function manejarCambioMostrarPantallas(checked: boolean) {
     setMostrarPantallas(checked);
   }
+
+  const estaVerificandoAdminLocal =
+    adminLocalDialog !== null &&
+    adminLocalVerificandoId === adminLocalDialog.equipoId;
 
   const baseFiltrados = useMemo(() => {
     let dataset = equipos;
@@ -2179,6 +2278,12 @@ export default function EquiposList({
                 : `${tarjetaRedGbpsValor.toFixed(2)} Gbps`;
             }
 
+            const adminLocalValor =
+              typeof equipo.admin_local === "string" &&
+              equipo.admin_local.trim().length > 0
+                ? equipo.admin_local.trim()
+                : null;
+
             const puertosConectados = Array.isArray(equipo.puertos_conectados)
               ? equipo.puertos_conectados.filter(
                   (puerto): puerto is SwitchPortRecord =>
@@ -2345,6 +2450,47 @@ export default function EquiposList({
                   <p className="text-sm text-foreground/70">
                     Admite update: {admiteUpdateTexto}
                   </p>
+
+                  <div className="flex items-center justify-between text-sm text-foreground/70">
+                    <span>
+                      Admin local:{" "}
+                      {adminLocalValor ? "********" : "Sin dato"}
+                    </span>
+                    {adminLocalValor ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          abrirDialogoAdminLocal(equipo.id, adminLocalValor)
+                        }
+                        disabled={adminLocalVerificandoId === equipo.id}
+                        title="Mostrar admin local"
+                        className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/70 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M2.25 12s3.273-6 9.75-6 9.75 6 9.75 6-3.273 6-9.75 6-9.75-6-9.75-6Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M12 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
 
                   <div className="border-t border-border/60 pt-2" />
                 </div>
@@ -2950,6 +3096,128 @@ export default function EquiposList({
               })}
             </ul>
           )}
+        </div>
+      ) : null}
+
+      {adminLocalDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">
+                  Mostrar admin local
+                </h2>
+                <p className="text-xs text-foreground/60">
+                  Introduce la contraseña para ver la credencial guardada.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarDialogoAdminLocal}
+                title="Cerrar"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+              >
+                <span className="text-lg leading-none">&times;</span>
+              </button>
+            </div>
+
+            {adminLocalResultado ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border bg-background/80 px-3 py-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-foreground/60">
+                    Admin local
+                  </p>
+                  <p className="mt-1 font-mono text-sm break-all text-foreground">
+                    {adminLocalResultado}
+                  </p>
+                </div>
+
+                {adminLocalInfo ? (
+                  <p className="text-xs text-foreground/60">{adminLocalInfo}</p>
+                ) : null}
+
+                {adminLocalError ? (
+                  <p className="text-xs text-red-500">{adminLocalError}</p>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={manejarCopiarAdminLocal}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cerrarDialogoAdminLocal}
+                    className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={manejarSubmitAdminLocal}
+                className="space-y-4"
+                autoComplete="off"
+              >
+                <label className="flex flex-col gap-1 text-xs text-foreground/70">
+                  Contraseña
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={adminLocalShowPassword ? "text" : "password"}
+                      value={adminLocalPassword}
+                      onChange={(event) =>
+                        setAdminLocalPassword(event.target.value)
+                      }
+                      className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                      placeholder="Introduce la contraseña"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAdminLocalShowPassword((prev) => !prev)
+                      }
+                      className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                    >
+                      {adminLocalShowPassword ? "Ocultar" : "Ver"}
+                    </button>
+                  </div>
+                </label>
+
+                {adminLocalError ? (
+                  <p className="text-xs text-red-500">{adminLocalError}</p>
+                ) : null}
+
+                {adminLocalInfo ? (
+                  <p className="text-xs text-foreground/60">{adminLocalInfo}</p>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={cerrarDialogoAdminLocal}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                    disabled={estaVerificandoAdminLocal}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={estaVerificandoAdminLocal}
+                    className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {estaVerificandoAdminLocal
+                      ? "Verificando..."
+                      : "Ver credencial"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       ) : null}
 
