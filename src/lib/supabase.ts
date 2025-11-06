@@ -1180,6 +1180,31 @@ export async function fetchEquipoById(
 
   await completarFabricantesPantallas(equipos, config);
 
+  const miniaturasCache = new Map<string, string | null>();
+  const equipo = equipos[0];
+  if (equipo) {
+    equipo.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+      config,
+      "equipos",
+      equipo.id,
+      miniaturasCache,
+    );
+
+    if (Array.isArray(equipo.pantallas)) {
+      await Promise.all(
+        equipo.pantallas.map(async (pantalla) => {
+          if (!pantalla || typeof pantalla.id !== "number") return;
+          pantalla.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+            config,
+            "pantallas",
+            pantalla.id,
+            miniaturasCache,
+          );
+        }),
+      );
+    }
+  }
+
   return equipos[0];
 }
 
