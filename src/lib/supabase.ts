@@ -1061,6 +1061,17 @@ export async function fetchPantallaById(
 
   await completarFabricantesPantallas([], config, pantallas);
 
+  const miniaturaCache = new Map<string, string | null>();
+  const pantalla = pantallas[0];
+  if (pantalla && typeof pantalla.id === "number") {
+    pantalla.thumbnailUrl = await obtenerMiniaturaDesdeStorage(
+      config,
+      "pantallas",
+      pantalla.id,
+      miniaturaCache,
+    );
+  }
+
   return pantallas[0];
 }
 
