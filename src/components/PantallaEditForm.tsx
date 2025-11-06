@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+  type ChangeEvent,
+} from "react";
 import { useFormStatus } from "react-dom";
 
 import type {
@@ -9,6 +14,7 @@ import type {
   EquipoCatalogoItem,
   PantallaRecord,
 } from "@/lib/supabase";
+import { MAX_IMAGE_SIZE_BYTES } from "@/lib/supabase";
 
 export type PantallaEditFormState = {
   status: "idle" | "success" | "error";
@@ -103,6 +109,29 @@ export default function PantallaEditForm({
       : "Actualiza los datos y guarda los cambios cuando termines.");
   const backLinkHref = backHref ?? "/";
 
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+    };
+  }, [localPreviewUrl]);
+
+  const handleFotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0] ?? null;
+    setLocalPreviewUrl((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
+      }
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
+
+  const previewSrc = localPreviewUrl ?? pantalla.thumbnailUrl ?? null;
+  const maxImageSizeKb = Math.floor(MAX_IMAGE_SIZE_BYTES / 1024);
+
   return (
     <form
       action={formAction}
@@ -136,6 +165,48 @@ export default function PantallaEditForm({
           {state.message}
         </div>
       ) : null}
+
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">
+          Foto
+        </h3>
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex h-48 w-full items-center justify-center rounded-md border border-dashed border-border bg-background p-2 sm:w-48">
+            {previewSrc ? (
+              <img
+                src={previewSrc}
+                alt={`Vista previa de la pantalla ${pantalla.modelo ?? pantalla.id}`}
+                className="h-full w-full max-h-44 object-contain"
+              />
+            ) : (
+              <span className="text-xs text-foreground/60">
+                Sin imagen registrada
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-1 flex-col gap-2 text-sm text-foreground/80">
+            <label className="flex flex-col gap-1">
+              <span className="font-medium text-foreground">
+                Selecciona una foto
+              </span>
+              <input
+                type="file"
+                name="foto"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleFotoChange}
+                className="cursor-pointer rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30 file:cursor-pointer"
+              />
+            </label>
+            <p className="text-xs text-foreground/60">
+              Formatos permitidos: JPG, PNG o WEBP. Tamaño máximo{" "}
+              {maxImageSizeKb} KB. Se mantiene la imagen actual si no subes un
+              archivo nuevo.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">

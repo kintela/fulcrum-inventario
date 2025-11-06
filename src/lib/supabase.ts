@@ -1,6 +1,34 @@
 type SupabaseConfig = {
   url: string;
   anonKey: string;
+  serviceRoleKey: string | null;
+};
+
+const STORAGE_BUCKET = "fotos";
+
+export const MAX_IMAGE_SIZE_BYTES = 200 * 1024;
+
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+const ALLOWED_IMAGE_MIME_TYPES_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
+
+const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+
+const MIME_TO_EXTENSION: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
 };
 
 export const TIPO_ACTUACION_ENUM_VALUES = [
@@ -15,6 +43,7 @@ export type ActuacionTipo =
 function getSupabaseConfig(): SupabaseConfig {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
 
   if (!url || !anonKey) {
     throw new Error(
@@ -22,7 +51,7 @@ function getSupabaseConfig(): SupabaseConfig {
     );
   }
 
-  return { url: url.replace(/\/$/, ""), anonKey };
+  return { url: url.replace(/\/$/, ""), anonKey, serviceRoleKey };
 }
 
 export type ActuacionRecord = {
@@ -199,6 +228,305 @@ function buildStorageProxyUrl(...segments: string[]): string {
   return `/api/storage/image?path=${encoded}`;
 }
 
+type StorageFolder = "equipos" | "pantallas";
+
+export type UploadableImage = Blob & { name?: string; type?: string };
+
+function getStorageAuthKey(config: SupabaseConfig): string {
+  const candidate =
+    typeof config.serviceRoleKey === "string" &&
+    config.serviceRoleKey.trim().length > 0
+      ? config.serviceRoleKey
+      : config.anonKey;
+  return candidate.trim();
+}
+
+function encodeStoragePath(path: string): string {
+  return path
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function sanitizeStorageFolder(
+  folder: StorageFolder,
+  identifier: string | number,
+): {
+  prefix: string;
+  prefixWithSlash: string;
+  identifierSegment: string;
+} {
+  const folderSegment = `${folder}`.replace(/\/+/g, "").trim();
+  const identifierSegment = `${identifier}`
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/^\//, "")
+    .replace(/\/$/, "");
+
+  const combined = [folderSegment, identifierSegment]
+    .filter((segment) => segment.length > 0)
+    .join("/");
+
+  const normalized = combined.replace(/\/+/g, "/").replace(/^\//, "");
+  const prefix = normalized.replace(/\/$/, "");
+  const prefixWithSlash =
+    prefix.length > 0 ? `${prefix}/` : folderSegment.length > 0 ? `${folderSegment}/` : "";
+
+  return { prefix, prefixWithSlash, identifierSegment };
+}
+
+function resolveObjectPathFromItem(
+  prefixWithSlash: string,
+  itemName: string,
+): string {
+  const sanitizedItem = itemName.replace(/\\/g, "/").replace(/\/+/g, "/");
+  if (sanitizedItem.includes("/")) {
+    return sanitizedItem.replace(/^\//, "").replace(/\/$/, "");
+  }
+
+  const trimmedPrefix = prefixWithSlash.replace(/\/$/, "");
+  if (!trimmedPrefix) {
+    return sanitizedItem.replace(/^\//, "").replace(/\/$/, "");
+  }
+
+  return `${trimmedPrefix}/${sanitizedItem}`
+    .replace(/\\/g, "/")
+    .replace(/^\//, "")
+    .replace(/\/$/, "");
+}
+
+function sanitizeFileBaseName(rawName: string): string {
+  const withoutExtension = rawName.replace(/\.[^.]+$/, "");
+  const normalized = withoutExtension
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return normalized.length > 0 ? normalized.toLowerCase() : "foto";
+}
+
+function inferFileExtension(file: UploadableImage): string {
+  if (typeof file.name === "string") {
+    const fromName = file.name
+      .trim()
+      .match(/\.([a-zA-Z0-9]{1,10})$/)?.[1];
+    if (fromName) {
+      const normalized = fromName.toLowerCase();
+      if (ALLOWED_IMAGE_EXTENSIONS.has(normalized)) {
+        return normalized;
+      }
+    }
+  }
+
+  if (typeof file.type === "string") {
+    const mime = file.type.toLowerCase();
+    if (mime in MIME_TO_EXTENSION) {
+      return MIME_TO_EXTENSION[mime];
+    }
+  }
+
+  throw new Error("Formato de imagen no admitido. Usa archivos JPG, PNG o WEBP.");
+}
+
+function prepareImageUpload(file: UploadableImage): {
+  extension: string;
+  contentType: string;
+} {
+  const size = (file as { size?: number }).size;
+  if (typeof size === "number") {
+    if (size <= 0) {
+      throw new Error("El archivo de imagen está vacío.");
+    }
+    if (size > MAX_IMAGE_SIZE_BYTES) {
+      throw new Error("La imagen debe pesar 200 KB o menos.");
+    }
+  }
+
+  const extensionRaw = inferFileExtension(file);
+  const extension = extensionRaw === "jpeg" ? "jpg" : extensionRaw;
+
+  const declaredType =
+    typeof file.type === "string" && file.type.length > 0
+      ? file.type.toLowerCase()
+      : "";
+
+  let contentType = declaredType;
+  if (!ALLOWED_IMAGE_MIME_TYPES_SET.has(contentType)) {
+    contentType = EXTENSION_TO_MIME[extension] ?? "";
+  }
+
+  if (
+    !contentType ||
+    !ALLOWED_IMAGE_MIME_TYPES_SET.has(contentType)
+  ) {
+    throw new Error("Formato de imagen no admitido. Usa archivos JPG, PNG o WEBP.");
+  }
+
+  return { extension, contentType };
+}
+
+export function ensureImageFileIsValid(file: UploadableImage): void {
+  prepareImageUpload(file);
+}
+
+async function cleanStorageFolder(
+  config: SupabaseConfig,
+  prefixWithSlash: string,
+  keepPath: string,
+) {
+  if (!prefixWithSlash) return;
+
+  const authKey = getStorageAuthKey(config);
+
+  const listUrl = `${config.url}/storage/v1/object/list/${STORAGE_BUCKET}`;
+  const response = await fetch(listUrl, {
+    method: "POST",
+    headers: {
+      apikey: authKey,
+      Authorization: `Bearer ${authKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prefix: prefixWithSlash,
+      limit: 100,
+      offset: 0,
+      sortBy: { column: "name", order: "asc" },
+    }),
+  });
+
+  if (!response.ok) {
+    return;
+  }
+
+  const payload = (await response.json()) as
+    | Array<{ name?: string | null }>
+    | {
+        items?: Array<{ name?: string | null }>;
+        data?: Array<{ name?: string | null }>;
+        error?: unknown;
+      };
+
+  const posiblesItems = (
+    Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : []
+  ).filter((archivo) => archivo?.name);
+
+  const cleanedKeepPath = keepPath.replace(/^\//, "").replace(/\/+/g, "/");
+  const trimmedPrefix = prefixWithSlash.replace(/\/+$/, "");
+
+  const objetivos = posiblesItems
+    .map((archivo) => {
+      if (!archivo?.name) return null;
+      const resolved = resolveObjectPathFromItem(
+        `${trimmedPrefix}/`,
+        archivo.name,
+      );
+      const cleaned = resolved.replace(/^\//, "").replace(/\/+/g, "/");
+      return cleaned === cleanedKeepPath ? null : cleaned;
+    })
+    .filter((value): value is string => typeof value === "string");
+
+  await Promise.all(
+    objetivos.map(async (objectPath) => {
+      try {
+        const deleteUrl = `${config.url}/storage/v1/object/${STORAGE_BUCKET}/${encodeStoragePath(objectPath)}`;
+        const deleteResponse = await fetch(deleteUrl, {
+          method: "DELETE",
+          headers: {
+            apikey: authKey,
+            Authorization: `Bearer ${authKey}`,
+          },
+        });
+
+        if (!deleteResponse.ok) {
+          const details = await deleteResponse.text().catch(() => "");
+          console.error(
+            "[cleanStorageFolder] error al eliminar objeto",
+            objectPath,
+            deleteResponse.status,
+            details,
+          );
+        }
+      } catch (error) {
+        console.error("[cleanStorageFolder] fallo eliminando", objectPath, error);
+      }
+    }),
+  );
+}
+
+async function uploadImageToStorage(
+  folder: StorageFolder,
+  identifier: string | number,
+  file: UploadableImage,
+): Promise<string> {
+  const config = getSupabaseConfig();
+  const { prefix, prefixWithSlash, identifierSegment } =
+    sanitizeStorageFolder(folder, identifier);
+  if (!prefixWithSlash || identifierSegment.length === 0) {
+    throw new Error("No se pudo determinar la ruta de almacenamiento.");
+  }
+
+  const baseName = sanitizeFileBaseName(
+    typeof file.name === "string" ? file.name : "foto",
+  );
+  const { extension, contentType } = prepareImageUpload(file);
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:.TZ]/g, "")
+    .slice(0, 17);
+  const fileName = `${timestamp}-${baseName}.${extension}`;
+  const objectPath = `${prefixWithSlash}${fileName}`.replace(/^\//, "");
+  const normalizedObjectPath = objectPath.replace(/\/+/g, "/");
+
+  const arrayBuffer = await file.arrayBuffer();
+  const uploadUrl = `${config.url}/storage/v1/object/${STORAGE_BUCKET}/${encodeStoragePath(normalizedObjectPath)}`;
+  const authKey = getStorageAuthKey(config);
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      apikey: authKey,
+      Authorization: `Bearer ${authKey}`,
+      "Content-Type": contentType,
+      "x-upsert": "true",
+    },
+    body: Buffer.from(arrayBuffer),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(
+      `No se pudo subir la imagen (${response.status} ${details})`,
+    );
+  }
+
+  await cleanStorageFolder(config, prefixWithSlash, normalizedObjectPath);
+
+  return normalizedObjectPath;
+}
+
+export async function uploadEquipoImage(
+  equipoId: string,
+  file: UploadableImage,
+): Promise<string> {
+  return uploadImageToStorage("equipos", equipoId, file);
+}
+
+export async function uploadPantallaImage(
+  pantallaId: number,
+  file: UploadableImage,
+): Promise<string> {
+  return uploadImageToStorage("pantallas", pantallaId, file);
+}
+
 async function obtenerMiniaturaDesdeStorage(
   config: SupabaseConfig,
   carpeta: "equipos" | "pantallas",
@@ -210,25 +538,32 @@ async function obtenerMiniaturaDesdeStorage(
     return cache.get(cacheKey) ?? null;
   }
 
-  const listUrl = `${config.url}/storage/v1/object/list/fotos`;
+  const listUrl = `${config.url}/storage/v1/object/list/${STORAGE_BUCKET}`;
+  const authKey = getStorageAuthKey(config);
 
-  const candidatePrefixes =
-    carpeta === "equipos"
-      ? [
-          `equipos/${identificador}`,
-          `equipos/${identificador}/`,
-        ]
-      : [
-          `pantallas/${identificador}`,
-          `pantallas/${identificador}/`,
-        ];
+  const { prefix, prefixWithSlash } = sanitizeStorageFolder(
+    carpeta,
+    identificador,
+  );
+
+  const candidatePrefixes = Array.from(
+    new Set(
+      [
+        prefixWithSlash,
+        prefix,
+        prefixWithSlash.replace(/\/+$/, ""),
+      ].filter(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0,
+      ),
+    ),
+  );
 
   const normalizarPrefix = (valor: string) => {
-    const limpio = valor.replace(/\/+/g, "/");
-    if (limpio === "/") return "";
-    if (limpio.startsWith("/")) return limpio.slice(1);
-    if (limpio.endsWith("/")) return limpio;
-    return limpio;
+    const limpio = valor.replace(/\\/g, "/").replace(/\/+/g, "/");
+    const sinInicial = limpio.startsWith("/") ? limpio.slice(1) : limpio;
+    if (sinInicial.length === 0) return "";
+    return sinInicial.endsWith("/") ? sinInicial : `${sinInicial}/`;
   };
 
   const listarPrimerArchivo = async (prefixOriginal: string) => {
@@ -239,15 +574,15 @@ async function obtenerMiniaturaDesdeStorage(
       response = await fetch(listUrl, {
         method: "POST",
         headers: {
-          apikey: config.anonKey,
-          Authorization: `Bearer ${config.anonKey}`,
+          apikey: authKey,
+          Authorization: `Bearer ${authKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prefix,
           limit: 1,
           offset: 0,
-          sortBy: { column: "name", order: "asc" },
+          sortBy: { column: "name", order: "desc" },
         }),
       });
 
@@ -316,12 +651,7 @@ async function obtenerMiniaturaDesdeStorage(
       return null;
     }
 
-    const prefixParaRuta = prefix.endsWith("/")
-      ? prefix.slice(0, -1)
-      : prefix;
-    const relativePath = item.name.includes("/")
-      ? item.name
-      : `${prefixParaRuta}/${item.name}`;
+    const relativePath = resolveObjectPathFromItem(prefix, item.name ?? "");
 
     return buildStorageProxyUrl(relativePath);
   };

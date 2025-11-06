@@ -6,8 +6,11 @@ import PantallaEditForm, {
 } from "@/components/PantallaEditForm";
 import {
   createPantalla,
+  deletePantalla,
   fetchEquiposCatalogo,
   fetchFabricantesCatalogo,
+  ensureImageFileIsValid,
+  uploadPantallaImage,
   type PantallaInsertPayload,
   type PantallaRecord,
 } from "@/lib/supabase";
@@ -46,6 +49,7 @@ export default async function NuevaPantallaPage({
     en_garantia: null,
     equipo: null,
     observaciones: null,
+    thumbnailUrl: null,
   };
 
   async function crearPantallaAction(
@@ -142,8 +146,47 @@ export default async function NuevaPantallaPage({
       observaciones: getStringOrNull("observaciones"),
     };
 
+    const fotoEntrada = formData.get("foto");
+    const foto =
+      fotoEntrada instanceof File && fotoEntrada.size > 0 ? fotoEntrada : null;
+
+    if (foto) {
+      try {
+        ensureImageFileIsValid(foto);
+      } catch (error) {
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "La imagen seleccionada no es válida.",
+        };
+      }
+    }
+
     try {
       const nuevaId = await createPantalla(payload);
+      if (foto) {
+        try {
+          await uploadPantallaImage(nuevaId, foto);
+        } catch (error) {
+          try {
+            await deletePantalla(nuevaId);
+          } catch (cleanupError) {
+            console.error(
+              "[crearPantallaAction] error al limpiar pantalla tras fallo de imagen",
+              cleanupError,
+            );
+          }
+          return {
+            status: "error",
+            message:
+              error instanceof Error
+                ? `La pantalla no se pudo crear porque falló la subida de la foto: ${error.message}`
+                : "La pantalla no se pudo crear porque la subida de la foto falló.",
+          };
+        }
+      }
       revalidatePath("/");
       const suffix = from ? `?from=${encodeURIComponent(from)}` : "";
       redirect(`/pantallas/${nuevaId}/editar${suffix}`);

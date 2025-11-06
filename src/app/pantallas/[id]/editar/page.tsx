@@ -9,6 +9,8 @@ import {
   fetchFabricantesCatalogo,
   fetchPantallaById,
   updatePantalla,
+  uploadPantallaImage,
+  ensureImageFileIsValid,
   type PantallaUpdatePayload,
 } from "@/lib/supabase";
 
@@ -152,14 +154,26 @@ export default async function EditarPantallaPage({
       observaciones: getStringOrNull("observaciones"),
     };
 
+    const fotoEntrada = formData.get("foto");
+    const nuevaFoto =
+      fotoEntrada instanceof File && fotoEntrada.size > 0 ? fotoEntrada : null;
+
+    if (nuevaFoto) {
+      try {
+        ensureImageFileIsValid(nuevaFoto);
+      } catch (error) {
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "La imagen seleccionada no es válida.",
+        };
+      }
+    }
+
     try {
       await updatePantalla(pantallaId, payload);
-      revalidatePath("/");
-      revalidatePath(`/pantallas/${pantallaId}/editar`);
-      return {
-        status: "success",
-        message: "Pantalla actualizada correctamente.",
-      };
     } catch (error) {
       return {
         status: "error",
@@ -169,6 +183,29 @@ export default async function EditarPantallaPage({
             : "No se pudo actualizar la pantalla.",
       };
     }
+
+    if (nuevaFoto) {
+      try {
+        await uploadPantallaImage(pantallaId, nuevaFoto);
+      } catch (error) {
+        revalidatePath("/");
+        revalidatePath(`/pantallas/${pantallaId}/editar`);
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? `Los datos se guardaron pero la foto no pudo subirse: ${error.message}`
+              : "Los datos se guardaron pero la foto no pudo subirse.",
+        };
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath(`/pantallas/${pantallaId}/editar`);
+    return {
+      status: "success",
+      message: "Pantalla actualizada correctamente.",
+    };
   }
 
   return (

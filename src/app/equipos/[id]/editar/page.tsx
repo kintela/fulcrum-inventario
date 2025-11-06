@@ -10,7 +10,9 @@ import {
   fetchUbicacionesCatalogo,
   fetchUsuariosCatalogo,
   updateEquipo,
+  uploadEquipoImage,
   upsertActuaciones,
+  ensureImageFileIsValid,
   TIPO_ACTUACION_ENUM_VALUES,
   type EquipoUpdatePayload,
   type ActuacionTipo,
@@ -301,17 +303,29 @@ export default async function EditarEquipoPage({
       fecha_bios: getStringOrNull("fecha_bios"),
     };
 
+    const fotoEntrada = formData.get("foto");
+    const nuevaFoto =
+      fotoEntrada instanceof File && fotoEntrada.size > 0 ? fotoEntrada : null;
+
+    if (nuevaFoto) {
+      try {
+        ensureImageFileIsValid(nuevaFoto);
+      } catch (error) {
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "La imagen seleccionada no es válida.",
+        };
+      }
+    }
+
     try {
       await updateEquipo(id, payload);
       if (actuacionesPayload.length > 0) {
         await upsertActuaciones(id, actuacionesPayload);
       }
-      revalidatePath("/");
-      revalidatePath(`/equipos/${id}/editar`);
-      return {
-        status: "success",
-        message: "Equipo actualizado correctamente.",
-      };
     } catch (error) {
       return {
         status: "error",
@@ -321,6 +335,29 @@ export default async function EditarEquipoPage({
             : "No se pudo actualizar el equipo.",
       };
     }
+
+    if (nuevaFoto) {
+      try {
+        await uploadEquipoImage(id, nuevaFoto);
+      } catch (error) {
+        revalidatePath("/");
+        revalidatePath(`/equipos/${id}/editar`);
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? `Los cambios se guardaron pero la foto no pudo subirse: ${error.message}`
+              : "Los cambios se guardaron pero la foto no pudo subirse.",
+        };
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath(`/equipos/${id}/editar`);
+    return {
+      status: "success",
+      message: "Equipo actualizado correctamente.",
+    };
   }
 
   return (

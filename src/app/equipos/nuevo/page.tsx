@@ -11,9 +11,12 @@ import {
   type EquipoInsertPayload,
   type EquipoRecord,
   createEquipo,
+  deleteEquipo,
   fetchFabricantesCatalogo,
   fetchUbicacionesCatalogo,
   fetchUsuariosCatalogo,
+  ensureImageFileIsValid,
+  uploadEquipoImage,
   upsertActuaciones,
 } from "@/lib/supabase";
 
@@ -76,6 +79,7 @@ export default async function NuevoEquipoPage({
     fecha_bios: null,
     pantallas: [],
     actuaciones: [],
+    thumbnailUrl: null,
   } satisfies EquipoRecord;
 
   async function crearEquipoAction(
@@ -269,6 +273,24 @@ export default async function NuevoEquipoPage({
       actuacionesPayload.push(actuacion);
     }
 
+    const fotoEntrada = formData.get("foto");
+    const foto =
+      fotoEntrada instanceof File && fotoEntrada.size > 0 ? fotoEntrada : null;
+
+    if (foto) {
+      try {
+        ensureImageFileIsValid(foto);
+      } catch (error) {
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "La imagen seleccionada no es válida.",
+        };
+      }
+    }
+
     const payload: EquipoInsertPayload = {
       nombre: getStringOrNull("nombre"),
       modelo: getStringOrNull("modelo"),
@@ -302,6 +324,27 @@ export default async function NuevoEquipoPage({
 
     try {
       const nuevoId = await createEquipo(payload);
+      if (foto) {
+        try {
+          await uploadEquipoImage(nuevoId, foto);
+        } catch (error) {
+          try {
+            await deleteEquipo(nuevoId);
+          } catch (cleanupError) {
+            console.error(
+              "[crearEquipoAction] error al limpiar equipo tras fallo de imagen",
+              cleanupError,
+            );
+          }
+          return {
+            status: "error",
+            message:
+              error instanceof Error
+                ? `El equipo no se pudo crear porque falló la subida de la foto: ${error.message}`
+                : "El equipo no se pudo crear porque la subida de la foto falló.",
+          };
+        }
+      }
       if (actuacionesPayload.length > 0) {
         await upsertActuaciones(nuevoId, actuacionesPayload);
       }
