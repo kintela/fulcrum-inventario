@@ -18,11 +18,17 @@ const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
   portatil: "Portátil",
   tablet: "Tablet",
+  almacenamiento: "Almacenamiento",
 };
 
 type TipoClave = keyof typeof tipoLabels;
 
-const tipoClaves: TipoClave[] = ["sobremesa", "portatil", "tablet"];
+const tipoClaves: TipoClave[] = [
+  "sobremesa",
+  "portatil",
+  "tablet",
+  "almacenamiento",
+];
 
 const currentYear = new Date().getFullYear();
 const aniosReferencia = [currentYear, currentYear - 1, currentYear - 2];

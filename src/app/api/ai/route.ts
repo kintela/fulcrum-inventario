@@ -25,7 +25,7 @@ Tabla public.equipos (alias e):
 - fecha_compra date
 - precio_compra numeric
 - fecha_bios date
-- tipo public.tipo_equipo_enum (portatil, sobremesa, servidor, tablet)
+- tipo public.tipo_equipo_enum (portatil, sobremesa, servidor, tablet, almacenamiento)
 - admin_local text
 - usuario_id bigint REFERENCES usuarios(id)
 - observaciones text

@@ -34,12 +34,10 @@ function obtenerTimestamp(fecha: string | null | undefined): number {
 
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
-
   portatil: "Portatil",
-
   tablet: "Tablet",
-
   servidor: "Servidor",
+  almacenamiento: "Almacenamiento",
 };
 
 const TARJETA_RED_TOLERANCIA_GBPS = 0.001;
@@ -371,6 +369,8 @@ export default function EquiposList({
   const [mostrarSoloTablets, setMostrarSoloTablets] = useState<boolean>(
     () => getBoolParam("tablets", false),
   );
+  const [mostrarSoloAlmacenamiento, setMostrarSoloAlmacenamiento] =
+    useState<boolean>(() => getBoolParam("almacenamiento", false));
   const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
     useState<string | null>(null);
   const [adminLocalDialog, setAdminLocalDialog] = useState<{
@@ -419,7 +419,8 @@ export default function EquiposList({
         !mostrarEquipos &&
         !mostrarPantallas &&
         !mostrarSoloServidores &&
-        !mostrarSoloTablets
+        !mostrarSoloTablets &&
+        !mostrarSoloAlmacenamiento
       ) {
         setMostrarEquipos(true);
       }
@@ -431,6 +432,7 @@ export default function EquiposList({
     mostrarPantallas,
     mostrarSoloServidores,
     mostrarSoloTablets,
+    mostrarSoloAlmacenamiento,
   ]);
 
   const handleSearchInputChange = (value: string) => {
@@ -601,6 +603,7 @@ export default function EquiposList({
     if (!mostrarAdminLocalSinValor) params.set("adminLocalSin", "0");
     if (mostrarSoloServidores) params.set("servidores", "1");
     if (mostrarSoloTablets) params.set("tablets", "1");
+    if (mostrarSoloAlmacenamiento) params.set("almacenamiento", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -633,6 +636,7 @@ export default function EquiposList({
     mostrarAdminLocalSinValor,
     mostrarSoloServidores,
     mostrarSoloTablets,
+    mostrarSoloAlmacenamiento,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -1001,6 +1005,7 @@ export default function EquiposList({
     setMostrarAdminLocalSinValor(true);
     setMostrarSoloServidores(false);
     setMostrarSoloTablets(false);
+    setMostrarSoloAlmacenamiento(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
@@ -1123,6 +1128,7 @@ export default function EquiposList({
       const tiposRequeridos: string[] = [];
       if (mostrarSoloServidores) tiposRequeridos.push("servidor");
       if (mostrarSoloTablets) tiposRequeridos.push("tablet");
+      if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
       if (tiposRequeridos.length > 0) {
         if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
       }
@@ -1300,6 +1306,8 @@ export default function EquiposList({
     mostrarSoloServidores,
 
     mostrarSoloTablets,
+
+    mostrarSoloAlmacenamiento,
 
     iaResultado,
 
@@ -1626,7 +1634,10 @@ export default function EquiposList({
   let resumenResultados = equiposResultadosTexto;
 
   const mostrarListadoEquipos =
-    mostrarEquipos || mostrarSoloServidores || mostrarSoloTablets;
+    mostrarEquipos ||
+    mostrarSoloServidores ||
+    mostrarSoloTablets ||
+    mostrarSoloAlmacenamiento;
 
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
@@ -1634,7 +1645,9 @@ export default function EquiposList({
     resumenResultados = pantallasResultadosTexto;
   } else if (
     !mostrarEquipos &&
-    (mostrarSoloServidores || mostrarSoloTablets)
+    (mostrarSoloServidores ||
+      mostrarSoloTablets ||
+      mostrarSoloAlmacenamiento)
   ) {
     resumenResultados = equiposResultadosTexto;
   }
@@ -1705,10 +1718,15 @@ export default function EquiposList({
     }
   }
 
-  if (mostrarSoloServidores || mostrarSoloTablets) {
+  if (
+    mostrarSoloServidores ||
+    mostrarSoloTablets ||
+    mostrarSoloAlmacenamiento
+  ) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
     if (mostrarSoloTablets) partes.push("Tablets");
+    if (mostrarSoloAlmacenamiento) partes.push("Almacenamiento");
     const textoTipo =
       partes.length === 1
         ? partes[0]
@@ -2291,6 +2309,19 @@ export default function EquiposList({
             />
 
             <span>Servidores</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloAlmacenamiento}
+              onChange={(event) =>
+                setMostrarSoloAlmacenamiento(event.target.checked)
+              }
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Almacenamiento</span>
           </label>
 
           {onToggleSwitches ? (

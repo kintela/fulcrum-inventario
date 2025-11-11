@@ -57,6 +57,7 @@ const tipoOptions: Array<{ value: string; label: string }> = [
   { value: "sobremesa", label: "Sobremesa" },
   { value: "portatil", label: "Portatil" },
   { value: "servidor", label: "Servidor" },
+  { value: "almacenamiento", label: "Almacenamiento" },
   { value: "tablet", label: "Tablet" },
 ];
 
