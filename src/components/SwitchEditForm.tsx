@@ -22,6 +22,7 @@ export type SwitchFormValues = {
   precio: number | null;
   fecha_compra: string | null;
   en_garantia: boolean | null;
+  observaciones?: string | null;
 };
 
 type SwitchEditFormProps = {
@@ -262,6 +263,17 @@ export default function SwitchEditForm({
             <option value="true">Si</option>
             <option value="false">No</option>
           </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm text-foreground/80 sm:col-span-2">
+          <span className="font-semibold text-foreground/70">Observaciones</span>
+          <textarea
+            name="observaciones"
+            defaultValue={values.observaciones ?? ""}
+            placeholder="Notas, incidencias, mantenimiento..."
+            rows={3}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+          />
         </label>
       </div>
 

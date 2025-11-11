@@ -45,6 +45,7 @@ export default async function NuevoSwitchPage({
     precio: null,
     fecha_compra: null,
     en_garantia: null,
+    observaciones: null,
   };
 
   async function crearSwitchAction(
@@ -147,6 +148,7 @@ export default async function NuevoSwitchPage({
       precio: precio.value,
       fecha_compra: getStringOrNull("fecha_compra"),
       en_garantia: enGarantia,
+      observaciones: getStringOrNull("observaciones"),
     };
 
     try {

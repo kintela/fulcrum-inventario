@@ -195,6 +195,11 @@ export default function SwitchesList({
             const garantiaTexto = item.en_garantia ? "Si" : "No";
             const precioReferencia =
               item.precio ?? item.precio_compra ?? null;
+            const observaciones =
+              typeof item.observaciones === "string" &&
+              item.observaciones.trim().length > 0
+                ? item.observaciones.trim()
+                : null;
 
             const editHref =
               fromQueryParam && fromQueryParam.length > 0
@@ -244,29 +249,21 @@ export default function SwitchesList({
                     {nombre}
                   </h3>
                   <p className="text-sm text-foreground/70">{cabeceraDetalle}</p>
-                  <p className="text-xs text-foreground/60">
-                    Ubicacion:{" "}
-                    <span className="font-medium text-foreground/70">
-                      {ubicacion}
-                    </span>
-                  </p>
                 </header>
 
-                <dl className="grid gap-2 text-sm text-foreground/80 pr-4">
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">Ubicacion</dt>
+                <dl className="space-y-2 pr-4 text-sm text-foreground/80">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">Ubicacion:</dt>
                     <dd className="text-foreground">{ubicacion}</dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">IP</dt>
-                    <dd className="text-foreground">{ipTexto}</dd>
+                  <div className="flex flex-wrap items-baseline gap-2 break-all">
+                    <dt className="font-medium text-foreground/60">IP:</dt>
+                    <dd className="text-foreground break-all">{ipTexto}</dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">
-                      Puertos totales
-                    </dt>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">Puertos totales:</dt>
                     <dd className="text-foreground">
                       {puertosTotalesNumero !== null ? (
                         <Link
@@ -281,35 +278,34 @@ export default function SwitchesList({
                     </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">
-                      Ancho de banda
-                    </dt>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">Ancho de banda:</dt>
                     <dd className="text-foreground">{banda ?? "Sin dato"}</dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">Precio</dt>
-                    <dd className="text-foreground">
-                      {formatearImporte(precioReferencia)}
-                    </dd>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">Precio:</dt>
+                    <dd className="text-foreground">{formatearImporte(precioReferencia)}</dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">
-                      Fecha compra
-                    </dt>
-                    <dd className="text-foreground">
-                      {formatearFecha(item.fecha_compra)}
-                    </dd>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">Fecha compra:</dt>
+                    <dd className="text-foreground">{formatearFecha(item.fecha_compra)}</dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
-                    <dt className="font-medium text-foreground/60">
-                      En garantia
-                    </dt>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <dt className="font-medium text-foreground/60">En garantia:</dt>
                     <dd className="text-foreground">{garantiaTexto}</dd>
                   </div>
+
+                  {observaciones ? (
+                    <div className="flex flex-col gap-1">
+                      <dt className="font-medium text-foreground/60">Observaciones</dt>
+                      <dd className="text-foreground/80 whitespace-pre-wrap break-words">
+                        {observaciones}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
               </article>
             );

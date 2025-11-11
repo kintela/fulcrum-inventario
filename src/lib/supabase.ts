@@ -97,6 +97,7 @@ export type SwitchRecord = {
   precio_compra?: number | null;
   fecha_compra: string | null;
   en_garantia: boolean | null;
+  observaciones: string | null;
   puertos?: SwitchPortRecord[] | null;
 };
 
@@ -137,6 +138,7 @@ export type SwitchInsertPayload = {
   precio?: number | null;
   fecha_compra?: string | null;
   en_garantia?: boolean | null;
+  observaciones?: string | null;
 };
 
 export type SwitchUpdatePayload = {
@@ -150,6 +152,7 @@ export type SwitchUpdatePayload = {
   precio?: number | null;
   fecha_compra?: string | null;
   en_garantia?: boolean | null;
+  observaciones?: string | null;
 };
 
 export type EquipoRecord = {
@@ -916,6 +919,7 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
       "precio",
       "fecha_compra",
       "en_garantia",
+      "observaciones",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",
@@ -960,6 +964,7 @@ export async function fetchSwitchById(
         "precio",
         "fecha_compra",
         "en_garantia",
+        "observaciones",
         "fabricante:fabricantes(nombre)",
         "ubicacion:ubicaciones(nombre)",
         "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",

@@ -71,6 +71,10 @@ export default async function EditarSwitchPage({
     precio: toNumberOrNull(switchInfo.precio),
     fecha_compra: switchInfo.fecha_compra ?? null,
     en_garantia: Boolean(switchInfo.en_garantia),
+    observaciones:
+      typeof switchInfo.observaciones === "string"
+        ? switchInfo.observaciones
+        : null,
   };
 
   async function actualizarSwitchAction(
@@ -168,6 +172,7 @@ export default async function EditarSwitchPage({
       precio: precio.value,
       fecha_compra: getStringOrNull("fecha_compra"),
       en_garantia: enGarantia,
+      observaciones: getStringOrNull("observaciones"),
     };
 
     try {
