@@ -2747,36 +2747,40 @@ export default function EquiposList({
                 </div>
 
                 <dl className="grid gap-2 text-sm text-foreground/80">
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">
                       Ubicacion
                     </dt>
 
-                    <dd className="text-foreground">{ubicacion}</dd>
+                    <dd className="text-foreground min-w-0 text-right break-words">
+                      {ubicacion}
+                    </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Tipo</dt>
 
-                    <dd className="text-foreground">{tipo}</dd>
+                    <dd className="text-foreground min-w-0 text-right break-words">
+                      {tipo}
+                    </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">
                       Fecha compra
                     </dt>
 
-                    <dd className="text-foreground">
+                    <dd className="text-foreground min-w-0 text-right break-words">
                       {formatearFecha(equipo.fecha_compra)}
                     </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">
                       Precio compra
                     </dt>
 
-                    <dd className="text-foreground">
+                    <dd className="text-foreground min-w-0 text-right break-words">
                       {equipo.url ? (
                         <a
                           href={equipo.url}
@@ -2792,20 +2796,22 @@ export default function EquiposList({
                     </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Garantia</dt>
 
-                    <dd className="text-foreground">
+                    <dd className="text-foreground min-w-0 text-right break-words">
                       {equipo.en_garantia ? "Si" : "No"}
                     </dd>
                   </div>
 
-                  <div className="flex justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">
                       Al garbigune
                     </dt>
 
-                    <dd className="text-foreground">{alGarbiguneTexto}</dd>
+                    <dd className="text-foreground min-w-0 text-right break-words">
+                      {alGarbiguneTexto}
+                    </dd>
                   </div>
 
                   {tieneDatosRed ? (
@@ -2830,7 +2836,7 @@ export default function EquiposList({
                         Observaciones
                       </dt>
 
-                      <dd className="text-foreground whitespace-pre-line">
+                      <dd className="text-foreground whitespace-pre-line break-words">
                         {observaciones}
                       </dd>
                     </div>
