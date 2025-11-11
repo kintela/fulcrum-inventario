@@ -67,7 +67,7 @@ export default async function NuevoEquipoPage({
     toma_red: null,
     admin_local: null,
     admite_update: null,
-    al_garbigune: null,
+    al_garbigune: false,
     fabricante: null,
     ubicacion: null,
     usuario: null,
@@ -198,7 +198,7 @@ export default async function NuevoEquipoPage({
         ? true
         : alGarbiguneRaw === "false"
           ? false
-          : null;
+          : false;
 
     const tipoRaw = getStringOrNull("tipo");
 
