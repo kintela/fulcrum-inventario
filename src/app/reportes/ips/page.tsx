@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import IpsTable from "@/components/IpsTable";
 import { fetchEquipos } from "@/lib/supabase";
 
 function parseIp(ip: string): number[] {
@@ -42,21 +43,29 @@ export default async function ReporteIpsPage() {
     .filter((equipo) => typeof equipo.ip === "string" && equipo.ip.trim().length > 0)
     .map((equipo) => {
       const ip = equipo.ip!.trim();
-      const puertos = Array.isArray(equipo.puertos_conectados)
-        ? equipo.puertos_conectados
-            .map((puerto) => {
+      const puertos =
+        Array.isArray(equipo.puertos_conectados) &&
+        equipo.puertos_conectados.length > 0
+          ? equipo.puertos_conectados.map((puerto) => {
               const switchNombre =
                 puerto?.switch?.nombre?.trim() ?? "Switch sin nombre";
               const puertoNumero =
-                typeof puerto?.numero === "number" ? `Puerto ${puerto.numero}` : null;
+                typeof puerto?.numero === "number"
+                  ? `Puerto ${puerto.numero}`
+                  : "Sin puerto";
               const vlan =
                 typeof puerto?.vlan === "number" ? `VLAN ${puerto.vlan}` : null;
-              return [switchNombre, puertoNumero, vlan]
-                .filter((parte) => parte && parte.length > 0)
-                .join(" · ");
+              return {
+                switchNombre,
+                puertoLabel: vlan ? `${puertoNumero} (${vlan})` : puertoNumero,
+              };
             })
-            .filter((texto) => texto && texto.length > 0)
-        : [];
+          : [
+              {
+                switchNombre: "Sin switch asociado",
+                puertoLabel: "—",
+              },
+            ];
 
       return {
         ip,
@@ -64,7 +73,7 @@ export default async function ReporteIpsPage() {
         usuario: formatUsuario(equipo),
         ubicacion: equipo.ubicacion?.nombre?.trim() || "Sin ubicación",
         tomaRed: equipo.toma_red?.trim() || "Sin dato",
-        puertos: puertos.length > 0 ? puertos : ["Sin switch asociado"],
+        puertos,
       };
     })
     .sort((a, b) => compareIps(a.ip, b.ip));
@@ -93,41 +102,7 @@ export default async function ReporteIpsPage() {
           No hay equipos con IP registrada.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card text-sm text-card-foreground shadow-sm">
-          <table className="w-full border-collapse text-left">
-            <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
-              <tr>
-                <th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">Equipo</th>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Ubicación</th>
-                <th className="px-4 py-3">Toma de red</th>
-                <th className="px-4 py-3">Switch / Puerto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {registros.map((registro) => (
-                <tr
-                  key={`${registro.ip}-${registro.equipoNombre}`}
-                  className="border-t border-border/80 transition hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3 font-mono text-foreground">{registro.ip}</td>
-                  <td className="px-4 py-3">{registro.equipoNombre}</td>
-                  <td className="px-4 py-3">{registro.usuario}</td>
-                  <td className="px-4 py-3">{registro.ubicacion}</td>
-                  <td className="px-4 py-3">{registro.tomaRed}</td>
-                  <td className="px-4 py-3">
-                    <ul className="list-disc pl-4">
-                      {registro.puertos.map((texto, index) => (
-                        <li key={`${registro.ip}-puerto-${index}`}>{texto}</li>
-                      ))}
-                    </ul>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <IpsTable entries={registros} />
       )}
     </main>
   );
