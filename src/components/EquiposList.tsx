@@ -371,6 +371,9 @@ export default function EquiposList({
   );
   const [mostrarSoloAlmacenamiento, setMostrarSoloAlmacenamiento] =
     useState<boolean>(() => getBoolParam("almacenamiento", false));
+  const [mostrarSoloImpresoras, setMostrarSoloImpresoras] = useState<boolean>(
+    () => getBoolParam("impresoras", false),
+  );
   const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
     useState<string | null>(null);
   const [adminLocalDialog, setAdminLocalDialog] = useState<{
@@ -420,7 +423,8 @@ export default function EquiposList({
         !mostrarPantallas &&
         !mostrarSoloServidores &&
         !mostrarSoloTablets &&
-        !mostrarSoloAlmacenamiento
+        !mostrarSoloAlmacenamiento &&
+        !mostrarSoloImpresoras
       ) {
         setMostrarEquipos(true);
       }
@@ -433,6 +437,7 @@ export default function EquiposList({
     mostrarSoloServidores,
     mostrarSoloTablets,
     mostrarSoloAlmacenamiento,
+    mostrarSoloImpresoras,
   ]);
 
   const handleSearchInputChange = (value: string) => {
@@ -604,6 +609,7 @@ export default function EquiposList({
     if (mostrarSoloServidores) params.set("servidores", "1");
     if (mostrarSoloTablets) params.set("tablets", "1");
     if (mostrarSoloAlmacenamiento) params.set("almacenamiento", "1");
+    if (mostrarSoloImpresoras) params.set("impresoras", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -637,6 +643,7 @@ export default function EquiposList({
     mostrarSoloServidores,
     mostrarSoloTablets,
     mostrarSoloAlmacenamiento,
+    mostrarSoloImpresoras,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -1006,6 +1013,8 @@ export default function EquiposList({
     setMostrarSoloServidores(false);
     setMostrarSoloTablets(false);
     setMostrarSoloAlmacenamiento(false);
+    setMostrarSoloImpresoras(false);
+    setMostrarSoloImpresoras(false);
     setPantallaPulgadasSeleccionadas("");
   }
 
@@ -1125,10 +1134,11 @@ export default function EquiposList({
         if (!tipoEquipo || tipoEquipo !== tipoSeleccionado) return false;
       }
 
-      const tiposRequeridos: string[] = [];
-      if (mostrarSoloServidores) tiposRequeridos.push("servidor");
-      if (mostrarSoloTablets) tiposRequeridos.push("tablet");
-      if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
+    const tiposRequeridos: string[] = [];
+    if (mostrarSoloServidores) tiposRequeridos.push("servidor");
+    if (mostrarSoloTablets) tiposRequeridos.push("tablet");
+    if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
+    if (mostrarSoloImpresoras) tiposRequeridos.push("impresora");
       if (tiposRequeridos.length > 0) {
         if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
       }
@@ -1637,7 +1647,8 @@ export default function EquiposList({
     mostrarEquipos ||
     mostrarSoloServidores ||
     mostrarSoloTablets ||
-    mostrarSoloAlmacenamiento;
+    mostrarSoloAlmacenamiento ||
+    mostrarSoloImpresoras;
 
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
@@ -1647,7 +1658,8 @@ export default function EquiposList({
     !mostrarEquipos &&
     (mostrarSoloServidores ||
       mostrarSoloTablets ||
-      mostrarSoloAlmacenamiento)
+      mostrarSoloAlmacenamiento ||
+      mostrarSoloImpresoras)
   ) {
     resumenResultados = equiposResultadosTexto;
   }
@@ -1721,12 +1733,14 @@ export default function EquiposList({
   if (
     mostrarSoloServidores ||
     mostrarSoloTablets ||
-    mostrarSoloAlmacenamiento
+    mostrarSoloAlmacenamiento ||
+    mostrarSoloImpresoras
   ) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
     if (mostrarSoloTablets) partes.push("Tablets");
     if (mostrarSoloAlmacenamiento) partes.push("Almacenamiento");
+    if (mostrarSoloImpresoras) partes.push("Impresoras");
     const textoTipo =
       partes.length === 1
         ? partes[0]
@@ -2322,6 +2336,19 @@ export default function EquiposList({
             />
 
             <span>Almacenamiento</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloImpresoras}
+              onChange={(event) =>
+                setMostrarSoloImpresoras(event.target.checked)
+              }
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Impresoras</span>
           </label>
 
           {onToggleSwitches ? (
