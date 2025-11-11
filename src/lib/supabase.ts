@@ -904,7 +904,22 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
   const requestUrl = new URL(`${config.url}/rest/v1/switches`);
   requestUrl.searchParams.set(
     "select",
-    "*,fabricante:fabricantes(nombre),ubicacion:ubicaciones(nombre)",
+    [
+      "id",
+      "nombre",
+      "modelo",
+      "fabricante_id",
+      "ubicacion_id",
+      "ancho_banda_gbps",
+      "ip",
+      "puertos_totales",
+      "precio",
+      "fecha_compra",
+      "en_garantia",
+      "fabricante:fabricantes(nombre)",
+      "ubicacion:ubicaciones(nombre)",
+      "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",
+    ].join(","),
   );
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
 
@@ -947,7 +962,7 @@ export async function fetchSwitchById(
         "en_garantia",
         "fabricante:fabricantes(nombre)",
         "ubicacion:ubicaciones(nombre)",
-        "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo))",
+        "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",
       ].join(","),
   );
   requestUrl.searchParams.set("id", `eq.${id}`);

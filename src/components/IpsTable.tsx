@@ -31,6 +31,16 @@ type IpsTableProps = {
 
 const collator = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
+function compareIpStrings(a: string, b: string): number {
+  const segA = a.split(".").map((segment) => Number.parseInt(segment, 10) || 0);
+  const segB = b.split(".").map((segment) => Number.parseInt(segment, 10) || 0);
+  for (let i = 0; i < 4; i += 1) {
+    const diff = (segA[i] ?? 0) - (segB[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 function getPrimarySwitch(entry: IpRegistro) {
   return entry.puertos[0]?.switchNombre ?? "Sin switch asociado";
 }
@@ -49,10 +59,10 @@ export default function IpsTable({ entries }: IpsTableProps) {
       let bValue: string;
 
       switch (sortBy) {
-        case "ip":
-          aValue = a.ip;
-          bValue = b.ip;
-          break;
+        case "ip": {
+          const diff = compareIpStrings(a.ip, b.ip);
+          return sortDirection === "asc" ? diff : -diff;
+        }
         case "equipoNombre":
           aValue = a.equipoNombre;
           bValue = b.equipoNombre;

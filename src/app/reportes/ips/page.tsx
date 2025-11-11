@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import IpsTable from "@/components/IpsTable";
-import { fetchEquipos } from "@/lib/supabase";
+import IpsTable, { type IpRegistro } from "@/components/IpsTable";
+import { fetchEquipos, fetchSwitches } from "@/lib/supabase";
 
 function parseIp(ip: string): number[] {
   return ip.split(".").map((segment) => {
@@ -37,9 +37,9 @@ function formatUsuario(equipo: Awaited<ReturnType<typeof fetchEquipos>>[number])
 }
 
 export default async function ReporteIpsPage() {
-  const equipos = await fetchEquipos();
+  const [equipos, switches] = await Promise.all([fetchEquipos(), fetchSwitches()]);
 
-  const registros = equipos
+  const registrosEquipos: IpRegistro[] = equipos
     .filter((equipo) => typeof equipo.ip === "string" && equipo.ip.trim().length > 0)
     .map((equipo) => {
       const ip = equipo.ip!.trim();
@@ -75,18 +75,38 @@ export default async function ReporteIpsPage() {
         tomaRed: equipo.toma_red?.trim() || "Sin dato",
         puertos,
       };
-    })
-    .sort((a, b) => compareIps(a.ip, b.ip));
+    });
+
+  const registrosSwitches: IpRegistro[] = switches
+    .filter((sw) => typeof sw.ip === "string" && sw.ip.trim().length > 0)
+    .map((sw) => ({
+      ip: sw.ip!.trim(),
+      equipoNombre: sw.nombre?.trim() || "Switch sin nombre",
+      usuario: "Switch",
+      ubicacion: sw.ubicacion?.nombre?.trim() || "Sin ubicación",
+      tomaRed: "—",
+      puertos: [
+        {
+          switchNombre: sw.nombre?.trim() || "Switch sin nombre",
+          puertoLabel: "—",
+        },
+      ],
+    }));
+
+  const registrosCombinados = [...registrosEquipos, ...registrosSwitches].sort((a, b) =>
+    compareIps(a.ip, b.ip),
+  );
+
+  const totalIps = registrosCombinados.length;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Listado de IPs asignadas
-          </h1>
+          <h1 className="text-2xl font-semibold text-foreground">Listado de IPs</h1>
           <p className="text-sm text-foreground/70">
-            Equipos con dirección IP ordenados de menor a mayor.
+            Número total de IPs asignadas:{" "}
+            <span className="font-semibold text-foreground">{totalIps}</span>
           </p>
         </div>
         <Link
@@ -97,12 +117,10 @@ export default async function ReporteIpsPage() {
         </Link>
       </header>
 
-      {registros.length === 0 ? (
-        <p className="text-sm text-foreground/70">
-          No hay equipos con IP registrada.
-        </p>
+      {registrosCombinados.length === 0 ? (
+        <p className="text-sm text-foreground/70">No hay IPs registradas.</p>
       ) : (
-        <IpsTable entries={registros} />
+        <IpsTable entries={registrosCombinados} />
       )}
     </main>
   );
