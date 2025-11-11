@@ -1319,6 +1319,8 @@ export default function EquiposList({
 
     mostrarSoloAlmacenamiento,
 
+    mostrarSoloImpresoras,
+
     iaResultado,
 
     iaDestacados,
