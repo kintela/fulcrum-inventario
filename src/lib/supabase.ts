@@ -31,7 +31,7 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   webp: "image/webp",
 };
 
-const DEFAULT_TIPOS_EQUIPO = [
+export const DEFAULT_TIPOS_EQUIPO = [
   "portatil",
   "sobremesa",
   "servidor",
