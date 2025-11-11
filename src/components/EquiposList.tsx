@@ -377,6 +377,9 @@ export default function EquiposList({
   const [mostrarSoloWifi, setMostrarSoloWifi] = useState<boolean>(() =>
     getBoolParam("wifi", false),
   );
+  const [mostrarSoloVirtual, setMostrarSoloVirtual] = useState<boolean>(() =>
+    getBoolParam("virtual", false),
+  );
   const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
     useState<string | null>(null);
   const [adminLocalDialog, setAdminLocalDialog] = useState<{
@@ -428,7 +431,8 @@ export default function EquiposList({
         !mostrarSoloTablets &&
         !mostrarSoloAlmacenamiento &&
         !mostrarSoloImpresoras &&
-        !mostrarSoloWifi
+        !mostrarSoloWifi &&
+        !mostrarSoloVirtual
       ) {
         setMostrarEquipos(true);
       }
@@ -443,6 +447,7 @@ export default function EquiposList({
     mostrarSoloAlmacenamiento,
     mostrarSoloImpresoras,
     mostrarSoloWifi,
+    mostrarSoloVirtual,
   ]);
 
   const handleSearchInputChange = (value: string) => {
@@ -616,6 +621,7 @@ export default function EquiposList({
     if (mostrarSoloAlmacenamiento) params.set("almacenamiento", "1");
     if (mostrarSoloImpresoras) params.set("impresoras", "1");
     if (mostrarSoloWifi) params.set("wifi", "1");
+    if (mostrarSoloVirtual) params.set("virtual", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -651,6 +657,7 @@ export default function EquiposList({
     mostrarSoloAlmacenamiento,
     mostrarSoloImpresoras,
     mostrarSoloWifi,
+    mostrarSoloVirtual,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -1020,8 +1027,8 @@ export default function EquiposList({
     setMostrarSoloServidores(false);
     setMostrarSoloTablets(false);
     setMostrarSoloAlmacenamiento(false);
-    setMostrarSoloImpresoras(false);
     setMostrarSoloWifi(false);
+    setMostrarSoloVirtual(false);
     setMostrarSoloImpresoras(false);
     setPantallaPulgadasSeleccionadas("");
   }
@@ -1148,6 +1155,7 @@ export default function EquiposList({
     if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
     if (mostrarSoloImpresoras) tiposRequeridos.push("impresora");
     if (mostrarSoloWifi) tiposRequeridos.push("wifi");
+    if (mostrarSoloVirtual) tiposRequeridos.push("virtual");
     if (tiposRequeridos.length > 0) {
       if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
     }
@@ -1662,7 +1670,8 @@ export default function EquiposList({
     mostrarSoloTablets ||
     mostrarSoloAlmacenamiento ||
     mostrarSoloImpresoras ||
-    mostrarSoloWifi;
+    mostrarSoloWifi ||
+    mostrarSoloVirtual;
 
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
@@ -1674,7 +1683,8 @@ export default function EquiposList({
       mostrarSoloTablets ||
       mostrarSoloAlmacenamiento ||
       mostrarSoloImpresoras ||
-      mostrarSoloWifi)
+      mostrarSoloWifi ||
+      mostrarSoloVirtual)
   ) {
     resumenResultados = equiposResultadosTexto;
   }
@@ -1750,7 +1760,8 @@ export default function EquiposList({
     mostrarSoloTablets ||
     mostrarSoloAlmacenamiento ||
     mostrarSoloImpresoras ||
-    mostrarSoloWifi
+    mostrarSoloWifi ||
+    mostrarSoloVirtual
   ) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
@@ -1758,6 +1769,7 @@ export default function EquiposList({
     if (mostrarSoloAlmacenamiento) partes.push("Almacenamiento");
     if (mostrarSoloImpresoras) partes.push("Impresoras");
     if (mostrarSoloWifi) partes.push("WiFi");
+    if (mostrarSoloVirtual) partes.push("Virtuales");
     const textoTipo =
       partes.length === 1
         ? partes[0]
@@ -2379,6 +2391,19 @@ export default function EquiposList({
             />
 
             <span>WiFi</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloVirtual}
+              onChange={(event) =>
+                setMostrarSoloVirtual(event.target.checked)
+              }
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>Virtuales</span>
           </label>
 
           {onToggleSwitches ? (
