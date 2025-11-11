@@ -374,6 +374,9 @@ export default function EquiposList({
   const [mostrarSoloImpresoras, setMostrarSoloImpresoras] = useState<boolean>(
     () => getBoolParam("impresoras", false),
   );
+  const [mostrarSoloWifi, setMostrarSoloWifi] = useState<boolean>(() =>
+    getBoolParam("wifi", false),
+  );
   const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
     useState<string | null>(null);
   const [adminLocalDialog, setAdminLocalDialog] = useState<{
@@ -424,7 +427,8 @@ export default function EquiposList({
         !mostrarSoloServidores &&
         !mostrarSoloTablets &&
         !mostrarSoloAlmacenamiento &&
-        !mostrarSoloImpresoras
+        !mostrarSoloImpresoras &&
+        !mostrarSoloWifi
       ) {
         setMostrarEquipos(true);
       }
@@ -438,6 +442,7 @@ export default function EquiposList({
     mostrarSoloTablets,
     mostrarSoloAlmacenamiento,
     mostrarSoloImpresoras,
+    mostrarSoloWifi,
   ]);
 
   const handleSearchInputChange = (value: string) => {
@@ -610,6 +615,7 @@ export default function EquiposList({
     if (mostrarSoloTablets) params.set("tablets", "1");
     if (mostrarSoloAlmacenamiento) params.set("almacenamiento", "1");
     if (mostrarSoloImpresoras) params.set("impresoras", "1");
+    if (mostrarSoloWifi) params.set("wifi", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -644,6 +650,7 @@ export default function EquiposList({
     mostrarSoloTablets,
     mostrarSoloAlmacenamiento,
     mostrarSoloImpresoras,
+    mostrarSoloWifi,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
@@ -1014,6 +1021,7 @@ export default function EquiposList({
     setMostrarSoloTablets(false);
     setMostrarSoloAlmacenamiento(false);
     setMostrarSoloImpresoras(false);
+    setMostrarSoloWifi(false);
     setMostrarSoloImpresoras(false);
     setPantallaPulgadasSeleccionadas("");
   }
@@ -1139,9 +1147,10 @@ export default function EquiposList({
     if (mostrarSoloTablets) tiposRequeridos.push("tablet");
     if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
     if (mostrarSoloImpresoras) tiposRequeridos.push("impresora");
-      if (tiposRequeridos.length > 0) {
-        if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
-      }
+    if (mostrarSoloWifi) tiposRequeridos.push("wifi");
+    if (tiposRequeridos.length > 0) {
+      if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
+    }
 
       if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
       if (!mostrarNoAdmitenUpdate && equipo.admite_update === false)
@@ -1650,7 +1659,8 @@ export default function EquiposList({
     mostrarSoloServidores ||
     mostrarSoloTablets ||
     mostrarSoloAlmacenamiento ||
-    mostrarSoloImpresoras;
+    mostrarSoloImpresoras ||
+    mostrarSoloWifi;
 
   if (mostrarEquipos && mostrarPantallas) {
     resumenResultados = `${equiposResultadosTexto} - ${pantallasResultadosTexto}`;
@@ -1661,7 +1671,8 @@ export default function EquiposList({
     (mostrarSoloServidores ||
       mostrarSoloTablets ||
       mostrarSoloAlmacenamiento ||
-      mostrarSoloImpresoras)
+      mostrarSoloImpresoras ||
+      mostrarSoloWifi)
   ) {
     resumenResultados = equiposResultadosTexto;
   }
@@ -1736,13 +1747,15 @@ export default function EquiposList({
     mostrarSoloServidores ||
     mostrarSoloTablets ||
     mostrarSoloAlmacenamiento ||
-    mostrarSoloImpresoras
+    mostrarSoloImpresoras ||
+    mostrarSoloWifi
   ) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
     if (mostrarSoloTablets) partes.push("Tablets");
     if (mostrarSoloAlmacenamiento) partes.push("Almacenamiento");
     if (mostrarSoloImpresoras) partes.push("Impresoras");
+    if (mostrarSoloWifi) partes.push("WiFi");
     const textoTipo =
       partes.length === 1
         ? partes[0]
@@ -2351,6 +2364,19 @@ export default function EquiposList({
             />
 
             <span>Impresoras</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mostrarSoloWifi}
+              onChange={(event) =>
+                setMostrarSoloWifi(event.target.checked)
+              }
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+
+            <span>WiFi</span>
           </label>
 
           {onToggleSwitches ? (
