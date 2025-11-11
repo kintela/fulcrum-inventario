@@ -17,6 +17,7 @@ import type {
 const tipoLabels: Record<string, string> = {
   sobremesa: "Sobremesa",
   portatil: "Portátil",
+  servidor: "Servidor",
   tablet: "Tablet",
   almacenamiento: "Almacenamiento",
 };
@@ -26,6 +27,7 @@ type TipoClave = keyof typeof tipoLabels;
 const tipoClaves: TipoClave[] = [
   "sobremesa",
   "portatil",
+  "servidor",
   "tablet",
   "almacenamiento",
 ];
