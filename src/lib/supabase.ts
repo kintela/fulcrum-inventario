@@ -752,9 +752,8 @@ async function completarFabricantesPantallas(
   });
 }
 export async function fetchEquipos(): Promise<EquipoRecord[]> {
-  const { url, anonKey } = getSupabaseConfig();
-  const restUrl = `${url}/rest/v1/equipos`;
-  const config: SupabaseConfig = { url, anonKey };
+  const config = getSupabaseConfig();
+  const restUrl = `${config.url}/rest/v1/equipos`;
 
   const requestUrl = new URL(restUrl);
   requestUrl.searchParams.set(
@@ -801,8 +800,8 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
 
   const response = await fetch(requestUrl.toString(), {
     headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
       Prefer: "return=representation",
     },
     cache: "no-store",
