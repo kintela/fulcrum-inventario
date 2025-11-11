@@ -16,6 +16,7 @@ import type {
   UsuarioCatalogo,
 } from "@/lib/supabase";
 import {
+  DEFAULT_TIPOS_EQUIPO,
   MAX_IMAGE_SIZE_BYTES,
   TIPO_ACTUACION_ENUM_VALUES,
 } from "@/lib/supabase";
