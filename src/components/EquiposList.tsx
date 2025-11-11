@@ -1330,6 +1330,8 @@ export default function EquiposList({
 
     mostrarSoloImpresoras,
 
+    mostrarSoloWifi,
+
     iaResultado,
 
     iaDestacados,
