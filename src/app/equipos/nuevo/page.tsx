@@ -13,6 +13,7 @@ import {
   createEquipo,
   deleteEquipo,
   fetchFabricantesCatalogo,
+  fetchTiposEquipoEnum,
   fetchUbicacionesCatalogo,
   fetchUsuariosCatalogo,
   ensureImageFileIsValid,
@@ -38,10 +39,11 @@ export default async function NuevoEquipoPage({
   const { tipo, from } = await searchParams;
   const backHref = from ? `/?${from}` : "/";
 
-  const [fabricantes, ubicaciones, usuarios] = await Promise.all([
+  const [fabricantes, ubicaciones, usuarios, tiposEquipo] = await Promise.all([
     fetchFabricantesCatalogo(),
     fetchUbicacionesCatalogo(),
     fetchUsuariosCatalogo(),
+    fetchTiposEquipoEnum(),
   ]);
 
   const equipoInicial = {
@@ -385,6 +387,7 @@ export default async function NuevoEquipoPage({
         fabricantes={fabricantes}
         ubicaciones={ubicaciones}
         usuarios={usuarios}
+        tiposEquipo={tiposEquipo}
         action={crearEquipoAction}
         initialState={INITIAL_STATE}
         backHref={backHref}

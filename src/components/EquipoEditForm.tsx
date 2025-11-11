@@ -30,6 +30,7 @@ type EquipoEditFormProps = {
   fabricantes: CatalogoItem[];
   ubicaciones: CatalogoItem[];
   usuarios: UsuarioCatalogo[];
+  tiposEquipo: string[];
   action: (
     prevState: EquipoEditFormState,
     formData: FormData,
@@ -52,15 +53,6 @@ type ActuacionFormItem = {
   hechaPor: string;
 };
 
-const tipoOptions: Array<{ value: string; label: string }> = [
-  { value: "", label: "Selecciona un tipo" },
-  { value: "sobremesa", label: "Sobremesa" },
-  { value: "portatil", label: "Portatil" },
-  { value: "servidor", label: "Servidor" },
-  { value: "almacenamiento", label: "Almacenamiento" },
-  { value: "tablet", label: "Tablet" },
-];
-
 const tipoActuacionOptions: Array<{ value: string; label: string }> = [
   { value: "", label: "Selecciona un tipo" },
   ...TIPO_ACTUACION_ENUM_VALUES.map((value) => ({
@@ -68,6 +60,17 @@ const tipoActuacionOptions: Array<{ value: string; label: string }> = [
     label: value.charAt(0).toUpperCase() + value.slice(1),
   })),
 ];
+
+function toTipoLabel(value: string) {
+  return value
+    .split("_")
+    .map((segment) =>
+      segment.length > 0
+        ? segment[0].toUpperCase() + segment.slice(1).toLowerCase()
+        : segment,
+    )
+    .join(" ");
+}
 
 function formatDateForInput(value: string | null | undefined) {
   if (!value) return "";
@@ -107,6 +110,7 @@ export default function EquipoEditForm({
   fabricantes,
   ubicaciones,
   usuarios,
+  tiposEquipo = [],
   action,
   initialState,
   mode = "edit",
@@ -119,6 +123,18 @@ export default function EquipoEditForm({
 
   const fechaCompraValor = formatDateForInput(equipo.fecha_compra);
   const fechaBiosValor = formatDateForInput(equipo.fecha_bios ?? null);
+
+  const tiposEquipoNormalizados = (
+    tiposEquipo.length > 0 ? tiposEquipo : DEFAULT_TIPOS_EQUIPO
+  ).sort((a, b) => toTipoLabel(a).localeCompare(toTipoLabel(b), "es"));
+
+  const tipoOptions: Array<{ value: string; label: string }> = [
+    { value: "", label: "Selecciona un tipo" },
+    ...tiposEquipoNormalizados.map((tipo) => ({
+      value: tipo,
+      label: toTipoLabel(tipo),
+    })),
+  ];
 
   const admiteUpdateDefault =
     equipo.admite_update === null || equipo.admite_update === undefined

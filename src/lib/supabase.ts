@@ -31,6 +31,19 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   webp: "image/webp",
 };
 
+const DEFAULT_TIPOS_EQUIPO = [
+  "portatil",
+  "sobremesa",
+  "servidor",
+  "tablet",
+  "almacenamiento",
+  "virtual",
+  "firewall",
+  "impresora",
+  "wifi",
+  "ups",
+];
+
 export const TIPO_ACTUACION_ENUM_VALUES = [
   "reparación",
   "ampliación",
@@ -990,6 +1003,55 @@ export async function fetchSwitchById(
 
   const switches = (await response.json()) as SwitchRecord[];
   return switches.length > 0 ? switches[0] : null;
+}
+
+export async function fetchTiposEquipoEnum(): Promise<string[]> {
+  const config = getSupabaseConfig();
+  const authKey = config.serviceRoleKey ?? config.anonKey;
+  const requestUrl = new URL(`${config.url}/rest/v1/pg_catalog.pg_enum`);
+  requestUrl.searchParams.set(
+    "select",
+    "enumlabel,enumsortorder,pg_type!inner(typname)",
+  );
+  requestUrl.searchParams.set("pg_type.typname", "eq.tipo_equipo_enum");
+  requestUrl.searchParams.set("order", "enumsortorder.asc");
+
+  try {
+    const response = await fetch(requestUrl.toString(), {
+      headers: {
+        apikey: authKey,
+        Authorization: `Bearer ${authKey}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      console.warn(
+        `[fetchTiposEquipoEnum] respuesta no OK (${response.status}): ${details}`,
+      );
+      return DEFAULT_TIPOS_EQUIPO;
+    }
+
+    const data = (await response.json()) as Array<{
+      enumlabel?: string | null;
+    }>;
+
+    const valores = data
+      .map((fila) => fila.enumlabel?.trim())
+      .filter((valor): valor is string => Boolean(valor));
+
+    if (valores.length > 0) {
+      return valores;
+    }
+  } catch (error) {
+    console.warn(
+      "[fetchTiposEquipoEnum] no se pudo obtener desde pg_catalog, usando valores por defecto",
+      error,
+    );
+  }
+
+  return DEFAULT_TIPOS_EQUIPO;
 }
 
 export async function upsertSwitchPorts(

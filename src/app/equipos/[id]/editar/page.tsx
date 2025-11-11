@@ -7,6 +7,7 @@ import EquipoEditForm, {
 import {
   fetchEquipoById,
   fetchFabricantesCatalogo,
+  fetchTiposEquipoEnum,
   fetchUbicacionesCatalogo,
   fetchUsuariosCatalogo,
   updateEquipo,
@@ -48,10 +49,11 @@ export default async function EditarEquipoPage({
     notFound();
   }
 
-  const [fabricantes, ubicaciones, usuarios] = await Promise.all([
+  const [fabricantes, ubicaciones, usuarios, tiposEquipo] = await Promise.all([
     fetchFabricantesCatalogo(),
     fetchUbicacionesCatalogo(),
     fetchUsuariosCatalogo(),
+    fetchTiposEquipoEnum(),
   ]);
 
   async function actualizarEquipoAction(
@@ -367,6 +369,7 @@ export default async function EditarEquipoPage({
         fabricantes={fabricantes}
         ubicaciones={ubicaciones}
         usuarios={usuarios}
+        tiposEquipo={tiposEquipo}
         action={actualizarEquipoAction}
         initialState={INITIAL_STATE}
         backHref={backHref}
