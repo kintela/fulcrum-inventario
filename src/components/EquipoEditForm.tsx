@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   useActionState,
@@ -239,9 +240,12 @@ export default function EquipoEditForm({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex h-48 w-full items-center justify-center rounded-md border border-dashed border-border bg-background p-2 sm:w-48">
             {previewSrc ? (
-              <img
+              <Image
                 src={previewSrc}
                 alt={`Vista previa del equipo ${equipo.nombre ?? equipo.id}`}
+                width={192}
+                height={192}
+                unoptimized
                 className="h-full w-full max-h-44 object-contain"
               />
             ) : (

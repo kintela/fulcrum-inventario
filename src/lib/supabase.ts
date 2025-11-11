@@ -468,7 +468,7 @@ async function uploadImageToStorage(
   file: UploadableImage,
 ): Promise<string> {
   const config = getSupabaseConfig();
-  const { prefix, prefixWithSlash, identifierSegment } =
+  const { prefixWithSlash, identifierSegment } =
     sanitizeStorageFolder(folder, identifier);
   if (!prefixWithSlash || identifierSegment.length === 0) {
     throw new Error("No se pudo determinar la ruta de almacenamiento.");
