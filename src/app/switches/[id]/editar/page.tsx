@@ -57,6 +57,7 @@ export default async function EditarSwitchPage({
   const valoresIniciales: SwitchFormValues = {
     nombre: switchInfo.nombre ?? null,
     modelo: switchInfo.modelo ?? null,
+    login: switchInfo.login ?? null,
     fabricante_id:
       typeof switchInfo.fabricante_id === "number"
         ? switchInfo.fabricante_id
@@ -164,6 +165,7 @@ export default async function EditarSwitchPage({
     const payload: SwitchUpdatePayload = {
       nombre: getStringOrNull("nombre"),
       modelo: getStringOrNull("modelo"),
+      login: getStringOrNull("login"),
       fabricante_id: fabricanteId.value,
       ubicacion_id: ubicacionId.value,
       ip: getStringOrNull("ip"),

@@ -38,6 +38,19 @@ export default function SwitchesList({
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [isVerifyingEdit, setIsVerifyingEdit] = useState(false);
+  const [loginDialog, setLoginDialog] = useState<{
+    switchId: string;
+    login: string;
+  } | null>(null);
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginShowPassword, setLoginShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginResultado, setLoginResultado] = useState<string | null>(null);
+  const [loginInfo, setLoginInfo] = useState<string | null>(null);
+  const [isVerifyingLogin, setIsVerifyingLogin] = useState(false);
+  const [loginVerificandoId, setLoginVerificandoId] = useState<string | null>(
+    null,
+  );
 
   const abrirProteccionEdicion = useCallback(
     (
@@ -92,6 +105,78 @@ export default function SwitchesList({
     },
     [cerrarProteccionEdicion, editDialog, editPassword, router],
   );
+
+  const abrirDialogoLogin = useCallback(
+    (switchId: string, login: string | null) => {
+      if (!login || login.trim().length === 0) {
+        window.alert("Este switch no tiene un login registrado.");
+        return;
+      }
+      setLoginDialog({ switchId, login: login.trim() });
+      setLoginPassword("");
+      setLoginShowPassword(false);
+      setLoginError(null);
+      setLoginResultado(null);
+      setLoginInfo(null);
+      setIsVerifyingLogin(false);
+      setLoginVerificandoId(null);
+    },
+    [],
+  );
+
+  const cerrarDialogoLogin = useCallback(() => {
+    setLoginDialog(null);
+    setLoginPassword("");
+    setLoginShowPassword(false);
+    setLoginError(null);
+    setLoginResultado(null);
+    setLoginInfo(null);
+    setIsVerifyingLogin(false);
+    setLoginVerificandoId(null);
+  }, []);
+
+  const manejarSubmitLogin = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!loginDialog) return;
+      const trimmed = loginPassword.trim();
+      if (!trimmed) {
+        setLoginError("Introduce la contrasena.");
+        return;
+      }
+      try {
+        setLoginError(null);
+        setLoginInfo(null);
+        setIsVerifyingLogin(true);
+        setLoginVerificandoId(loginDialog.switchId);
+        await verifyAdminPassword(trimmed);
+        setLoginResultado(loginDialog.login);
+        setLoginInfo("Puedes copiar el login o cerrar la ventana para ocultarlo.");
+      } catch (error) {
+        console.error(error);
+        setLoginError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo verificar la contrasena.",
+        );
+      } finally {
+        setIsVerifyingLogin(false);
+        setLoginVerificandoId(null);
+      }
+    },
+    [loginDialog, loginPassword],
+  );
+
+  const manejarCopiarLogin = useCallback(async () => {
+    if (!loginResultado) return;
+    try {
+      await navigator.clipboard.writeText(loginResultado);
+      setLoginInfo("Login copiado al portapapeles.");
+    } catch (error) {
+      console.error(error);
+      setLoginError("No se pudo copiar el login.");
+    }
+  }, [loginResultado]);
 
   const ordenados = useMemo(() => {
     return [...switches].sort((a, b) => {
@@ -200,6 +285,10 @@ export default function SwitchesList({
               item.observaciones.trim().length > 0
                 ? item.observaciones.trim()
                 : null;
+            const loginValor =
+              item.login && item.login.trim().length > 0
+                ? item.login.trim()
+                : null;
 
             const editHref =
               fromQueryParam && fromQueryParam.length > 0
@@ -298,6 +387,45 @@ export default function SwitchesList({
                     <dd className="text-foreground">{garantiaTexto}</dd>
                   </div>
 
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <dt className="font-medium text-foreground/60">Login:</dt>
+                    <dd className="flex items-center gap-2 text-foreground">
+                      <span>{loginValor ? "********" : "Sin dato"}</span>
+                      {loginValor ? (
+                        <button
+                          type="button"
+                          onClick={() => abrirDialogoLogin(item.id, loginValor)}
+                          disabled={loginVerificandoId === item.id}
+                          title="Mostrar login"
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/70 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M2.25 12s3.273-6 9.75-6 9.75 6 9.75 6-3.273 6-9.75 6-9.75-6-9.75-6Z"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M12 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </dd>
+                  </div>
+
                   {observaciones ? (
                     <div className="flex flex-col gap-1">
                       <dt className="font-medium text-foreground/60">Observaciones</dt>
@@ -373,6 +501,122 @@ export default function SwitchesList({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {loginDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">
+                  Mostrar login
+                </h2>
+                <p className="text-xs text-foreground/60">
+                  Introduce la contrasena para ver la credencial guardada.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarDialogoLogin}
+                title="Cerrar"
+                className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+              >
+                <span className="text-lg leading-none">&times;</span>
+              </button>
+            </div>
+
+            {loginResultado ? (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border bg-background/80 px-3 py-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-foreground/60">
+                    Login
+                  </p>
+                  <p className="mt-1 font-mono text-sm break-all text-foreground">
+                    {loginResultado}
+                  </p>
+                </div>
+
+                {loginInfo ? (
+                  <p className="text-xs text-foreground/60">{loginInfo}</p>
+                ) : null}
+
+                {loginError ? (
+                  <p className="text-xs text-red-500">{loginError}</p>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={manejarCopiarLogin}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cerrarDialogoLogin}
+                    className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={manejarSubmitLogin}
+                className="space-y-4"
+                autoComplete="off"
+              >
+                <label className="flex flex-col gap-1 text-xs text-foreground/70">
+                  Contrasena
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={loginShowPassword ? "text" : "password"}
+                      value={loginPassword}
+                      onChange={(event) => setLoginPassword(event.target.value)}
+                      className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                      placeholder="Introduce la contrasena"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLoginShowPassword((prev) => !prev)}
+                      className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                    >
+                      {loginShowPassword ? "Ocultar" : "Ver"}
+                    </button>
+                  </div>
+                </label>
+
+                {loginError ? (
+                  <p className="text-xs text-red-500">{loginError}</p>
+                ) : null}
+
+                {loginInfo ? (
+                  <p className="text-xs text-foreground/60">{loginInfo}</p>
+                ) : null}
+
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={cerrarDialogoLogin}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                    disabled={isVerifyingLogin}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isVerifyingLogin}
+                    className="inline-flex cursor-pointer items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isVerifyingLogin ? "Verificando..." : "Ver login"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       ) : null}

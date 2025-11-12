@@ -37,6 +37,7 @@ export default async function NuevoSwitchPage({
   const valoresIniciales: SwitchFormValues = {
     nombre: null,
     modelo: null,
+    login: null,
     fabricante_id: null,
     ubicacion_id: null,
     ip: null,
@@ -140,6 +141,7 @@ export default async function NuevoSwitchPage({
     const payload: SwitchInsertPayload = {
       nombre: getStringOrNull("nombre"),
       modelo: getStringOrNull("modelo"),
+      login: getStringOrNull("login"),
       fabricante_id: fabricanteId.value,
       ubicacion_id: ubicacionId.value,
       ip: getStringOrNull("ip"),

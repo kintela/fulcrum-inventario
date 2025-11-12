@@ -99,6 +99,7 @@ export type SwitchRecord = {
   id: string;
   nombre: string | null;
   modelo: string | null;
+  login: string | null;
   fabricante_id: number | null;
   fabricante?: { nombre: string | null } | null;
   ubicacion_id: number | null;
@@ -148,6 +149,7 @@ export type SwitchInsertPayload = {
   ip?: string | null;
   ancho_banda_gbps?: number | null;
   puertos_totales?: number | null;
+  login?: string | null;
   precio?: number | null;
   fecha_compra?: string | null;
   en_garantia?: boolean | null;
@@ -157,6 +159,7 @@ export type SwitchInsertPayload = {
 export type SwitchUpdatePayload = {
   nombre?: string | null;
   modelo?: string | null;
+  login?: string | null;
   fabricante_id?: number | null;
   ubicacion_id?: number | null;
   ip?: string | null;
@@ -924,6 +927,7 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
       "id",
       "nombre",
       "modelo",
+      "login",
       "fabricante_id",
       "ubicacion_id",
       "ancho_banda_gbps",
@@ -968,8 +972,9 @@ export async function fetchSwitchById(
     [
       "id",
         "nombre",
-        "modelo",
-        "fabricante_id",
+      "modelo",
+      "login",
+      "fabricante_id",
         "ubicacion_id",
         "ancho_banda_gbps",
         "ip",
