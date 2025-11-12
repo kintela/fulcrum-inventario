@@ -36,6 +36,29 @@ function formatUsuario(equipo: Awaited<ReturnType<typeof fetchEquipos>>[number])
   return "Sin usuario asignado";
 }
 
+const tipoLabels: Record<string, string> = {
+  sobremesa: "Sobremesa",
+  portatil: "Portátil",
+  servidor: "Servidor",
+  tablet: "Tablet",
+  almacenamiento: "Almacenamiento",
+  impresora: "Impresora",
+  wifi: "WiFi",
+  virtual: "Virtual",
+  firewall: "Firewall",
+  ups: "UPS",
+};
+
+function formatTipo(valor: string | null | undefined): string {
+  if (!valor) return "Sin tipo";
+  const normalized = valor.trim().toLowerCase();
+  if (!normalized) return "Sin tipo";
+  return (
+    tipoLabels[normalized] ??
+    normalized.charAt(0).toUpperCase() + normalized.slice(1)
+  );
+}
+
 export default async function ReporteIpsPage() {
   const [equipos, switches] = await Promise.all([fetchEquipos(), fetchSwitches()]);
 
@@ -43,6 +66,24 @@ export default async function ReporteIpsPage() {
     .filter((equipo) => typeof equipo.ip === "string" && equipo.ip.trim().length > 0)
     .map((equipo) => {
       const ip = equipo.ip!.trim();
+      const tipoCrudo = (() => {
+        const directo =
+          typeof equipo.tipo === "string" && equipo.tipo.trim().length > 0
+            ? equipo.tipo.trim()
+            : null;
+        if (directo) return directo;
+
+        for (const [clave, valor] of Object.entries(
+          equipo as Record<string, unknown>,
+        )) {
+          if (!clave.toLowerCase().includes("tipo")) continue;
+          if (typeof valor === "string" && valor.trim().length > 0) {
+            return valor.trim();
+          }
+        }
+
+        return null;
+      })();
       const puertos =
         Array.isArray(equipo.puertos_conectados) &&
         equipo.puertos_conectados.length > 0
@@ -70,6 +111,7 @@ export default async function ReporteIpsPage() {
       return {
         ip,
         equipoNombre: equipo.nombre?.trim() || "Equipo sin nombre",
+        tipo: formatTipo(tipoCrudo),
         usuario: formatUsuario(equipo),
         ubicacion: equipo.ubicacion?.nombre?.trim() || "Sin ubicación",
         tomaRed: equipo.toma_red?.trim() || "Sin dato",
@@ -82,6 +124,7 @@ export default async function ReporteIpsPage() {
     .map((sw) => ({
       ip: sw.ip!.trim(),
       equipoNombre: sw.nombre?.trim() || "Switch sin nombre",
+      tipo: "Switch",
       usuario: "Switch",
       ubicacion: sw.ubicacion?.nombre?.trim() || "Sin ubicación",
       tomaRed: "—",

@@ -10,6 +10,7 @@ type PuertoResumen = {
 export type IpRegistro = {
   ip: string;
   equipoNombre: string;
+  tipo: string;
   usuario: string;
   ubicacion: string;
   tomaRed: string;
@@ -19,6 +20,7 @@ export type IpRegistro = {
 type ColumnaOrden =
   | "ip"
   | "equipoNombre"
+  | "tipo"
   | "usuario"
   | "ubicacion"
   | "tomaRed"
@@ -71,6 +73,10 @@ export default function IpsTable({ entries }: IpsTableProps) {
           aValue = a.usuario;
           bValue = b.usuario;
           break;
+        case "tipo":
+          aValue = a.tipo;
+          bValue = b.tipo;
+          break;
         case "ubicacion":
           aValue = a.ubicacion;
           bValue = b.ubicacion;
@@ -121,6 +127,7 @@ export default function IpsTable({ entries }: IpsTableProps) {
             {[
               { key: "ip", label: "IP" },
               { key: "equipoNombre", label: "Equipo" },
+              { key: "tipo", label: "Tipo" },
               { key: "usuario", label: "Usuario" },
               { key: "ubicacion", label: "Ubicación" },
               { key: "tomaRed", label: "Toma de red" },
@@ -148,6 +155,7 @@ export default function IpsTable({ entries }: IpsTableProps) {
             >
               <td className="px-4 py-3 font-mono text-foreground">{registro.ip}</td>
               <td className="px-4 py-3">{registro.equipoNombre}</td>
+              <td className="px-4 py-3">{registro.tipo || "Sin tipo"}</td>
               <td className="px-4 py-3">{registro.usuario}</td>
               <td className="px-4 py-3">{registro.ubicacion}</td>
               <td className="px-4 py-3">{registro.tomaRed}</td>
