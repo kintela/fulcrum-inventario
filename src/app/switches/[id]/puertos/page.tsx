@@ -8,6 +8,7 @@ import {
   deleteSwitchPorts,
   fetchEquiposCatalogo,
   fetchSwitchById,
+  fetchSwitchesCatalogo,
   upsertSwitchPorts,
   type SwitchPortUpsert,
 } from "@/lib/supabase";
@@ -52,7 +53,39 @@ export default async function SwitchPortsPage({
     );
   }
 
-  const equiposCatalogo = await fetchEquiposCatalogo();
+  const [equiposCatalogo, switchesCatalogo] = await Promise.all([
+    fetchEquiposCatalogo(),
+    fetchSwitchesCatalogo(),
+  ]);
+
+  const opcionesEquipos = [
+    ...equiposCatalogo.map((equipo) => {
+      const nombre =
+        equipo.nombre?.trim().length && equipo.nombre
+          ? equipo.nombre.trim()
+          : `Equipo #${equipo.id}`;
+      const modelo =
+        equipo.modelo?.trim().length && equipo.modelo
+          ? ` (${equipo.modelo.trim()})`
+          : "";
+      return {
+        value: `equipo:${equipo.id}`,
+        label: `${nombre}${modelo}`,
+      };
+    }),
+    ...switchesCatalogo.map((sw) => {
+      const nombre =
+        sw.nombre?.trim().length && sw.nombre
+          ? sw.nombre.trim()
+          : `Switch #${sw.id}`;
+      return {
+        value: `switch:${sw.id}`,
+        label: `${nombre} (Switch)`,
+      };
+    }),
+  ].sort((a, b) =>
+    a.label.localeCompare(b.label, "es", { sensitivity: "base" }),
+  );
 
   async function guardarPuertosAction(
     _prevState: SwitchPortsFormState,
@@ -92,7 +125,7 @@ export default async function SwitchPortsPage({
       const base = `puerto_${numero}`;
       const idRaw = formData.get(`${base}_id`);
       const nombreRaw = formData.get(`${base}_nombre`);
-      const equipoIdRaw = formData.get(`${base}_equipo_id`);
+      const equipoSeleccionRaw = formData.get(`${base}_equipo_id`);
       const vlanRaw = formData.get(`${base}_vlan`);
       const velocidadRaw = formData.get(`${base}_velocidad`);
       const poeRaw = formData.get(`${base}_poe`);
@@ -106,10 +139,30 @@ export default async function SwitchPortsPage({
         typeof nombreRaw === "string" && nombreRaw.trim().length > 0
           ? nombreRaw.trim()
           : null;
-      const equipoId =
-        typeof equipoIdRaw === "string" && equipoIdRaw.trim().length > 0
-          ? equipoIdRaw.trim()
-          : null;
+      let equipoId: string | null = null;
+      let switchConectadoId: number | null = null;
+      if (
+        typeof equipoSeleccionRaw === "string" &&
+        equipoSeleccionRaw.trim().length > 0
+      ) {
+        const trimmed = equipoSeleccionRaw.trim();
+        if (trimmed.startsWith("equipo:")) {
+          equipoId = trimmed.split("equipo:")[1] ?? null;
+        } else if (trimmed.startsWith("switch:")) {
+          const rawId = trimmed.split("switch:")[1] ?? "";
+          const parsed = Number.parseInt(rawId, 10);
+          if (Number.isFinite(parsed)) {
+            switchConectadoId = parsed;
+          } else {
+            return {
+              status: "error",
+              message: `El switch seleccionado para el puerto ${numero} no es válido.`,
+            };
+          }
+        } else {
+          equipoId = trimmed;
+        }
+      }
       const vlan =
         typeof vlanRaw === "string" && vlanRaw.trim().length > 0
           ? Number.parseInt(vlanRaw.trim(), 10)
@@ -144,6 +197,7 @@ export default async function SwitchPortsPage({
       const hayContenido =
         nombre ||
         equipoId ||
+        switchConectadoId !== null ||
         vlan !== null ||
         velocidad !== null ||
         poe ||
@@ -160,7 +214,8 @@ export default async function SwitchPortsPage({
         switch_id: switchIdNumber,
         numero,
         nombre,
-        equipo_id: equipoId,
+        equipo_id: equipoId ?? null,
+        switch_conectado_id: switchConectadoId ?? null,
         vlan,
         velocidad_mbps: velocidad,
         poe,
@@ -210,10 +265,10 @@ export default async function SwitchPortsPage({
         switchNombre={switchInfo.nombre}
         puertosTotales={puertosTotales}
         puertos={puertosOrdenados}
-        equipos={equiposCatalogo}
+        opcionesEquipos={opcionesEquipos}
         action={guardarPuertosAction}
         initialState={INITIAL_STATE}
-        backHref="/"
+        backHref={`/switches/${switchInfo.id}/editar`}
       />
     </main>
   );

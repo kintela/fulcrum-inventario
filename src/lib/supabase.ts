@@ -126,6 +126,8 @@ export type SwitchPortRecord = {
   equipo_id: string | null;
   equipo?: { id: string; nombre: string | null; modelo: string | null } | null;
   switch?: { id: number; nombre: string | null } | null;
+  switch_conectado_id?: number | null;
+  switch_conectado?: { id: number; nombre: string | null } | null;
   observaciones: string | null;
 };
 
@@ -138,6 +140,7 @@ export type SwitchPortUpsert = {
   poe?: boolean | null;
   velocidad_mbps?: number | null;
   equipo_id?: string | null;
+  switch_conectado_id?: number | null;
   observaciones?: string | null;
 };
 
@@ -226,6 +229,11 @@ export type EquipoCatalogoItem = {
   id: string;
   nombre: string | null;
   modelo?: string | null;
+};
+
+export type SwitchCatalogoItem = {
+  id: string;
+  nombre: string | null;
 };
 
 export type UsuarioCatalogo = {
@@ -684,13 +692,18 @@ async function obtenerMiniaturaDesdeStorage(
         return url;
       }
     } catch (error) {
-      console.error(
+      const isNetworkError = error instanceof TypeError;
+      const logger = isNetworkError ? console.warn : console.error;
+      logger(
         "[obtenerMiniaturaDesdeStorage] error al listar",
         carpeta,
         identificador,
         candidato,
         error,
       );
+      if (isNetworkError) {
+        continue;
+      }
     }
   }
 
@@ -811,7 +824,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "url_factura",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
       "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones)",
-      "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,switch:switches(id,nombre))",
+      "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,switch:switches!puertos_switch_id_fkey(id,nombre),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
       "usuario:usuarios(nombre,apellidos,nombre_completo)",
@@ -941,7 +954,7 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
       "observaciones",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
-      "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",
+      "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
     ].join(","),
   );
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
@@ -987,7 +1000,7 @@ export async function fetchSwitchById(
         "observaciones",
         "fabricante:fabricantes(nombre)",
         "ubicacion:ubicaciones(nombre)",
-        "puertos:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,equipo:equipos(id,nombre,modelo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)))",
+        "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,modelo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
       ].join(","),
   );
   requestUrl.searchParams.set("id", `eq.${id}`);
@@ -1411,6 +1424,30 @@ export async function fetchEquiposCatalogo(): Promise<EquipoCatalogoItem[]> {
   }
 
   return (await response.json()) as EquipoCatalogoItem[];
+}
+
+export async function fetchSwitchesCatalogo(): Promise<SwitchCatalogoItem[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/switches`);
+  requestUrl.searchParams.set("select", "id,nombre");
+  requestUrl.searchParams.set("order", "nombre.asc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar switches para el catalogo: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as SwitchCatalogoItem[];
 }
 
 export type PantallaUpdatePayload = {

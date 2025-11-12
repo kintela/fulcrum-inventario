@@ -5,10 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 
-import type {
-  EquipoCatalogoItem,
-  SwitchPortRecord,
-} from "@/lib/supabase";
+import type { SwitchPortRecord } from "@/lib/supabase";
 
 export type SwitchPortsFormState = {
   status: "idle" | "success" | "error";
@@ -20,7 +17,7 @@ type SwitchPortsFormProps = {
   switchNombre: string | null;
   puertosTotales: number;
   puertos: SwitchPortRecord[];
-  equipos: EquipoCatalogoItem[];
+  opcionesEquipos: Array<{ value: string; label: string }>;
   action: (
     prevState: SwitchPortsFormState,
     formData: FormData,
@@ -47,7 +44,7 @@ export default function SwitchPortsForm({
   switchNombre,
   puertosTotales,
   puertos,
-  equipos,
+  opcionesEquipos,
   action,
   initialState,
   backHref,
@@ -178,8 +175,10 @@ export default function SwitchPortsForm({
               const campoBase = `puerto_${numero}`;
               const equipoDefaultValue =
                 puerto?.equipo_id && puerto.equipo_id.toString().trim().length > 0
-                  ? String(puerto.equipo_id)
-                  : "";
+                  ? `equipo:${puerto.equipo_id}`
+                  : puerto?.switch_conectado_id
+                    ? `switch:${puerto.switch_conectado_id}`
+                    : "";
               const nombreDefaultValue =
                 typeof puerto?.nombre === "string" ? puerto.nombre : "";
               const vlanDefaultValue =
@@ -241,11 +240,9 @@ export default function SwitchPortsForm({
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
                     >
                       <option value="">Sin equipo</option>
-                      {equipos.map((equipo) => (
-                        <option key={equipo.id} value={equipo.id}>
-                          {equipo.nombre?.trim().length
-                            ? equipo.nombre
-                            : `Equipo #${equipo.id}`}
+                      {opcionesEquipos.map((opcion) => (
+                        <option key={opcion.value} value={opcion.value}>
+                          {opcion.label}
                         </option>
                       ))}
                     </select>
