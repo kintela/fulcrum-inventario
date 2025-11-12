@@ -4,13 +4,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
@@ -103,6 +97,7 @@ type EquiposListProps = {
   mostrarSwitches?: boolean;
 
   onToggleSwitches?: (next: boolean) => void;
+  onClearTipoResumen?: () => void;
 };
 
 type IaFilters = {
@@ -118,6 +113,8 @@ type IaFilters = {
 
   tiposIn?: string[];
 };
+
+const TIPOS_EQUIPO_BASE = new Set(["portatil", "sobremesa"]);
 
 type IaResultado = {
   filters: IaFilters;
@@ -276,6 +273,7 @@ export default function EquiposList({
   forzarMostrarPantallas = false,
   mostrarSwitches = false,
   onToggleSwitches,
+  onClearTipoResumen,
 }: EquiposListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -380,6 +378,35 @@ export default function EquiposList({
   const [mostrarSoloVirtual, setMostrarSoloVirtual] = useState<boolean>(() =>
     getBoolParam("virtual", false),
   );
+  const tiposSeleccionados = useMemo(() => {
+    const tipos: string[] = [];
+    if (mostrarSoloServidores) tipos.push("servidor");
+    if (mostrarSoloTablets) tipos.push("tablet");
+    if (mostrarSoloAlmacenamiento) tipos.push("almacenamiento");
+    if (mostrarSoloImpresoras) tipos.push("impresora");
+    if (mostrarSoloWifi) tipos.push("wifi");
+    if (mostrarSoloVirtual) tipos.push("virtual");
+    return tipos;
+  }, [
+    mostrarSoloServidores,
+    mostrarSoloTablets,
+    mostrarSoloAlmacenamiento,
+    mostrarSoloImpresoras,
+    mostrarSoloWifi,
+    mostrarSoloVirtual,
+  ]);
+  const tipoSeleccionadoLower =
+    tipoSeleccionado && tipoSeleccionado.length > 0
+      ? tipoSeleccionado.toLowerCase()
+      : null;
+  const tiposPermitidosExtraSet = useMemo(() => {
+    const set = new Set(tiposSeleccionados);
+    if (tipoSeleccionadoLower) {
+      set.add(tipoSeleccionadoLower);
+    }
+    return set;
+  }, [tiposSeleccionados, tipoSeleccionadoLower]);
+  const filtrosTipoManualesActivos = tiposSeleccionados.length > 0;
   const [adminLocalVerificandoId, setAdminLocalVerificandoId] =
     useState<string | null>(null);
   const [adminLocalDialog, setAdminLocalDialog] = useState<{
@@ -416,39 +443,6 @@ export default function EquiposList({
     setMostrarPantallas(true);
     setMostrarEquipos(false);
   }, [forzarMostrarPantallas]);
-
-  const prevMostrarSwitches = useRef(mostrarSwitches);
-  useEffect(() => {
-    const anterior = prevMostrarSwitches.current;
-    if (!anterior && mostrarSwitches) {
-      setMostrarEquipos(false);
-      setMostrarPantallas(false);
-    } else if (anterior && !mostrarSwitches) {
-      if (
-        !mostrarEquipos &&
-        !mostrarPantallas &&
-        !mostrarSoloServidores &&
-        !mostrarSoloTablets &&
-        !mostrarSoloAlmacenamiento &&
-        !mostrarSoloImpresoras &&
-        !mostrarSoloWifi &&
-        !mostrarSoloVirtual
-      ) {
-        setMostrarEquipos(true);
-      }
-    }
-    prevMostrarSwitches.current = mostrarSwitches;
-  }, [
-    mostrarSwitches,
-    mostrarEquipos,
-    mostrarPantallas,
-    mostrarSoloServidores,
-    mostrarSoloTablets,
-    mostrarSoloAlmacenamiento,
-    mostrarSoloImpresoras,
-    mostrarSoloWifi,
-    mostrarSoloVirtual,
-  ]);
 
   const handleSearchInputChange = (value: string) => {
     setSearchTerm(value);
@@ -608,7 +602,7 @@ export default function EquiposList({
     if (!mostrarGarbiguneNo) params.set("garbiguneNo", "0");
     if (usuariosSeleccionados.length > 0)
       params.set("usuarios", usuariosSeleccionados.join(","));
-    if (!mostrarEquipos) params.set("equipos", "0");
+    params.set("equipos", mostrarEquipos ? "1" : "0");
     if (mostrarPantallas) params.set("pantallas", "1");
     if (mostrarEquiposConUnaPantalla) params.set("pantallas1", "1");
     if (mostrarEquiposConDosPantallas) params.set("pantallas2", "1");
@@ -622,6 +616,7 @@ export default function EquiposList({
     if (mostrarSoloImpresoras) params.set("impresoras", "1");
     if (mostrarSoloWifi) params.set("wifi", "1");
     if (mostrarSoloVirtual) params.set("virtual", "1");
+    if (mostrarSwitches) params.set("switches", "1");
     if (pantallaPulgadasSeleccionadas)
       params.set("pulgadas", pantallaPulgadasSeleccionadas);
 
@@ -658,11 +653,18 @@ export default function EquiposList({
     mostrarSoloImpresoras,
     mostrarSoloWifi,
     mostrarSoloVirtual,
+    mostrarSwitches,
     pantallaPulgadasSeleccionadas,
     currentQueryString,
     pathname,
     router,
   ]);
+
+  useEffect(() => {
+    if (filtroTipo && filtrosTipoManualesActivos && onClearTipoResumen) {
+      onClearTipoResumen();
+    }
+  }, [filtroTipo, filtrosTipoManualesActivos, onClearTipoResumen]);
 
   const [equipoEliminandoId, setEquipoEliminandoId] = useState<string | null>(
     null,
@@ -1031,6 +1033,9 @@ export default function EquiposList({
     setMostrarSoloVirtual(false);
     setMostrarSoloImpresoras(false);
     setPantallaPulgadasSeleccionadas("");
+    if (onToggleSwitches) {
+      onToggleSwitches(false);
+    }
   }
 
   function manejarCambioMostrarEquipos(checked: boolean) {
@@ -1049,7 +1054,7 @@ export default function EquiposList({
     let dataset = equipos;
     const usuariosSeleccionadosSet = new Set(usuariosSeleccionados);
 
-    if (filtroTipo) {
+    if (filtroTipo && !filtrosTipoManualesActivos) {
       const tipoNormalizado = filtroTipo.toLowerCase();
 
       dataset = dataset.filter(
@@ -1145,20 +1150,30 @@ export default function EquiposList({
         if (antiguedad === null || antiguedad < antiguedadMinima) return false;
       }
 
+      const hayCategoriasEquiposActivas =
+        mostrarEquipos || tiposPermitidosExtraSet.size > 0;
+      if (hayCategoriasEquiposActivas) {
+        if (!tipoEquipo) return false;
+        const esBase = TIPOS_EQUIPO_BASE.has(tipoEquipo);
+        const esExtra = tiposPermitidosExtraSet.has(tipoEquipo);
+
+        if (mostrarEquipos) {
+          if (tiposPermitidosExtraSet.size === 0 && !esBase) {
+            return false;
+          }
+          if (tiposPermitidosExtraSet.size > 0 && !esBase && !esExtra) {
+            return false;
+          }
+        } else if (!esExtra) {
+          return false;
+        }
+      } else if (!mostrarPantallas) {
+        return false;
+      }
+
       if (tipoSeleccionado) {
         if (!tipoEquipo || tipoEquipo !== tipoSeleccionado) return false;
       }
-
-    const tiposRequeridos: string[] = [];
-    if (mostrarSoloServidores) tiposRequeridos.push("servidor");
-    if (mostrarSoloTablets) tiposRequeridos.push("tablet");
-    if (mostrarSoloAlmacenamiento) tiposRequeridos.push("almacenamiento");
-    if (mostrarSoloImpresoras) tiposRequeridos.push("impresora");
-    if (mostrarSoloWifi) tiposRequeridos.push("wifi");
-    if (mostrarSoloVirtual) tiposRequeridos.push("virtual");
-    if (tiposRequeridos.length > 0) {
-      if (!tipoEquipo || !tiposRequeridos.includes(tipoEquipo)) return false;
-    }
 
       if (!mostrarAdmitenUpdate && equipo.admite_update === true) return false;
       if (!mostrarNoAdmitenUpdate && equipo.admite_update === false)
@@ -1310,6 +1325,8 @@ export default function EquiposList({
 
     antiguedadMinima,
 
+    pantallaPulgadasSeleccionadas,
+
     mostrarAdmitenUpdate,
 
     mostrarNoAdmitenUpdate,
@@ -1319,6 +1336,10 @@ export default function EquiposList({
     mostrarGarbiguneNo,
 
     usuariosSeleccionados,
+
+    mostrarEquipos,
+
+    mostrarPantallas,
 
     mostrarEquiposConUnaPantalla,
 
@@ -1342,11 +1363,15 @@ export default function EquiposList({
 
     mostrarSoloVirtual,
 
+    tiposPermitidosExtraSet,
+
     iaResultado,
 
     iaDestacados,
 
     iaDestacadosMapa,
+
+    filtrosTipoManualesActivos,
   ]);
 
   useEffect(() => {
@@ -1757,14 +1782,15 @@ export default function EquiposList({
     }
   }
 
-  if (
-    mostrarSoloServidores ||
-    mostrarSoloTablets ||
-    mostrarSoloAlmacenamiento ||
-    mostrarSoloImpresoras ||
-    mostrarSoloWifi ||
-    mostrarSoloVirtual
-  ) {
+  if (mostrarEquipos && mostrarPantallas) {
+    filtrosActivos.push("Listado: Equipos y Pantallas");
+  } else if (mostrarEquipos && !mostrarPantallas) {
+    filtrosActivos.push("Listado: Equipos");
+  } else if (!mostrarEquipos && mostrarPantallas) {
+    filtrosActivos.push("Listado: Pantallas");
+  }
+
+  if (filtrosTipoManualesActivos) {
     const partes: string[] = [];
     if (mostrarSoloServidores) partes.push("Servidores");
     if (mostrarSoloTablets) partes.push("Tablets");
@@ -1776,7 +1802,7 @@ export default function EquiposList({
       partes.length === 1
         ? partes[0]
         : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
-    filtrosActivos.push(`Tipo: solo ${textoTipo}`);
+    filtrosActivos.push(`Tipo: ${textoTipo}`);
   }
 
   if (usuariosSeleccionados.length > 0) {
@@ -2318,7 +2344,7 @@ export default function EquiposList({
               className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
             />
 
-            <span>Equipos</span>
+            <span title="Sobremesa + portátiles">Equipos</span>
           </label>
 
           <label className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import EquiposList from "@/components/EquiposList";
 import SwitchesList, {
@@ -227,13 +227,22 @@ export default function DashboardContent({
   const fromQuery = currentQueryString
     ? `from=${encodeURIComponent(currentQueryString)}`
     : "";
+  const switchesFilterParam = searchParams?.get("switches");
+  const initialSwitchesActive = switchesFilterParam === "1";
   const [selectedTipo, setSelectedTipo] = useState<TipoClave | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedPantallasYear, setSelectedPantallasYear] =
     useState<PantallasYearFilter>(null);
   const [selectedSwitchesYear, setSelectedSwitchesYear] =
-    useState<SwitchesYearFilter>(null);
-  const [mostrarSwitches, setMostrarSwitches] = useState(false);
+    useState<SwitchesYearFilter>(() =>
+      initialSwitchesActive ? "total" : null,
+    );
+  const [mostrarSwitches, setMostrarSwitches] =
+    useState(initialSwitchesActive);
+  const handleClearTipoResumen = useCallback(() => {
+    setSelectedTipo(null);
+    setSelectedYear(null);
+  }, []);
 
   const indicadores = useMemo(() => calcularIndicadores(equipos), [equipos]);
   const resumenPantallas = useMemo(
@@ -620,6 +629,7 @@ export default function DashboardContent({
         pantallasSinEquipo={pantallasSinEquipo}
         mostrarSwitches={mostrarSwitches}
         onToggleSwitches={handleToggleSwitches}
+        onClearTipoResumen={handleClearTipoResumen}
       />
 
       {switches.length > 0 && mostrarSwitches ? (
