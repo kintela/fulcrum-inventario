@@ -2810,6 +2810,23 @@ export default function EquiposList({
                     </dd>
                   </div>
 
+                  {equipo.url_factura ? (
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="font-medium text-foreground/70">Factura</dt>
+
+                      <dd className="text-foreground min-w-0 text-right break-words">
+                        <a
+                          href={equipo.url_factura}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline underline-offset-4"
+                        >
+                          Ver factura
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
+
                   <div className="flex items-start justify-between gap-3">
                     <dt className="font-medium text-foreground/70">Garantia</dt>
 

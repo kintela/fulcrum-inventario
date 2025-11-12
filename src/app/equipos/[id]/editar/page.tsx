@@ -302,6 +302,7 @@ export default async function EditarEquipoPage({
       tarjeta_grafica: getStringOrNull("tarjeta_grafica"),
       observaciones: getStringOrNull("observaciones"),
       url: getStringOrNull("url"),
+      url_factura: getStringOrNull("url_factura"),
       fecha_bios: getStringOrNull("fecha_bios"),
     };
 

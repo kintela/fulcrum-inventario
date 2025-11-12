@@ -78,6 +78,7 @@ export default async function NuevoEquipoPage({
     tarjeta_grafica: null,
     observaciones: null,
     url: null,
+    url_factura: null,
     fecha_bios: null,
     pantallas: [],
     actuaciones: [],
@@ -321,6 +322,7 @@ export default async function NuevoEquipoPage({
       tarjeta_grafica: getStringOrNull("tarjeta_grafica"),
       observaciones: getStringOrNull("observaciones"),
       url: getStringOrNull("url"),
+      url_factura: getStringOrNull("url_factura"),
       fecha_bios: getStringOrNull("fecha_bios"),
     };
 

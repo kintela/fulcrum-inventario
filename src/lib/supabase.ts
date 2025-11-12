@@ -209,6 +209,7 @@ export type EquipoRecord = {
   tarjeta_grafica: string | null;
   observaciones: string | null;
   url: string | null;
+  url_factura: string | null;
   fecha_bios: string | null;
   pantallas: PantallaRecord[] | null;
   puertos_conectados?: SwitchPortRecord[] | null;
@@ -807,6 +808,7 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
       "admin_local",
       "fecha_bios",
       "url",
+      "url_factura",
       "actuaciones:actuaciones(id,tipo,descripcion,coste,fecha,hecha_por)",
       "pantallas:pantallas(id,equipo_id,pulgadas,modelo,fabricante_id,precio,fecha_compra,en_garantia,observaciones)",
       "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,observaciones,switch:switches(id,nombre))",
@@ -1383,6 +1385,7 @@ export type EquipoUpdatePayload = {
   tarjeta_grafica?: string | null;
   observaciones?: string | null;
   url?: string | null;
+  url_factura?: string | null;
   fecha_bios?: string | null;
 };
 
@@ -1449,6 +1452,7 @@ export type EquipoInsertPayload = {
   tarjeta_grafica?: string | null;
   observaciones?: string | null;
   url?: string | null;
+  url_factura?: string | null;
   fecha_bios?: string | null;
 };
 

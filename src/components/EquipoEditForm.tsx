@@ -451,7 +451,7 @@ export default function EquipoEditForm({
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-sm text-foreground/80 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-sm text-foreground/80">
             <span className="font-medium text-foreground">
               Sistema operativo
             </span>
@@ -767,7 +767,7 @@ export default function EquipoEditForm({
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-sm text-foreground/80 sm:col-span-2">
+          <label className="flex flex-col gap-1 text-sm text-foreground/80">
             <span className="font-medium text-foreground">
               Tarjeta grafica
             </span>
@@ -798,6 +798,17 @@ export default function EquipoEditForm({
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
             />
           </label>
+
+          <label className="flex flex-col gap-1 text-sm text-foreground/80">
+            <span className="font-medium text-foreground">URL factura</span>
+            <input
+              type="url"
+              name="url_factura"
+              defaultValue={equipo.url_factura ?? ""}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+            />
+          </label>
+
         </div>
       </section>
 
