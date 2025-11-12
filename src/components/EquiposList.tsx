@@ -1325,8 +1325,6 @@ export default function EquiposList({
 
     antiguedadMinima,
 
-    pantallaPulgadasSeleccionadas,
-
     mostrarAdmitenUpdate,
 
     mostrarNoAdmitenUpdate,
@@ -1350,18 +1348,6 @@ export default function EquiposList({
     mostrarTarjetaRed10Gbps,
     mostrarAdminLocalConValor,
     mostrarAdminLocalSinValor,
-
-    mostrarSoloServidores,
-
-    mostrarSoloTablets,
-
-    mostrarSoloAlmacenamiento,
-
-    mostrarSoloImpresoras,
-
-    mostrarSoloWifi,
-
-    mostrarSoloVirtual,
 
     tiposPermitidosExtraSet,
 
