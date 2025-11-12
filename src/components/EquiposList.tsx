@@ -1340,6 +1340,8 @@ export default function EquiposList({
 
     mostrarSoloWifi,
 
+    mostrarSoloVirtual,
+
     iaResultado,
 
     iaDestacados,
