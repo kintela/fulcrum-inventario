@@ -51,12 +51,35 @@ function getPrimaryPuerto(entry: IpRegistro) {
   return entry.puertos[0]?.puertoLabel ?? "—";
 }
 
+function entryMatchesQuery(entry: IpRegistro, query: string) {
+  if (!query) return true;
+  const normalized = query.toLowerCase();
+  const values: string[] = [
+    entry.ip,
+    entry.equipoNombre,
+    entry.tipo,
+    entry.usuario,
+    entry.ubicacion,
+    entry.tomaRed,
+    ...entry.puertos.flatMap((puerto) => [puerto.switchNombre, puerto.puertoLabel]),
+  ];
+
+  return values.some((value) => value?.toLowerCase().includes(normalized));
+}
+
 export default function IpsTable({ entries }: IpsTableProps) {
   const [sortBy, setSortBy] = useState<ColumnaOrden>("ip");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filtered = useMemo(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) return entries;
+    return entries.filter((entry) => entryMatchesQuery(entry, trimmed));
+  }, [entries, searchTerm]);
 
   const sorted = useMemo(() => {
-    return [...entries].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let aValue: string;
       let bValue: string;
 
@@ -101,7 +124,7 @@ export default function IpsTable({ entries }: IpsTableProps) {
       const comparison = collator.compare(aValue ?? "", bValue ?? "");
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [entries, sortBy, sortDirection]);
+  }, [filtered, sortBy, sortDirection]);
 
   const handleSort = (column: ColumnaOrden) => {
     setSortBy((prev) => {
@@ -120,9 +143,23 @@ export default function IpsTable({ entries }: IpsTableProps) {
   };
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card text-sm text-card-foreground shadow-sm">
-      <table className="w-full border-collapse text-left">
-        <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
+    <div className="text-sm text-card-foreground">
+      <div className="mb-3 flex justify-start">
+        <label className="sr-only" htmlFor="ips-search">
+          Buscar en listado de IPs
+        </label>
+        <input
+          id="ips-search"
+          type="text"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Buscar por IP, equipo, usuario, switch..."
+          className="w-full max-w-md rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground shadow-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+        />
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
           <tr>
             {[
               { key: "ip", label: "IP" },
@@ -173,6 +210,7 @@ export default function IpsTable({ entries }: IpsTableProps) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
