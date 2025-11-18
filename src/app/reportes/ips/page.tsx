@@ -145,11 +145,19 @@ export default async function ReporteIpsPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Listado de IPs</h1>
           <p className="text-sm text-foreground/70">
             Número total de IPs asignadas:{" "}
             <span className="font-semibold text-foreground">{totalIps}</span>
+            <Link
+              href="https://fyseg365.sharepoint.com/:x:/s/Fyseg-IT/ESmzLBqsDshDtEPCjKjvk8oBxt6aYyE9bD9HFHqog6p7lw?e=pobwlA"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-3 text-blue-600 underline underline-offset-4 transition hover:text-blue-700"
+            >
+              Resto
+            </Link>
           </p>
         </div>
         <Link
