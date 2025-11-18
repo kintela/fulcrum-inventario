@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type PuertoResumen = {
   switchNombre: string;
@@ -71,6 +71,7 @@ export default function IpsTable({ entries }: IpsTableProps) {
   const [sortBy, setSortBy] = useState<ColumnaOrden>("ip");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchTerm, setSearchTerm] = useState("");
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const trimmed = searchTerm.trim();
@@ -142,22 +143,87 @@ export default function IpsTable({ entries }: IpsTableProps) {
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
+  const handlePrint = () => {
+    if (typeof window === "undefined") return;
+    if (!tableRef.current) return;
+    const tableHtml = tableRef.current.innerHTML;
+    const printWindow = window.open("", "", "width=1200,height=800");
+    if (!printWindow) return;
+
+    const styles = `
+      body { font-family: Arial, sans-serif; padding: 24px; color: #000; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
+      th { background: #f3f4f6; text-transform: uppercase; font-size: 11px; }
+      tr:nth-child(even) { background: #fafafa; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    `;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Listado de IPs</title>
+          <meta charset="utf-8" />
+          <style>${styles}</style>
+        </head>
+        <body>
+          <h1>Listado de IPs</h1>
+          ${tableHtml}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  const hasRows = sorted.length > 0;
+
   return (
     <div className="text-sm text-card-foreground">
-      <div className="mb-3 flex justify-start">
-        <label className="sr-only" htmlFor="ips-search">
-          Buscar en listado de IPs
-        </label>
-        <input
-          id="ips-search"
-          type="text"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Buscar por IP, equipo, usuario, switch..."
-          className="w-full max-w-md rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground shadow-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-        />
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:max-w-md">
+          <label className="sr-only" htmlFor="ips-search">
+            Buscar en listado de IPs
+          </label>
+          <input
+            id="ips-search"
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Buscar por IP, equipo, usuario, switch..."
+            className="w-full rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground shadow-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handlePrint}
+          disabled={!hasRows}
+          title="Imprimir listado (generar PDF)"
+          aria-label="Imprimir listado de IPs"
+          className="inline-flex cursor-pointer items-center gap-2 self-start rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M17 9V4H7v5m10 0h1a3 3 0 0 1 3 3v4h-4m0 0v4H7v-4m10 0H7m0 0H3v-4a3 3 0 0 1 3-3h1m0 0h10"
+            />
+            <path strokeLinecap="round" d="M17 13H7v6h10z" />
+          </svg>
+          Imprimir
+        </button>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+      <div ref={tableRef} className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <table className="w-full border-collapse text-left">
           <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
           <tr>
