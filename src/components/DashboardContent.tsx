@@ -359,41 +359,93 @@ export default function DashboardContent({
             muestran el detalle ordenado por fecha de compra más reciente.
           </p>
         </div>
-        <div className="flex flex-col items-center gap-1 text-xs text-foreground/70">
-          <Link
-            href="/reportes/ips"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Listado de IPs"
-            title="Listado de IPs"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              aria-hidden="true"
+        <div className="flex items-center gap-4 text-xs text-foreground/70">
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/reportes/ips"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Listado de IPs"
+              title="Listado de IPs"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
             >
-              <path
-                d="M7 7h10M7 12h10M7 17h6"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <rect
-                x="3.5"
-                y="4.5"
-                width="17"
-                height="15"
-                rx="2.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-            </svg>
-          </Link>
-          <span>IPs</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M7 7h10M7 12h10M7 17h6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <rect
+                  x="3.5"
+                  y="4.5"
+                  width="17"
+                  height="15"
+                  rx="2.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </Link>
+            <span>IPs</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/reportes/switches"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Conexiones por switch"
+              title="Conexiones por switch"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <rect
+                  x="4.5"
+                  y="4.5"
+                  width="15"
+                  height="6"
+                  rx="2"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <rect
+                  x="4.5"
+                  y="13.5"
+                  width="15"
+                  height="6"
+                  rx="2"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M12 10.5V13.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M8 8h0.01M12 8h0.01M16 8h0.01M8 17h0.01M12 17h0.01M16 17h0.01"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </Link>
+            <span>Switches</span>
+          </div>
         </div>
       </header>
 
