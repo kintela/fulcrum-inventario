@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 
@@ -226,13 +227,53 @@ export default function SwitchConnectionsReport({
   return (
     <section className="space-y-6 text-sm text-foreground">
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-foreground">
-          Selecciona los switches a consultar
-        </h2>
-        <p className="mt-1 text-sm text-foreground/70">
-          Marca los switches que quieras revisar y más abajo verás una tabla con el detalle de
-          conexiones de cada uno.
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Selecciona los switches a consultar
+            </h2>
+            <p className="mt-1 text-sm text-foreground/70">
+              Marca los switches que quieras revisar y más abajo verás una tabla con el detalle de
+              conexiones de cada uno.
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-xs text-foreground/70">
+            <Link
+              href="/reportes/switches/grafico"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Ver esquema de conexiones"
+              title="Ver esquema de conexiones"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-muted/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                <circle cx="18" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                <circle cx="12" cy="18" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                <path
+                  d="M6 8.5v3M18 8.5v3M12 15v-3"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6 6l6 9 6-9"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <span>Gráfico</span>
+          </div>
+        </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
           <div className="w-full sm:flex-1">
             <label className="text-xs font-medium uppercase text-foreground/60" htmlFor="switches-search">
