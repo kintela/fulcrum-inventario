@@ -41,8 +41,8 @@ type GraphLink = {
 
 type NodeWithPosition = GraphNode & { x: number; y: number };
 type LinkWithPosition = GraphLink & {
-  sourcePos: { x: number; y: number };
-  targetPos: { x: number; y: number };
+  sourcePos: NodeWithPosition;
+  targetPos: NodeWithPosition;
 };
 
 type PendingEndpoint = {
