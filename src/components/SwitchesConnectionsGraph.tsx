@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type WheelEvent,
+} from "react";
 
 import type { SwitchRecord, SwitchPortRecord } from "@/lib/supabase";
 
@@ -32,9 +39,10 @@ type SwitchesConnectionsGraphProps = {
 
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
-const SVG_WIDTH = 1100;
-const SWITCH_COLUMN_X = 220;
-const ENDPOINT_COLUMN_X = SVG_WIDTH - 220;
+const DEFAULT_DIAGRAM_WIDTH = 1100;
+const DIAGRAM_HEIGHT = 900;
+const SWITCH_HORIZONTAL_SPACING = 220;
+const SWITCH_MARGIN_X = 180;
 
 function formatSwitchLabel(item: SwitchRecord): string {
   if (item.nombre && item.nombre.trim()) return item.nombre.trim();
@@ -57,11 +65,67 @@ function ensureSwitchLinkLabel(nombre: string | null | undefined): string {
 export default function SwitchesConnectionsGraph({
   switches,
 }: SwitchesConnectionsGraphProps) {
-  const { positionedNodes, positionedLinks, height } = useMemo(() => {
+  const filteredSwitches = useMemo(() => {
+    return switches.filter((item) => {
+      const ubicacion = item.ubicacion?.nombre?.trim().toLowerCase();
+      if (ubicacion === "boxes") return false;
+      const puertos = item.puertos ?? [];
+      const tieneConexion = puertos.some(
+        (puerto) =>
+          (puerto.equipo_id && puerto.equipo) ||
+          (puerto.switch_conectado_id && puerto.switch_conectado),
+      );
+      return tieneConexion;
+    });
+  }, [switches]);
+
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const lastPosition = useRef({ x: 0, y: 0 });
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  const handleWheel = useCallback((event: WheelEvent<SVGSVGElement>) => {
+    const { deltaY } = event;
+    setZoom((prev) => {
+      const factor = deltaY < 0 ? 1.1 : 0.9;
+      const next = Math.min(Math.max(prev * factor, 0.25), 8);
+      return Number(next.toFixed(2));
+    });
+  }, []);
+
+  const handleMouseDown = useCallback((event: MouseEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    isPanning.current = true;
+    lastPosition.current = { x: event.clientX, y: event.clientY };
+  }, []);
+
+  const handleMouseMove = useCallback((event: MouseEvent<SVGSVGElement>) => {
+    if (!isPanning.current) return;
+    event.preventDefault();
+    const dx = event.clientX - lastPosition.current.x;
+    const dy = event.clientY - lastPosition.current.y;
+    setOffset((prev) => ({
+      x: prev.x + dx,
+      y: prev.y + dy,
+    }));
+    lastPosition.current = { x: event.clientX, y: event.clientY };
+  }, []);
+
+  const handleMouseUp = useCallback((event: MouseEvent<SVGSVGElement>) => {
+    if (event) event.preventDefault();
+    isPanning.current = false;
+  }, []);
+
+  const { positionedNodes, positionedLinks, height, width } = useMemo(() => {
     const nodes = new Map<string, GraphNode>();
     const links: GraphLink[] = [];
 
-    for (const switchRecord of switches) {
+    for (const switchRecord of filteredSwitches) {
       const switchNodeId = `switch-${switchRecord.id}`;
       if (!nodes.has(switchNodeId)) {
         nodes.set(switchNodeId, {
@@ -135,23 +199,62 @@ export default function SwitchesConnectionsGraph({
     switchNodes.sort((a, b) => a.label.localeCompare(b.label, "es"));
     endpointNodes.sort((a, b) => a.label.localeCompare(b.label, "es"));
 
-    const maxNodes = Math.max(switchNodes.length, endpointNodes.length, 1);
-    const svgHeight = Math.max(500, maxNodes * 110);
+    const diagramWidth = Math.max(
+      DEFAULT_DIAGRAM_WIDTH,
+      SWITCH_MARGIN_X * 2 + SWITCH_HORIZONTAL_SPACING * Math.max(1, switchNodes.length - 1),
+    );
+    const centerY = DIAGRAM_HEIGHT / 2;
+    const topRowBaseY = centerY - 220;
+    const bottomRowBaseY = centerY + 220;
 
-    const positionNodes = (
-      list: GraphNode[],
-      columnX: number,
-    ): NodeWithPosition[] => {
-      const spacing = svgHeight / (list.length + 1);
-      return list.map((node, index) => ({
+    const positionedSwitches: NodeWithPosition[] = switchNodes.map((node, index) => ({
+      ...node,
+      x: SWITCH_MARGIN_X + index * SWITCH_HORIZONTAL_SPACING,
+      y: centerY,
+    }));
+
+    const switchPositionsMap = new Map<string, NodeWithPosition>();
+    for (const node of positionedSwitches) {
+      switchPositionsMap.set(node.id, node);
+    }
+
+    const topBuckets = new Map<number, number>();
+    const bottomBuckets = new Map<number, number>();
+
+    const positionedEndpoints: NodeWithPosition[] = endpointNodes.map((node, index) => {
+      const relatedLinks = links.filter(
+        (link) => link.target === node.id || link.source === node.id,
+      );
+      const anchorXs = relatedLinks
+        .map((link) => {
+          const sourceSwitch = switchPositionsMap.get(link.source);
+          if (sourceSwitch?.type === "switch") return sourceSwitch.x;
+          const targetSwitch = switchPositionsMap.get(link.target);
+          if (targetSwitch?.type === "switch") return targetSwitch.x;
+          return null;
+        })
+        .filter((value): value is number => value !== null);
+
+      let baseX =
+        anchorXs.length > 0
+          ? anchorXs.reduce((acc, value) => acc + value, 0) / anchorXs.length
+          : SWITCH_MARGIN_X + (index % Math.max(1, positionedSwitches.length)) * SWITCH_HORIZONTAL_SPACING;
+      baseX = Math.min(Math.max(baseX, SWITCH_MARGIN_X / 2), diagramWidth - SWITCH_MARGIN_X / 2);
+
+      const assignTop = index % 2 === 0;
+      const bucketKey = Math.round(baseX / 50);
+      const bucket = assignTop ? topBuckets : bottomBuckets;
+      const count = bucket.get(bucketKey) ?? 0;
+      bucket.set(bucketKey, count + 1);
+      const verticalOffset = count * 28;
+      const y = assignTop ? topRowBaseY - verticalOffset : bottomRowBaseY + verticalOffset;
+
+      return {
         ...node,
-        x: columnX,
-        y: spacing * (index + 1),
-      }));
-    };
-
-    const positionedSwitches = positionNodes(switchNodes, SWITCH_COLUMN_X);
-    const positionedEndpoints = positionNodes(endpointNodes, ENDPOINT_COLUMN_X);
+        x: baseX,
+        y,
+      };
+    });
 
     const positionsMap = new Map<string, NodeWithPosition>();
     for (const node of positionedSwitches) {
@@ -177,9 +280,10 @@ export default function SwitchesConnectionsGraph({
     return {
       positionedNodes: [...positionedSwitches, ...positionedEndpoints],
       positionedLinks,
-      height: svgHeight,
+      height: DIAGRAM_HEIGHT,
+      width: diagramWidth,
     };
-  }, [switches]);
+  }, [filteredSwitches]);
 
   if (positionedNodes.length === 0) {
     return (
@@ -205,12 +309,32 @@ export default function SwitchesConnectionsGraph({
           Switch conectado
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/70">
+        <p>Usa la rueda del ratón para acercar o alejar. Arrastra para mover el lienzo.</p>
+        <button
+          type="button"
+          onClick={resetView}
+          className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-muted/50"
+        >
+          Restablecer vista
+        </button>
+        <span className="font-mono text-foreground/60">Zoom: {zoom.toFixed(2)}x</span>
+      </div>
+      <div
+        className="w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
+        onWheelCapture={handleWheel}
+        style={{ touchAction: "none", overscrollBehavior: "contain" }}
+      >
         <svg
-          viewBox={`0 0 ${SVG_WIDTH} ${height}`}
-          className="h-[560px] w-full min-w-[800px]"
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full cursor-grab"
+          style={{ height: `${Math.min(height, 900)}px` }}
           role="img"
           aria-label="Esquema de conexiones entre switches y equipos"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseUp}
+          onMouseUp={handleMouseUp}
         >
           <defs>
             <marker
@@ -225,80 +349,82 @@ export default function SwitchesConnectionsGraph({
               <polygon points="0 0, 10 3.5, 0 7" />
             </marker>
           </defs>
-          {positionedLinks.map((link) => {
-            const { sourcePos, targetPos } = link;
-            const startX =
-              sourcePos.x +
-              (sourcePos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
-            const endX =
-              targetPos.x +
-              (targetPos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
-            const controlOffset = (endX - startX) / 2;
-            const path = `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
-              sourcePos.y
-            }, ${endX - controlOffset} ${targetPos.y}, ${endX} ${targetPos.y}`;
-            const labelX = (startX + endX) / 2;
-            const labelY = (sourcePos.y + targetPos.y) / 2 - 10;
-            return (
-              <g key={link.id} className="text-[10px]">
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth={1.5}
-                  markerEnd="url(#arrowhead)"
-                />
-                {link.label ? (
-                  <text
-                    x={labelX}
-                    y={labelY}
-                    textAnchor="middle"
-                    className="fill-foreground/70 text-[10px]"
-                  >
-                    {link.label}
-                  </text>
-                ) : null}
-              </g>
-            );
-          })}
-          {positionedNodes.map((node) => {
-            const colors: Record<GraphNodeType, string> = {
-              switch: "fill-blue-100 stroke-blue-300",
-              equipo: "fill-emerald-100 stroke-emerald-300",
-              switchLink: "fill-violet-100 stroke-violet-300",
-            };
-            const classNames = colors[node.type];
-            return (
-              <g key={node.id}>
-                <rect
-                  x={node.x - NODE_WIDTH / 2}
-                  y={node.y - NODE_HEIGHT / 2}
-                  width={NODE_WIDTH}
-                  height={NODE_HEIGHT}
-                  rx={14}
-                  className={`${classNames} stroke-[1.5]`}
-                />
-                <text
-                  x={node.x}
-                  y={node.y - 4}
-                  textAnchor="middle"
-                  className="text-sm font-semibold text-foreground"
-                >
-                  {node.label}
-                </text>
-                {node.subtitle ? (
+          <g transform={`translate(${offset.x} ${offset.y}) scale(${zoom})`}>
+            {positionedLinks.map((link) => {
+              const { sourcePos, targetPos } = link;
+              const startX =
+                sourcePos.x +
+                (sourcePos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
+              const endX =
+                targetPos.x +
+                (targetPos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
+              const controlOffset = (endX - startX) / 2;
+              const path = `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
+                sourcePos.y
+              }, ${endX - controlOffset} ${targetPos.y}, ${endX} ${targetPos.y}`;
+              const labelX = (startX + endX) / 2;
+              const labelY = (sourcePos.y + targetPos.y) / 2 - 10;
+              return (
+                <g key={link.id} className="text-[10px]">
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="#94a3b8"
+                    strokeWidth={1.5}
+                    markerEnd="url(#arrowhead)"
+                  />
+                  {link.label ? (
+                    <text
+                      x={labelX}
+                      y={labelY}
+                      textAnchor="middle"
+                      className="fill-foreground/70 text-[10px]"
+                    >
+                      {link.label}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+            {positionedNodes.map((node) => {
+              const colors: Record<GraphNodeType, string> = {
+                switch: "fill-blue-100 stroke-blue-300",
+                equipo: "fill-emerald-100 stroke-emerald-300",
+                switchLink: "fill-violet-100 stroke-violet-300",
+              };
+              const classNames = colors[node.type];
+              return (
+                <g key={node.id}>
+                  <rect
+                    x={node.x - NODE_WIDTH / 2}
+                    y={node.y - NODE_HEIGHT / 2}
+                    width={NODE_WIDTH}
+                    height={NODE_HEIGHT}
+                    rx={14}
+                    className={`${classNames} stroke-[1.5]`}
+                  />
                   <text
                     x={node.x}
-                    y={node.y + 14}
+                    y={node.y - 4}
                     textAnchor="middle"
-                    className="text-xs text-foreground/70"
+                    className="text-sm font-semibold text-foreground"
                   >
-                    {node.subtitle}
+                    {node.label}
                   </text>
-                ) : null}
-              </g>
-            );
-          })}
+                  {node.subtitle ? (
+                    <text
+                      x={node.x}
+                      y={node.y + 14}
+                      textAnchor="middle"
+                      className="text-xs text-foreground/70"
+                    >
+                      {node.subtitle}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </g>
         </svg>
       </div>
     </div>
