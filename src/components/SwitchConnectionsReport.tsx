@@ -403,7 +403,7 @@ export default function SwitchConnectionsReport({
         </p>
       ) : noResults ? (
         <p className="text-sm text-foreground/70">
-          Sin coincidencias para "{searchTerm.trim()}" en los switches seleccionados.
+          Sin coincidencias para &quot;{searchTerm.trim()}&quot; en los switches seleccionados.
         </p>
       ) : (
         switchesToRender.map(({ switchRecord: item, ports, hasRegisteredPorts }) => {
