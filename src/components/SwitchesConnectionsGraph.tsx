@@ -20,6 +20,10 @@ type GraphNode = {
   type: GraphNodeType;
   metadata?: {
     tipo?: string | null;
+    switchStats?: {
+      used: number;
+      total: number;
+    };
   };
 };
 
@@ -209,12 +213,29 @@ export default function SwitchesConnectionsGraph({
 
     for (const switchRecord of filteredSwitches) {
       const switchNodeId = `switch-${switchRecord.id}`;
+      const puertosSwitch = switchRecord.puertos ?? [];
+      const usedPorts = puertosSwitch.filter(
+        (puerto) =>
+          (puerto.equipo_id && puerto.equipo) ||
+          (puerto.switch_conectado_id && puerto.switch_conectado),
+      ).length;
+      const totalSwitchPorts =
+        typeof switchRecord.puertos_totales === "number" &&
+        switchRecord.puertos_totales > 0
+          ? switchRecord.puertos_totales
+          : puertosSwitch.length;
       if (!nodes.has(switchNodeId)) {
         nodes.set(switchNodeId, {
           id: switchNodeId,
           label: formatSwitchLabel(switchRecord),
           subtitle: switchRecord.ubicacion?.nombre?.trim() ?? null,
           type: "switch",
+          metadata: {
+            switchStats: {
+              used: usedPorts,
+              total: totalSwitchPorts,
+            },
+          },
         });
       }
 
@@ -640,20 +661,6 @@ export default function SwitchesConnectionsGraph({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-wide text-foreground/60">
-        <div className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-blue-300" />
-          Switch
-        </div>
-        <div className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-emerald-300" />
-          Equipo
-        </div>
-        <div className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-violet-300" />
-          Switch conectado
-        </div>
-      </div>
       <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/70">
         <p>Usa la rueda del ratón para acercar o alejar. Arrastra para mover el lienzo.</p>
         <button
@@ -784,14 +791,27 @@ export default function SwitchesConnectionsGraph({
                   {node.label}
                 </text>
                 {node.subtitle && node.type === "switch" ? (
-                  <text
-                    x={node.x}
-                    y={node.y + 14}
-                    textAnchor="middle"
-                    className="text-xs text-foreground/70"
-                  >
-                    {node.subtitle}
-                  </text>
+                  <>
+                    <text
+                      x={node.x}
+                      y={node.y + 14}
+                      textAnchor="middle"
+                      className="text-xs text-foreground/70"
+                    >
+                      {node.subtitle}
+                    </text>
+                    {node.metadata?.switchStats ? (
+                      <text
+                        x={node.x}
+                        y={node.y + 28}
+                        textAnchor="middle"
+                        className="text-xs text-foreground/70"
+                      >
+                        {node.metadata.switchStats.used} de{" "}
+                        {node.metadata.switchStats.total} puertos
+                      </text>
+                    ) : null}
+                  </>
                 ) : null}
               </g>
             );
