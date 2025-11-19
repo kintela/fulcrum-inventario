@@ -124,7 +124,12 @@ export type SwitchPortRecord = {
   poe: boolean | null;
   velocidad_mbps: number | null;
   equipo_id: string | null;
-  equipo?: { id: string; nombre: string | null; modelo: string | null } | null;
+  equipo?: {
+    id: string;
+    nombre: string | null;
+    modelo: string | null;
+    toma_red?: string | null;
+  } | null;
   switch?: { id: number; nombre: string | null } | null;
   switch_conectado_id?: number | null;
   switch_conectado?: { id: number; nombre: string | null } | null;
