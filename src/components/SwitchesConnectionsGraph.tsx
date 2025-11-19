@@ -587,18 +587,18 @@ export default function SwitchesConnectionsGraph({
       positionsMap.set(node.id, node);
     }
 
-    const positionedLinks: LinkWithPosition[] = links
-      .map((link) => {
-        const sourcePos = positionsMap.get(link.source);
-        const targetPos = positionsMap.get(link.target);
-        if (!sourcePos || !targetPos) return null;
-        return {
+    const positionedLinks: LinkWithPosition[] = links.flatMap((link) => {
+      const sourcePos = positionsMap.get(link.source);
+      const targetPos = positionsMap.get(link.target);
+      if (!sourcePos || !targetPos) return [];
+      return [
+        {
           ...link,
           sourcePos,
           targetPos,
-        };
-      })
-      .filter((link): link is LinkWithPosition => Boolean(link));
+        },
+      ];
+    });
 
     const linksByTarget = new Map<string, LinkWithPosition[]>();
     for (const link of positionedLinks) {
