@@ -58,6 +58,12 @@ function resolveObservaciones(puerto: SwitchPortRecord): string {
   return "Sin observaciones";
 }
 
+function tieneConexionActiva(puerto: SwitchPortRecord): boolean {
+  if (puerto.equipo_id || puerto.equipo) return true;
+  if (puerto.switch_conectado_id || puerto.switch_conectado) return true;
+  return false;
+}
+
 function sortPorts(ports: SwitchPortRecord[] | null | undefined) {
   if (!ports) return [];
   return [...ports].sort((a, b) => {
@@ -108,34 +114,38 @@ export default function SwitchConnectionsReport({
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {switches.map((item) => {
             const switchId = String(item.id);
-            const labelId = `switch-filter-${switchId}`;
+            const checkboxId = `switch-filter-${switchId}`;
+            const nameId = `${checkboxId}-name`;
+            const locationId = `${checkboxId}-location`;
             const label = formatSwitchName(item);
             const isChecked = selectedSwitchIds.has(switchId);
             return (
-              <label
+              <div
                 key={item.id}
-                htmlFor={labelId}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 transition ${
+                className={`flex items-center gap-3 rounded-lg border px-4 py-2 transition ${
                   isChecked
                     ? "border-blue-500 bg-blue-50 text-blue-900"
                     : "border-border bg-card text-foreground hover:border-foreground/40"
                 }`}
               >
                 <input
-                  id={labelId}
+                  id={checkboxId}
                   type="checkbox"
                   value={switchId}
                   checked={isChecked}
                   onChange={handleToggle}
-                  className="h-4 w-4 rounded border-border text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  aria-describedby={`${nameId} ${locationId}`}
+                  className="h-4 w-4 cursor-pointer rounded border-border text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{label}</p>
-                  <p className="truncate text-xs text-foreground/60">
+                  <p id={nameId} className="truncate text-sm font-medium">
+                    {label}
+                  </p>
+                  <p id={locationId} className="truncate text-xs text-foreground/60">
                     {item.ubicacion?.nombre?.trim() || "Sin ubicación"}
                   </p>
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>
@@ -175,6 +185,16 @@ export default function SwitchConnectionsReport({
 
               {hasPorts ? (
                 <div className="overflow-x-auto">
+                  <div className="flex gap-4 px-5 py-3 text-xs text-foreground/70">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block h-3 w-3 rounded-full bg-emerald-400/70" />
+                      Con equipo conectado
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block h-3 w-3 rounded-full bg-amber-400/70" />
+                      Puerto disponible
+                    </span>
+                  </div>
                   <table className="w-full min-w-[600px] text-left text-sm">
                     <thead className="bg-muted/40 text-xs uppercase tracking-wide text-foreground/60">
                       <tr>
@@ -185,24 +205,40 @@ export default function SwitchConnectionsReport({
                       </tr>
                     </thead>
                     <tbody>
-                      {puertosOrdenados.map((puerto) => (
-                        <tr
-                          key={puerto.id ?? `${item.id}-${puerto.numero}`}
-                          className="border-t border-border/70 text-foreground"
-                        >
-                          <td className="px-5 py-3">
-                            <div className="font-medium">{resolveEquipoNombre(puerto)}</div>
-                            {typeof puerto.numero === "number" ? (
-                              <p className="text-xs text-foreground/60">
-                                Puerto {puerto.numero}
-                              </p>
-                            ) : null}
-                          </td>
-                          <td className="px-5 py-3">{formatPortSpeed(puerto.velocidad_mbps)}</td>
-                          <td className="px-5 py-3">{resolveTomaRed(puerto)}</td>
-                          <td className="px-5 py-3">{resolveObservaciones(puerto)}</td>
-                        </tr>
-                      ))}
+                      {puertosOrdenados.map((puerto) => {
+                        const conectado = tieneConexionActiva(puerto);
+                        const rowHighlight = conectado
+                          ? "bg-emerald-50/50"
+                          : "bg-amber-50/70";
+                        const badgeClasses = conectado
+                          ? "bg-emerald-100 text-emerald-900"
+                          : "bg-amber-100 text-amber-900";
+                        return (
+                          <tr
+                            key={puerto.id ?? `${item.id}-${puerto.numero}`}
+                            className={`border-t border-border/70 text-foreground transition ${rowHighlight}`}
+                          >
+                            <td className="px-5 py-3">
+                              <div className="mb-1 inline-flex items-center gap-2 text-xs font-semibold">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 ${badgeClasses}`}
+                                >
+                                  {conectado ? "Con equipo" : "Disponible"}
+                                </span>
+                                {typeof puerto.numero === "number" ? (
+                                  <span className="text-foreground/60">
+                                    Puerto {puerto.numero}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="font-medium">{resolveEquipoNombre(puerto)}</div>
+                            </td>
+                            <td className="px-5 py-3">{formatPortSpeed(puerto.velocidad_mbps)}</td>
+                            <td className="px-5 py-3">{resolveTomaRed(puerto)}</td>
+                            <td className="px-5 py-3">{resolveObservaciones(puerto)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
