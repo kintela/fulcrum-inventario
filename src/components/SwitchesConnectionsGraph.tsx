@@ -32,12 +32,19 @@ type GraphLink = {
   tomaRed?: string | null;
   isEquipoLink?: boolean;
   slotIndex?: number;
+  rowSide?: "top" | "bottom" | null;
 };
 
 type NodeWithPosition = GraphNode & { x: number; y: number };
 type LinkWithPosition = GraphLink & {
   sourcePos: { x: number; y: number };
   targetPos: { x: number; y: number };
+};
+
+type PendingEndpoint = {
+  node: GraphNode;
+  baseX: number;
+  priority: number;
 };
 
 type SwitchesConnectionsGraphProps = {
@@ -180,7 +187,20 @@ export default function SwitchesConnectionsGraph({
       string,
       { top: SwitchPortRecord[]; bottom: SwitchPortRecord[] }
     >();
+    const portRowLookup = new Map<number, "top" | "bottom">();
     const equipoSwitchCounts = new Map<string, Map<string, number>>();
+    const equipoRowStats = new Map<
+      string,
+      Map<
+        string,
+        {
+          topCount: number;
+          bottomCount: number;
+          topMin: number;
+          bottomMin: number;
+        }
+      >
+    >();
     const links: GraphLink[] = [];
 
     const includedSwitchIds = new Set(
@@ -206,6 +226,16 @@ export default function SwitchesConnectionsGraph({
       const topPorts = puertosOrdenados.slice(0, half);
       const bottomPorts = puertosOrdenados.slice(half);
       switchPortBuckets.set(switchNodeId, { top: topPorts, bottom: bottomPorts });
+      for (const port of topPorts) {
+        if (typeof port.id === "number") {
+          portRowLookup.set(port.id, "top");
+        }
+      }
+      for (const port of bottomPorts) {
+        if (typeof port.id === "number") {
+          portRowLookup.set(port.id, "bottom");
+        }
+      }
 
       for (const puerto of puertosOrdenados) {
         if (puerto.equipo_id && puerto.equipo) {
@@ -226,6 +256,37 @@ export default function SwitchesConnectionsGraph({
             (equipoCounts.get(switchNodeId) ?? 0) + 1,
           );
           equipoSwitchCounts.set(equipoNodeId, equipoCounts);
+
+          const rowSide = typeof puerto.id === "number" ? portRowLookup.get(puerto.id) : undefined;
+          const rowStatsMap =
+            equipoRowStats.get(equipoNodeId) ?? new Map<
+              string,
+              {
+                topCount: number;
+                bottomCount: number;
+                topMin: number;
+                bottomMin: number;
+              }
+            >();
+          const stats =
+            rowStatsMap.get(switchNodeId) ?? {
+              topCount: 0,
+              bottomCount: 0,
+              topMin: Number.POSITIVE_INFINITY,
+              bottomMin: Number.POSITIVE_INFINITY,
+            };
+          const portNumber =
+            typeof puerto.numero === "number" ? puerto.numero : Number.POSITIVE_INFINITY;
+          if (rowSide === "top") {
+            stats.topCount += 1;
+            stats.topMin = Math.min(stats.topMin, portNumber);
+          } else if (rowSide === "bottom") {
+            stats.bottomCount += 1;
+            stats.bottomMin = Math.min(stats.bottomMin, portNumber);
+          }
+          rowStatsMap.set(switchNodeId, stats);
+          equipoRowStats.set(equipoNodeId, rowStatsMap);
+
           links.push({
             id: `link-${switchNodeId}-${equipoNodeId}-${puerto.id}`,
             source: switchNodeId,
@@ -237,6 +298,7 @@ export default function SwitchesConnectionsGraph({
             portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
             tomaRed: puerto.equipo?.toma_red?.trim() ?? null,
             isEquipoLink: true,
+            rowSide: rowSide ?? null,
           });
           continue;
         }
@@ -329,7 +391,14 @@ export default function SwitchesConnectionsGraph({
     switchPositionsMap.set(node.id, node);
   }
 
-  const positionedEndpoints: NodeWithPosition[] = [];
+  const switchAssignments = new Map<
+    string,
+    { top: PendingEndpoint[]; bottom: PendingEndpoint[] }
+  >();
+  const globalAssignments = {
+    top: [] as PendingEndpoint[],
+    bottom: [] as PendingEndpoint[],
+  };
   const switchStacks = new Map<string, { top: number; bottom: number }>();
   const globalStacks = { top: 0, bottom: 0 };
 
@@ -406,43 +475,112 @@ export default function SwitchesConnectionsGraph({
       anchorInfo && switchPortBuckets.get(anchorInfo.id);
 
     let assignTop: boolean;
-    let stackIndex: number;
 
-    if (node.type === "equipo" && bucketInfo && anchorInfo) {
-      const counts = bucketInfo.top.length;
-      const bottomCounts = bucketInfo.bottom.length;
-      const topUsed = stacks.top;
-      const bottomUsed = stacks.bottom;
-      const topRemaining = Math.max(counts - topUsed, 0);
-      const bottomRemaining = Math.max(bottomCounts - bottomUsed, 0);
-      if (topRemaining === bottomRemaining) {
-        assignTop = topUsed <= bottomUsed;
+    if (node.type === "equipo" && anchorInfo) {
+      const stats = equipoRowStats.get(node.id)?.get(anchorInfo.id);
+      if (stats) {
+        if (stats.topCount > stats.bottomCount) {
+          assignTop = true;
+        } else if (stats.bottomCount > stats.topCount) {
+          assignTop = false;
+        } else {
+          const topMin = stats.topMin;
+          const bottomMin = stats.bottomMin;
+          if (Number.isFinite(topMin) && Number.isFinite(bottomMin)) {
+            assignTop = topMin <= bottomMin;
+          } else if (Number.isFinite(topMin)) {
+            assignTop = true;
+          } else if (Number.isFinite(bottomMin)) {
+            assignTop = false;
+          } else if (bucketInfo) {
+            assignTop = bucketInfo.top.length >= bucketInfo.bottom.length;
+          } else {
+            assignTop = stacks.top <= stacks.bottom;
+          }
+        }
+      } else if (bucketInfo) {
+        assignTop = bucketInfo.top.length >= bucketInfo.bottom.length;
       } else {
-        assignTop = topRemaining >= bottomRemaining;
+        assignTop = stacks.top <= stacks.bottom;
       }
     } else {
       assignTop = stacks.top <= stacks.bottom;
     }
 
-    stackIndex = assignTop ? stacks.top : stacks.bottom;
     if (assignTop) stacks.top += 1;
     else stacks.bottom += 1;
 
-    const rowY = assignTop ? topRowBaseY : bottomRowBaseY;
-    const verticalSpacing = EQUIPO_NODE_HEIGHT + 12;
-    const y = assignTop
-      ? rowY - stackIndex * verticalSpacing
-      : rowY + stackIndex * verticalSpacing;
+    const clampedX = Math.min(
+      Math.max(baseX, SWITCH_MARGIN_X / 2),
+      diagramWidth - SWITCH_MARGIN_X / 2,
+    );
 
-    positionedEndpoints.push({
-      ...node,
-      x: Math.min(
-        Math.max(baseX, SWITCH_MARGIN_X / 2),
-        diagramWidth - SWITCH_MARGIN_X / 2,
-      ),
-      y,
-    });
+    let priority = Number.POSITIVE_INFINITY;
+    if (node.type === "equipo" && anchorInfo) {
+      const stats = equipoRowStats.get(node.id)?.get(anchorInfo.id);
+      const candidate = assignTop ? stats?.topMin : stats?.bottomMin;
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        priority = candidate;
+      }
+    }
+
+    const entry = {
+      node,
+      baseX: clampedX,
+      priority,
+    };
+
+    if (stacksKey === "__global__") {
+      (assignTop ? globalAssignments.top : globalAssignments.bottom).push(entry);
+    } else {
+      const container =
+        switchAssignments.get(stacksKey) ?? { top: [], bottom: [] };
+      (assignTop ? container.top : container.bottom).push(entry);
+      switchAssignments.set(stacksKey, container);
+    }
   }
+
+    const positionedEndpoints: NodeWithPosition[] = [];
+
+    const verticalSpacing = EQUIPO_NODE_HEIGHT + 12;
+
+    const placeRow = (
+      items: PendingEndpoint[],
+      isTop: boolean,
+    ) => {
+      if (items.length === 0) return;
+      const sorted = [...items].sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.node.label.localeCompare(b.node.label, "es");
+      });
+      if (isTop) {
+        const startY = topRowBaseY - (sorted.length - 1) * verticalSpacing;
+        sorted.forEach((item, index) => {
+          positionedEndpoints.push({
+            ...item.node,
+            x: item.baseX,
+            y: startY + index * verticalSpacing,
+          });
+        });
+      } else {
+        const startY = bottomRowBaseY;
+        sorted.forEach((item, index) => {
+          positionedEndpoints.push({
+            ...item.node,
+            x: item.baseX,
+            y: startY + index * verticalSpacing,
+          });
+        });
+      }
+    };
+
+    for (const assignment of switchAssignments.values()) {
+      placeRow(assignment.top, true);
+      placeRow(assignment.bottom, false);
+    }
+
+    placeRow(globalAssignments.top, true);
+    placeRow(globalAssignments.bottom, false);
 
     const positionsMap = new Map<string, NodeWithPosition>();
     for (const node of positionedSwitches) {
@@ -589,7 +727,7 @@ export default function SwitchesConnectionsGraph({
                     strokeWidth={1.5}
                     markerEnd="url(#arrowhead)"
                   />
-                  {link.label ? (
+                  {(link.portNumber != null || link.label) && (
                     <>
                       <text
                         x={labelX}
@@ -597,7 +735,9 @@ export default function SwitchesConnectionsGraph({
                         textAnchor={textAnchor}
                         className="fill-foreground/70 text-[10px]"
                       >
-                        {link.label}
+                        {link.portNumber != null
+                          ? `P${link.portNumber}`
+                          : link.label}
                       </text>
                       {isEquipmentTarget && link.tomaRed ? (
                         <text
@@ -610,7 +750,7 @@ export default function SwitchesConnectionsGraph({
                         </text>
                       ) : null}
                     </>
-                  ) : null}
+                  )}
                 </g>
               );
             })}
