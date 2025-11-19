@@ -129,7 +129,7 @@ export default function SwitchesConnectionsGraph({
     setOffset({ x: 0, y: 0 });
   }, []);
 
-  const handleWheel = useCallback((event: WheelEvent<SVGSVGElement>) => {
+  const handleWheel = useCallback((event: WheelEvent<Element>) => {
     const { deltaY } = event;
     setZoom((prev) => {
       const factor = deltaY < 0 ? 1.1 : 0.9;
