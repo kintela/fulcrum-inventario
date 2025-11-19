@@ -18,6 +18,9 @@ type GraphNode = {
   label: string;
   subtitle: string | null;
   type: GraphNodeType;
+  metadata?: {
+    tipo?: string | null;
+  };
 };
 
 type GraphLink = {
@@ -25,6 +28,10 @@ type GraphLink = {
   source: string;
   target: string;
   label: string | null;
+  portNumber?: number | null;
+  tomaRed?: string | null;
+  isEquipoLink?: boolean;
+  slotIndex?: number;
 };
 
 type NodeWithPosition = GraphNode & { x: number; y: number };
@@ -39,6 +46,7 @@ type SwitchesConnectionsGraphProps = {
 
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
+const EQUIPO_NODE_HEIGHT = 44;
 const DEFAULT_DIAGRAM_WIDTH = 1100;
 const DIAGRAM_HEIGHT = 900;
 const SWITCH_HORIZONTAL_SPACING = 220;
@@ -60,6 +68,51 @@ function ensureEquipoLabel(puerto: SwitchPortRecord): string {
 function ensureSwitchLinkLabel(nombre: string | null | undefined): string {
   if (nombre && nombre.trim().length > 0) return nombre.trim();
   return "Switch sin nombre";
+}
+
+const TIPO_EQUIPO_LABELS: Record<string, string> = {
+  sobremesa: "Sobremesa",
+  portatil: "Portátil",
+  servidor: "Servidor",
+  almacenamiento: "Almacenamiento",
+  impresora: "Impresora",
+  wifi: "WiFi",
+  virtual: "Virtual",
+  firewall: "Firewall",
+  ups: "UPS",
+  tablet: "Tablet",
+  monitor: "Monitor",
+};
+
+const TIPO_EQUIPO_COLORES: Record<string, string> = {
+  sobremesa: "fill-blue-100 stroke-blue-300",
+  portatil: "fill-green-100 stroke-green-300",
+  servidor: "fill-amber-100 stroke-amber-300",
+  almacenamiento: "fill-orange-100 stroke-orange-300",
+  impresora: "fill-rose-100 stroke-rose-300",
+  wifi: "fill-cyan-100 stroke-cyan-300",
+  virtual: "fill-purple-100 stroke-purple-300",
+  firewall: "fill-red-100 stroke-red-300",
+  ups: "fill-stone-200 stroke-stone-400",
+  tablet: "fill-pink-100 stroke-pink-300",
+  monitor: "fill-indigo-100 stroke-indigo-300",
+};
+
+function formatTipoEquipo(tipo: string | null | undefined): string | null {
+  if (!tipo) return null;
+  const normalized = tipo.trim().toLowerCase();
+  if (!normalized) return null;
+  return (
+    TIPO_EQUIPO_LABELS[normalized] ??
+    normalized.charAt(0).toUpperCase() + normalized.slice(1)
+  );
+}
+
+function getEquipoColorClasses(tipo: string | null | undefined): string {
+  if (!tipo) return "fill-emerald-100 stroke-emerald-300";
+  const normalized = tipo.trim().toLowerCase();
+  if (!normalized) return "fill-emerald-100 stroke-emerald-300";
+  return TIPO_EQUIPO_COLORES[normalized] ?? "fill-emerald-100 stroke-emerald-300";
 }
 
 export default function SwitchesConnectionsGraph({
@@ -123,7 +176,16 @@ export default function SwitchesConnectionsGraph({
 
   const { positionedNodes, positionedLinks, height, width } = useMemo(() => {
     const nodes = new Map<string, GraphNode>();
+    const switchPortBuckets = new Map<
+      string,
+      { top: SwitchPortRecord[]; bottom: SwitchPortRecord[] }
+    >();
+    const equipoSwitchCounts = new Map<string, Map<string, number>>();
     const links: GraphLink[] = [];
+
+    const includedSwitchIds = new Set(
+      filteredSwitches.map((switchRecord) => String(switchRecord.id)),
+    );
 
     for (const switchRecord of filteredSwitches) {
       const switchNodeId = `switch-${switchRecord.id}`;
@@ -139,6 +201,11 @@ export default function SwitchesConnectionsGraph({
       const puertosOrdenados = [...(switchRecord.puertos ?? [])].sort(
         (a, b) => (a.numero ?? 0) - (b.numero ?? 0),
       );
+      const totalPorts = puertosOrdenados.length;
+      const half = Math.max(1, Math.ceil(totalPorts / 2));
+      const topPorts = puertosOrdenados.slice(0, half);
+      const bottomPorts = puertosOrdenados.slice(half);
+      switchPortBuckets.set(switchNodeId, { top: topPorts, bottom: bottomPorts });
 
       for (const puerto of puertosOrdenados) {
         if (puerto.equipo_id && puerto.equipo) {
@@ -147,10 +214,18 @@ export default function SwitchesConnectionsGraph({
             nodes.set(equipoNodeId, {
               id: equipoNodeId,
               label: ensureEquipoLabel(puerto),
-              subtitle: `Equipo`,
+              subtitle: null,
               type: "equipo",
+              metadata: { tipo: puerto.equipo?.tipo ?? null },
             });
           }
+          const equipoCounts =
+            equipoSwitchCounts.get(equipoNodeId) ?? new Map<string, number>();
+          equipoCounts.set(
+            switchNodeId,
+            (equipoCounts.get(switchNodeId) ?? 0) + 1,
+          );
+          equipoSwitchCounts.set(equipoNodeId, equipoCounts);
           links.push({
             id: `link-${switchNodeId}-${equipoNodeId}-${puerto.id}`,
             source: switchNodeId,
@@ -159,11 +234,34 @@ export default function SwitchesConnectionsGraph({
               typeof puerto.numero === "number"
                 ? `Puerto ${puerto.numero}`
                 : "Puerto sin número",
+            portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
+            tomaRed: puerto.equipo?.toma_red?.trim() ?? null,
+            isEquipoLink: true,
           });
           continue;
         }
 
         if (puerto.switch_conectado_id && puerto.switch_conectado) {
+          const connectedId = String(puerto.switch_conectado_id);
+          const existingSwitchTarget = includedSwitchIds.has(connectedId)
+            ? `switch-${connectedId}`
+            : null;
+
+          if (existingSwitchTarget) {
+          links.push({
+            id: `link-${switchNodeId}-${existingSwitchTarget}-${puerto.id}`,
+            source: switchNodeId,
+            target: existingSwitchTarget,
+            label:
+              typeof puerto.numero === "number"
+                ? `Puerto ${puerto.numero}`
+                : "Puerto sin número",
+            portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
+            isEquipoLink: false,
+          });
+          continue;
+        }
+
           const linkNodeId = `switchlink-${puerto.switch_conectado_id}`;
           if (!nodes.has(linkNodeId)) {
             nodes.set(linkNodeId, {
@@ -181,6 +279,8 @@ export default function SwitchesConnectionsGraph({
               typeof puerto.numero === "number"
                 ? `Puerto ${puerto.numero}`
                 : "Puerto sin número",
+            portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
+            isEquipoLink: false,
           });
           continue;
         }
@@ -196,7 +296,18 @@ export default function SwitchesConnectionsGraph({
         endpointNodes.push(node);
       }
     }
-    switchNodes.sort((a, b) => a.label.localeCompare(b.label, "es"));
+    const locationOrder = new Map<string, number>([
+      ["cpd_principal", 0],
+      ["informática", 1],
+    ]);
+    switchNodes.sort((a, b) => {
+      const locA =
+        locationOrder.get(a.subtitle?.toLowerCase() ?? "") ?? 2;
+      const locB =
+        locationOrder.get(b.subtitle?.toLowerCase() ?? "") ?? 2;
+      if (locA !== locB) return locA - locB;
+      return a.label.localeCompare(b.label, "es");
+    });
     endpointNodes.sort((a, b) => a.label.localeCompare(b.label, "es"));
 
     const diagramWidth = Math.max(
@@ -213,48 +324,125 @@ export default function SwitchesConnectionsGraph({
       y: centerY,
     }));
 
-    const switchPositionsMap = new Map<string, NodeWithPosition>();
-    for (const node of positionedSwitches) {
-      switchPositionsMap.set(node.id, node);
+  const switchPositionsMap = new Map<string, NodeWithPosition>();
+  for (const node of positionedSwitches) {
+    switchPositionsMap.set(node.id, node);
+  }
+
+  const positionedEndpoints: NodeWithPosition[] = [];
+  const switchStacks = new Map<string, { top: number; bottom: number }>();
+  const globalStacks = { top: 0, bottom: 0 };
+
+  for (const node of endpointNodes) {
+    const relatedLinks = links.filter(
+      (link) => link.target === node.id || link.source === node.id,
+    );
+
+    const anchorSwitches = relatedLinks
+      .map((link) => {
+        const sourceSwitch = switchPositionsMap.get(link.source);
+        if (sourceSwitch?.type === "switch")
+          return { id: sourceSwitch.id, x: sourceSwitch.x };
+        const targetSwitch = switchPositionsMap.get(link.target);
+        if (targetSwitch?.type === "switch")
+          return { id: targetSwitch.id, x: targetSwitch.x };
+        return null;
+      })
+      .filter(
+        (value): value is { id: string; x: number } => value !== null,
+      );
+
+    let anchorInfo: { id: string; x: number } | null = null;
+    if (node.type === "equipo") {
+      const equipoCounts = equipoSwitchCounts.get(node.id);
+      if (equipoCounts) {
+        const best = [...equipoCounts.entries()].sort((a, b) => {
+          const countDiff = b[1] - a[1];
+          if (countDiff !== 0) return countDiff;
+          const switchAX = switchPositionsMap.get(a[0])?.x ?? 0;
+          const switchBX = switchPositionsMap.get(b[0])?.x ?? 0;
+          return switchAX - switchBX;
+        })[0];
+        if (best) {
+          anchorInfo = {
+            id: best[0],
+            x: switchPositionsMap.get(best[0])?.x ?? SWITCH_MARGIN_X,
+          };
+        }
+      }
     }
 
-    const topBuckets = new Map<number, number>();
-    const bottomBuckets = new Map<number, number>();
+    if (!anchorInfo && anchorSwitches.length > 0) {
+      const counts = new Map<string, { count: number; x: number }>();
+      for (const anchor of anchorSwitches) {
+        const entry = counts.get(anchor.id) ?? { count: 0, x: anchor.x };
+        entry.count += 1;
+        entry.x = anchor.x;
+        counts.set(anchor.id, entry);
+      }
+      const best = [...counts.entries()].sort((a, b) => {
+        if (b[1].count !== a[1].count) return b[1].count - a[1].count;
+        return a[1].x - b[1].x;
+      })[0];
+      if (best) {
+        anchorInfo = { id: best[0], x: best[1].x };
+      }
+    }
 
-    const positionedEndpoints: NodeWithPosition[] = endpointNodes.map((node, index) => {
-      const relatedLinks = links.filter(
-        (link) => link.target === node.id || link.source === node.id,
-      );
-      const anchorXs = relatedLinks
-        .map((link) => {
-          const sourceSwitch = switchPositionsMap.get(link.source);
-          if (sourceSwitch?.type === "switch") return sourceSwitch.x;
-          const targetSwitch = switchPositionsMap.get(link.target);
-          if (targetSwitch?.type === "switch") return targetSwitch.x;
-          return null;
-        })
-        .filter((value): value is number => value !== null);
+    const baseX = anchorInfo
+      ? anchorInfo.x
+      : SWITCH_MARGIN_X;
 
-      let baseX =
-        anchorXs.length > 0
-          ? anchorXs.reduce((acc, value) => acc + value, 0) / anchorXs.length
-          : SWITCH_MARGIN_X + (index % Math.max(1, positionedSwitches.length)) * SWITCH_HORIZONTAL_SPACING;
-      baseX = Math.min(Math.max(baseX, SWITCH_MARGIN_X / 2), diagramWidth - SWITCH_MARGIN_X / 2);
+    const stacksKey = anchorInfo?.id ?? "__global__";
+    const stacks =
+      stacksKey === "__global__"
+        ? globalStacks
+        : switchStacks.get(stacksKey) ?? { top: 0, bottom: 0 };
+    if (stacksKey !== "__global__" && !switchStacks.has(stacksKey)) {
+      switchStacks.set(stacksKey, stacks);
+    }
 
-      const assignTop = index % 2 === 0;
-      const bucketKey = Math.round(baseX / 50);
-      const bucket = assignTop ? topBuckets : bottomBuckets;
-      const count = bucket.get(bucketKey) ?? 0;
-      bucket.set(bucketKey, count + 1);
-      const verticalOffset = count * 28;
-      const y = assignTop ? topRowBaseY - verticalOffset : bottomRowBaseY + verticalOffset;
+    const bucketInfo =
+      anchorInfo && switchPortBuckets.get(anchorInfo.id);
 
-      return {
-        ...node,
-        x: baseX,
-        y,
-      };
+    let assignTop: boolean;
+    let stackIndex: number;
+
+    if (node.type === "equipo" && bucketInfo && anchorInfo) {
+      const counts = bucketInfo.top.length;
+      const bottomCounts = bucketInfo.bottom.length;
+      const topUsed = stacks.top;
+      const bottomUsed = stacks.bottom;
+      const topRemaining = Math.max(counts - topUsed, 0);
+      const bottomRemaining = Math.max(bottomCounts - bottomUsed, 0);
+      if (topRemaining === bottomRemaining) {
+        assignTop = topUsed <= bottomUsed;
+      } else {
+        assignTop = topRemaining >= bottomRemaining;
+      }
+    } else {
+      assignTop = stacks.top <= stacks.bottom;
+    }
+
+    stackIndex = assignTop ? stacks.top : stacks.bottom;
+    if (assignTop) stacks.top += 1;
+    else stacks.bottom += 1;
+
+    const rowY = assignTop ? topRowBaseY : bottomRowBaseY;
+    const verticalSpacing = EQUIPO_NODE_HEIGHT + 12;
+    const y = assignTop
+      ? rowY - stackIndex * verticalSpacing
+      : rowY + stackIndex * verticalSpacing;
+
+    positionedEndpoints.push({
+      ...node,
+      x: Math.min(
+        Math.max(baseX, SWITCH_MARGIN_X / 2),
+        diagramWidth - SWITCH_MARGIN_X / 2,
+      ),
+      y,
     });
+  }
 
     const positionsMap = new Map<string, NodeWithPosition>();
     for (const node of positionedSwitches) {
@@ -276,6 +464,25 @@ export default function SwitchesConnectionsGraph({
         };
       })
       .filter((link): link is LinkWithPosition => Boolean(link));
+
+    const linksByTarget = new Map<string, LinkWithPosition[]>();
+    for (const link of positionedLinks) {
+      if (link.targetPos.type !== "equipo") continue;
+      const arr = linksByTarget.get(link.target) ?? [];
+      arr.push(link);
+      linksByTarget.set(link.target, arr);
+    }
+    for (const arr of linksByTarget.values()) {
+      arr.sort((a, b) => {
+        const aVal = a.portNumber ?? Number.POSITIVE_INFINITY;
+        const bVal = b.portNumber ?? Number.POSITIVE_INFINITY;
+        if (aVal !== bVal) return aVal - bVal;
+        return a.id.localeCompare(b.id);
+      });
+      arr.forEach((link, index) => {
+        link.slotIndex = index;
+      });
+    }
 
     return {
       positionedNodes: [...positionedSwitches, ...positionedEndpoints],
@@ -362,8 +569,17 @@ export default function SwitchesConnectionsGraph({
               const path = `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
                 sourcePos.y
               }, ${endX - controlOffset} ${targetPos.y}, ${endX} ${targetPos.y}`;
-              const labelX = (startX + endX) / 2;
-              const labelY = (sourcePos.y + targetPos.y) / 2 - 10;
+              const targetHeight =
+                targetPos.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
+              const isEquipmentTarget = targetPos.type === "equipo";
+              const slotIndex = isEquipmentTarget ? link.slotIndex ?? 0 : 0;
+              const labelX = isEquipmentTarget
+                ? targetPos.x - NODE_WIDTH / 2 - 6
+                : (startX + endX) / 2;
+              const labelY = isEquipmentTarget
+                ? targetPos.y - targetHeight / 2 + 14 * (slotIndex + 1)
+                : (sourcePos.y + targetPos.y) / 2 - 10;
+              const textAnchor = isEquipmentTarget ? "end" : "middle";
               return (
                 <g key={link.id} className="text-[10px]">
                   <path
@@ -374,59 +590,75 @@ export default function SwitchesConnectionsGraph({
                     markerEnd="url(#arrowhead)"
                   />
                   {link.label ? (
-                    <text
-                      x={labelX}
-                      y={labelY}
-                      textAnchor="middle"
-                      className="fill-foreground/70 text-[10px]"
-                    >
-                      {link.label}
-                    </text>
+                    <>
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        textAnchor={textAnchor}
+                        className="fill-foreground/70 text-[10px]"
+                      >
+                        {link.label}
+                      </text>
+                      {isEquipmentTarget && link.tomaRed ? (
+                        <text
+                          x={labelX}
+                          y={labelY + 10}
+                          textAnchor={textAnchor}
+                          className="fill-foreground/60 text-[9px]"
+                        >
+                          {link.tomaRed}
+                        </text>
+                      ) : null}
+                    </>
                   ) : null}
                 </g>
               );
             })}
             {positionedNodes.map((node) => {
-              const colors: Record<GraphNodeType, string> = {
-                switch: "fill-blue-100 stroke-blue-300",
-                equipo: "fill-emerald-100 stroke-emerald-300",
+              const colors: Record<Exclude<GraphNodeType, "equipo">, string> = {
+                switch: "fill-slate-200 stroke-slate-400",
                 switchLink: "fill-violet-100 stroke-violet-300",
               };
-              const classNames = colors[node.type];
-              return (
-                <g key={node.id}>
-                  <rect
-                    x={node.x - NODE_WIDTH / 2}
-                    y={node.y - NODE_HEIGHT / 2}
-                    width={NODE_WIDTH}
-                    height={NODE_HEIGHT}
-                    rx={14}
-                    className={`${classNames} stroke-[1.5]`}
-                  />
+              const classNames =
+                node.type === "equipo"
+                  ? getEquipoColorClasses(node.metadata?.tipo ?? null)
+                  : colors[node.type as Exclude<GraphNodeType, "equipo">];
+            const nodeHeight =
+              node.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
+            return (
+              <g key={node.id}>
+                <rect
+                  x={node.x - NODE_WIDTH / 2}
+                  y={node.y - nodeHeight / 2}
+                  width={NODE_WIDTH}
+                  height={nodeHeight}
+                  rx={14}
+                  className={`${classNames} stroke-[1.5]`}
+                />
+                <text
+                  x={node.x}
+                  y={node.type === "switch" ? node.y - 4 : node.y + 3}
+                  textAnchor="middle"
+                  className="text-sm font-semibold text-foreground"
+                >
+                  {node.label}
+                </text>
+                {node.subtitle && node.type === "switch" ? (
                   <text
                     x={node.x}
-                    y={node.y - 4}
+                    y={node.y + 14}
                     textAnchor="middle"
-                    className="text-sm font-semibold text-foreground"
+                    className="text-xs text-foreground/70"
                   >
-                    {node.label}
+                    {node.subtitle}
                   </text>
-                  {node.subtitle ? (
-                    <text
-                      x={node.x}
-                      y={node.y + 14}
-                      textAnchor="middle"
-                      className="text-xs text-foreground/70"
-                    >
-                      {node.subtitle}
-                    </text>
-                  ) : null}
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
+                ) : null}
+              </g>
+            );
+          })}
+         </g>
+       </svg>
+     </div>
     </div>
   );
 }

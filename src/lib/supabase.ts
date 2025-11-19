@@ -128,6 +128,7 @@ export type SwitchPortRecord = {
     id: string;
     nombre: string | null;
     modelo: string | null;
+    tipo?: string | null;
     toma_red?: string | null;
   } | null;
   switch?: { id: number; nombre: string | null } | null;
@@ -959,7 +960,7 @@ export async function fetchSwitches(): Promise<SwitchRecord[]> {
       "observaciones",
       "fabricante:fabricantes(nombre)",
       "ubicacion:ubicaciones(nombre)",
-      "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
+      "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,tipo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
     ].join(","),
   );
   requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
@@ -1005,7 +1006,7 @@ export async function fetchSwitchById(
         "observaciones",
         "fabricante:fabricantes(nombre)",
         "ubicacion:ubicaciones(nombre)",
-        "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,modelo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
+        "puertos:puertos!puertos_switch_id_fkey(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,equipo:equipos(id,nombre,modelo,tipo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre)),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
       ].join(","),
   );
   requestUrl.searchParams.set("id", `eq.${id}`);
