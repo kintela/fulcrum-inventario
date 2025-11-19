@@ -81,20 +81,6 @@ function ensureSwitchLinkLabel(nombre: string | null | undefined): string {
   return "Switch sin nombre";
 }
 
-const TIPO_EQUIPO_LABELS: Record<string, string> = {
-  sobremesa: "Sobremesa",
-  portatil: "Portátil",
-  servidor: "Servidor",
-  almacenamiento: "Almacenamiento",
-  impresora: "Impresora",
-  wifi: "WiFi",
-  virtual: "Virtual",
-  firewall: "Firewall",
-  ups: "UPS",
-  tablet: "Tablet",
-  monitor: "Monitor",
-};
-
 const TIPO_EQUIPO_COLORES: Record<string, string> = {
   sobremesa: "fill-blue-100 stroke-blue-300",
   portatil: "fill-green-100 stroke-green-300",
@@ -108,16 +94,6 @@ const TIPO_EQUIPO_COLORES: Record<string, string> = {
   tablet: "fill-pink-100 stroke-pink-300",
   monitor: "fill-indigo-100 stroke-indigo-300",
 };
-
-function formatTipoEquipo(tipo: string | null | undefined): string | null {
-  if (!tipo) return null;
-  const normalized = tipo.trim().toLowerCase();
-  if (!normalized) return null;
-  return (
-    TIPO_EQUIPO_LABELS[normalized] ??
-    normalized.charAt(0).toUpperCase() + normalized.slice(1)
-  );
-}
 
 function getEquipoColorClasses(tipo: string | null | undefined): string {
   if (!tipo) return "fill-emerald-100 stroke-emerald-300";
