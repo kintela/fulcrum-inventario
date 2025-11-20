@@ -128,13 +128,14 @@ export default function SwitchesConnectionsGraph({
     });
   }, [switches]);
 
-  const [zoom, setZoom] = useState(0.75);
+  const INITIAL_ZOOM = 0.52;
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
 
   const resetView = useCallback(() => {
-    setZoom(1);
+    setZoom(INITIAL_ZOOM);
     setOffset({ x: 0, y: 0 });
   }, []);
 
