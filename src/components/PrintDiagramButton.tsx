@@ -20,7 +20,7 @@ export default function PrintDiagramButton({ className }: PrintDiagramButtonProp
     styleEl.textContent = `
       @page {
         size: landscape;
-        margin: 6mm;
+        margin: 4mm;
       }
 
       body {
@@ -48,7 +48,7 @@ export default function PrintDiagramButton({ className }: PrintDiagramButtonProp
           position: fixed;
           inset: 0;
           margin: 0;
-          padding: 12mm 6mm 6mm;
+          padding: 0 6mm 4mm;
           width: 100vw;
           height: 100vh;
           box-sizing: border-box;
@@ -62,7 +62,7 @@ export default function PrintDiagramButton({ className }: PrintDiagramButtonProp
           width: 100%;
           height: 100%;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
         }
 
@@ -73,17 +73,18 @@ export default function PrintDiagramButton({ className }: PrintDiagramButtonProp
           background: transparent !important;
           padding: 0 !important;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
         }
 
         #switches-graph-print-area svg {
           display: block;
           width: auto !important;
-          height: calc(100vh - 30mm) !important;
-          max-height: calc(100vh - 30mm);
-          max-width: calc(100vw - 16mm);
+          height: calc(100vh - 12mm) !important;
+          max-height: calc(100vh - 12mm);
+          max-width: calc(100vw - 12mm);
           margin: 0 auto;
+          transform: translateY(-3mm);
         }
       }
     `;

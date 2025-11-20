@@ -44,6 +44,7 @@ type NodeWithPosition = GraphNode & { x: number; y: number };
 type LinkWithPosition = GraphLink & {
   sourcePos: NodeWithPosition;
   targetPos: NodeWithPosition;
+  isMutual?: boolean;
 };
 
 type PendingEndpoint = {
@@ -61,7 +62,7 @@ const NODE_HEIGHT = 64;
 const EQUIPO_NODE_HEIGHT = 44;
 const DEFAULT_DIAGRAM_WIDTH = 1100;
 const DIAGRAM_HEIGHT = 900;
-const SWITCH_HORIZONTAL_SPACING = 220;
+const SWITCH_HORIZONTAL_SPACING = 280;
 const SWITCH_MARGIN_X = 180;
 
 function formatSwitchLabel(item: SwitchRecord): string {
@@ -80,6 +81,13 @@ function ensureEquipoLabel(puerto: SwitchPortRecord): string {
 function ensureSwitchLinkLabel(nombre: string | null | undefined): string {
   if (nombre && nombre.trim().length > 0) return nombre.trim();
   return "Switch sin nombre";
+}
+
+function getPortLabel(puerto: SwitchPortRecord): string | null {
+  const nombre = puerto.nombre?.trim();
+  if (nombre) return nombre;
+  if (typeof puerto.numero !== "number") return "Puerto sin número";
+  return null;
 }
 
 const TIPO_EQUIPO_COLORES: Record<string, string> = {
@@ -120,7 +128,7 @@ export default function SwitchesConnectionsGraph({
     });
   }, [switches]);
 
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.75);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
@@ -289,10 +297,7 @@ export default function SwitchesConnectionsGraph({
             id: `link-${switchNodeId}-${equipoNodeId}-${puerto.id}`,
             source: switchNodeId,
             target: equipoNodeId,
-            label:
-              typeof puerto.numero === "number"
-                ? `Puerto ${puerto.numero}`
-                : "Puerto sin número",
+            label: getPortLabel(puerto),
             portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
             tomaRed: puerto.equipo?.toma_red?.trim() ?? null,
             isEquipoLink: true,
@@ -312,10 +317,7 @@ export default function SwitchesConnectionsGraph({
             id: `link-${switchNodeId}-${existingSwitchTarget}-${puerto.id}`,
             source: switchNodeId,
             target: existingSwitchTarget,
-            label:
-              typeof puerto.numero === "number"
-                ? `Puerto ${puerto.numero}`
-                : "Puerto sin número",
+            label: getPortLabel(puerto),
             portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
             isEquipoLink: false,
           });
@@ -335,10 +337,7 @@ export default function SwitchesConnectionsGraph({
             id: `link-${switchNodeId}-${linkNodeId}-${puerto.id}`,
             source: switchNodeId,
             target: linkNodeId,
-            label:
-              typeof puerto.numero === "number"
-                ? `Puerto ${puerto.numero}`
-                : "Puerto sin número",
+            label: getPortLabel(puerto),
             portNumber: typeof puerto.numero === "number" ? puerto.numero : null,
             isEquipoLink: false,
           });
@@ -620,12 +619,51 @@ export default function SwitchesConnectionsGraph({
       });
     }
 
-    return {
+    const result = {
       positionedNodes: [...positionedSwitches, ...positionedEndpoints],
       positionedLinks,
       height: DIAGRAM_HEIGHT,
       width: diagramWidth,
     };
+
+    // Mark mutual connections between switches
+    const switchLinkPairs = new Map<string, LinkWithPosition[]>();
+    const directionalSwitchLinks = new Map<string, LinkWithPosition[]>();
+    for (const link of result.positionedLinks) {
+      if (link.sourcePos.type !== "switch" || link.targetPos.type !== "switch") continue;
+      const [a, b] = [link.source, link.target].sort();
+      const key = `${a}::${b}`;
+      const arr = switchLinkPairs.get(key) ?? [];
+      arr.push(link);
+      switchLinkPairs.set(key, arr);
+
+      const directionalKey = `${link.source}->${link.target}`;
+      const dirArr = directionalSwitchLinks.get(directionalKey) ?? [];
+      dirArr.push(link);
+      directionalSwitchLinks.set(directionalKey, dirArr);
+    }
+    for (const pair of switchLinkPairs.values()) {
+      const distinctSources = new Set(pair.map((link) => link.source));
+      if (distinctSources.size >= 2) {
+        pair.forEach((link) => {
+          link.isMutual = true;
+        });
+      }
+    }
+    for (const dirLinks of directionalSwitchLinks.values()) {
+      dirLinks
+        .sort((a, b) => {
+          const aVal = a.portNumber ?? Number.POSITIVE_INFINITY;
+          const bVal = b.portNumber ?? Number.POSITIVE_INFINITY;
+          if (aVal !== bVal) return aVal - bVal;
+          return a.id.localeCompare(b.id);
+        })
+        .forEach((link, index) => {
+          link.slotIndex = index;
+        });
+    }
+
+    return result;
   }, [filteredSwitches]);
 
   if (positionedNodes.length === 0) {
@@ -650,23 +688,24 @@ export default function SwitchesConnectionsGraph({
         <span className="font-mono text-foreground/60">Zoom: {zoom.toFixed(2)}x</span>
         <PrintDiagramButton className="ml-auto text-xs px-3 py-1.5" />
       </div>
-      <div
-        className="printable-graph w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
-        onWheelCapture={handleWheel}
-        style={{ touchAction: "none", overscrollBehavior: "contain" }}
-      >
-        <div id="switches-graph-print-area" className="printable-graph-inner">
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            className="w-full cursor-grab"
-            style={{ height: `${Math.min(height, 900)}px` }}
-            role="img"
-            aria-label="Esquema de conexiones entre switches y equipos"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseUp}
-            onMouseUp={handleMouseUp}
-          >
+      <div className="printable-graph w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div
+          className="w-full overflow-x-auto"
+          style={{ touchAction: "none", overscrollBehavior: "contain" }}
+          onWheelCapture={handleWheel}
+        >
+          <div id="switches-graph-print-area" className="printable-graph-inner min-w-[900px]">
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              className="w-full cursor-grab"
+              style={{ height: `${Math.min(height, 900)}px`, minWidth: `${width}px` }}
+              role="img"
+              aria-label="Esquema de conexiones entre switches y equipos"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseUp}
+              onMouseUp={handleMouseUp}
+            >
             <defs>
               <marker
                 id="arrowhead"
@@ -683,12 +722,15 @@ export default function SwitchesConnectionsGraph({
             <g transform={`translate(${offset.x} ${offset.y}) scale(${zoom})`}>
               {positionedLinks.map((link) => {
               const { sourcePos, targetPos } = link;
+              const isSwitchSource = sourcePos.type === "switch";
+              const isSwitchTarget = targetPos.type === "switch";
+              const direction = targetPos.x >= sourcePos.x ? 1 : -1;
               const startX =
                 sourcePos.x +
-                (sourcePos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
+                (isSwitchSource ? (direction === 1 ? NODE_WIDTH / 2 : -NODE_WIDTH / 2) : -NODE_WIDTH / 2);
               const endX =
                 targetPos.x +
-                (targetPos.type === "switch" ? NODE_WIDTH / 2 : -NODE_WIDTH / 2);
+                (isSwitchTarget ? (direction === 1 ? -NODE_WIDTH / 2 : NODE_WIDTH / 2) : -NODE_WIDTH / 2);
               const controlOffset = (endX - startX) / 2;
               const path = `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
                 sourcePos.y
@@ -696,14 +738,29 @@ export default function SwitchesConnectionsGraph({
               const targetHeight =
                 targetPos.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
               const isEquipmentTarget = targetPos.type === "equipo";
-              const slotIndex = isEquipmentTarget ? link.slotIndex ?? 0 : 0;
-              const labelX = isEquipmentTarget
-                ? targetPos.x - NODE_WIDTH / 2 - 6
-                : (startX + endX) / 2;
-              const labelY = isEquipmentTarget
-                ? targetPos.y - targetHeight / 2 + 14 * (slotIndex + 1)
-                : (sourcePos.y + targetPos.y) / 2 - 10;
-              const textAnchor = isEquipmentTarget ? "end" : "middle";
+              const isSwitchToSwitch =
+                isSwitchSource && isSwitchTarget;
+              const slotIndex =
+                isEquipmentTarget || isSwitchToSwitch ? link.slotIndex ?? 0 : 0;
+              let labelX: number;
+              let labelY: number;
+              let textAnchor: "start" | "middle" | "end";
+              if (isEquipmentTarget) {
+                labelX = targetPos.x - NODE_WIDTH / 2 - 6;
+                labelY = targetPos.y - targetHeight / 2 + 14 * (slotIndex + 1);
+                textAnchor = "end";
+              } else if (isSwitchToSwitch) {
+                labelX = startX + direction * 12;
+                labelY = sourcePos.y - 12 - slotIndex * 12;
+                textAnchor = direction === 1 ? "start" : "end";
+              } else {
+                labelX = (startX + endX) / 2;
+                labelY = (sourcePos.y + targetPos.y) / 2 - 10;
+                textAnchor = "middle";
+              }
+              const displayLabel =
+                (link.label?.trim().length ? link.label : null) ??
+                (link.portNumber != null ? `P${link.portNumber}` : null);
               return (
                 <g key={link.id} className="text-[10px]">
                   <path
@@ -711,24 +768,26 @@ export default function SwitchesConnectionsGraph({
                     fill="none"
                     stroke="#94a3b8"
                     strokeWidth={1.5}
-                    markerEnd="url(#arrowhead)"
+                    markerEnd={
+                      link.isMutual && isSwitchToSwitch ? undefined : "url(#arrowhead)"
+                    }
                   />
-                  {(link.portNumber != null || link.label) && (
+                  {(displayLabel || (isEquipmentTarget && link.tomaRed)) && (
                     <>
-                      <text
-                        x={labelX}
-                        y={labelY}
-                        textAnchor={textAnchor}
-                        className="fill-foreground/70 text-[10px]"
-                      >
-                        {link.portNumber != null
-                          ? `P${link.portNumber}`
-                          : link.label}
-                      </text>
+                      {displayLabel ? (
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor={textAnchor}
+                          className="fill-foreground/70 text-[10px]"
+                        >
+                          {displayLabel}
+                        </text>
+                      ) : null}
                       {isEquipmentTarget && link.tomaRed ? (
                         <text
                           x={labelX}
-                          y={labelY + 10}
+                          y={labelY + (displayLabel ? 10 : 0)}
                           textAnchor={textAnchor}
                           className="fill-foreground/60 text-[9px]"
                         >
@@ -800,5 +859,6 @@ export default function SwitchesConnectionsGraph({
         </div>
       </div>
     </div>
+  </div>
   );
 }
