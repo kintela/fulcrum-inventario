@@ -11,12 +11,8 @@ export default async function ReporteSwitchesGraficoPage() {
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Esquema de conexiones</h1>
-          <p className="text-sm text-foreground/70">
-            Muestra una vista simplificada de cómo se conectan los switches con los equipos o con
-            otros switches registrados.
-          </p>
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
           <Link
             href="/reportes/switches"
             className="text-blue-600 underline underline-offset-4 transition hover:text-blue-700"

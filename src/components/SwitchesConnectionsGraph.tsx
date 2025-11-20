@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { SwitchRecord, SwitchPortRecord } from "@/lib/supabase";
+import PrintDiagramButton from "@/components/PrintDiagramButton";
 
 type GraphNodeType = "switch" | "equipo" | "switchLink";
 
@@ -638,47 +639,49 @@ export default function SwitchesConnectionsGraph({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/70">
-        <p>Usa la rueda del ratón para acercar o alejar. Arrastra para mover el lienzo.</p>
         <button
           type="button"
           onClick={resetView}
-          className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-muted/50"
+          className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-foreground transition hover:bg-muted/50 cursor-pointer"
+          title="Usa la rueda del ratón para acercar o alejar. Arrastra para mover el lienzo."
         >
           Restablecer vista
         </button>
         <span className="font-mono text-foreground/60">Zoom: {zoom.toFixed(2)}x</span>
+        <PrintDiagramButton className="ml-auto text-xs px-3 py-1.5" />
       </div>
       <div
-        className="w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
+        className="printable-graph w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
         onWheelCapture={handleWheel}
         style={{ touchAction: "none", overscrollBehavior: "contain" }}
       >
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full cursor-grab"
-          style={{ height: `${Math.min(height, 900)}px` }}
-          role="img"
-          aria-label="Esquema de conexiones entre switches y equipos"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseUp}
-          onMouseUp={handleMouseUp}
-        >
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="10"
-              markerHeight="7"
-              refX="10"
-              refY="3.5"
-              orient="auto"
-              fill="#94a3b8"
-            >
-              <polygon points="0 0, 10 3.5, 0 7" />
-            </marker>
-          </defs>
-          <g transform={`translate(${offset.x} ${offset.y}) scale(${zoom})`}>
-            {positionedLinks.map((link) => {
+        <div id="switches-graph-print-area" className="printable-graph-inner">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full cursor-grab"
+            style={{ height: `${Math.min(height, 900)}px` }}
+            role="img"
+            aria-label="Esquema de conexiones entre switches y equipos"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseUp}
+            onMouseUp={handleMouseUp}
+          >
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="7"
+                refX="10"
+                refY="3.5"
+                orient="auto"
+                fill="#94a3b8"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" />
+              </marker>
+            </defs>
+            <g transform={`translate(${offset.x} ${offset.y}) scale(${zoom})`}>
+              {positionedLinks.map((link) => {
               const { sourcePos, targetPos } = link;
               const startX =
                 sourcePos.x +
@@ -738,63 +741,64 @@ export default function SwitchesConnectionsGraph({
               );
             })}
             {positionedNodes.map((node) => {
-              const colors: Record<Exclude<GraphNodeType, "equipo">, string> = {
-                switch: "fill-slate-200 stroke-slate-400",
-                switchLink: "fill-violet-100 stroke-violet-300",
-              };
-              const classNames =
-                node.type === "equipo"
-                  ? getEquipoColorClasses(node.metadata?.tipo ?? null)
-                  : colors[node.type as Exclude<GraphNodeType, "equipo">];
-            const nodeHeight =
-              node.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
-            return (
-              <g key={node.id}>
-                <rect
-                  x={node.x - NODE_WIDTH / 2}
-                  y={node.y - nodeHeight / 2}
-                  width={NODE_WIDTH}
-                  height={nodeHeight}
-                  rx={14}
-                  className={`${classNames} stroke-[1.5]`}
-                />
-                <text
-                  x={node.x}
-                  y={node.type === "switch" ? node.y - 4 : node.y + 3}
-                  textAnchor="middle"
-                  className="text-sm font-semibold text-foreground"
-                >
-                  {node.label}
-                </text>
-                {node.subtitle && node.type === "switch" ? (
-                  <>
+                const colors: Record<Exclude<GraphNodeType, "equipo">, string> = {
+                  switch: "fill-slate-200 stroke-slate-400",
+                  switchLink: "fill-violet-100 stroke-violet-300",
+                };
+                const classNames =
+                  node.type === "equipo"
+                    ? getEquipoColorClasses(node.metadata?.tipo ?? null)
+                    : colors[node.type as Exclude<GraphNodeType, "equipo">];
+                const nodeHeight =
+                  node.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
+                return (
+                  <g key={node.id}>
+                    <rect
+                      x={node.x - NODE_WIDTH / 2}
+                      y={node.y - nodeHeight / 2}
+                      width={NODE_WIDTH}
+                      height={nodeHeight}
+                      rx={14}
+                      className={`${classNames} stroke-[1.5]`}
+                    />
                     <text
                       x={node.x}
-                      y={node.y + 14}
+                      y={node.type === "switch" ? node.y - 4 : node.y + 3}
                       textAnchor="middle"
-                      className="text-xs text-foreground/70"
+                      className="text-sm font-semibold text-foreground"
                     >
-                      {node.subtitle}
+                      {node.label}
                     </text>
-                    {node.metadata?.switchStats ? (
-                      <text
-                        x={node.x}
-                        y={node.y + 28}
-                        textAnchor="middle"
-                        className="text-xs text-foreground/70"
-                      >
-                        {node.metadata.switchStats.used} de{" "}
-                        {node.metadata.switchStats.total} puertos
-                      </text>
+                    {node.subtitle && node.type === "switch" ? (
+                      <>
+                        <text
+                          x={node.x}
+                          y={node.y + 14}
+                          textAnchor="middle"
+                          className="text-xs text-foreground/70"
+                        >
+                          {node.subtitle}
+                        </text>
+                        {node.metadata?.switchStats ? (
+                          <text
+                            x={node.x}
+                            y={node.y + 28}
+                            textAnchor="middle"
+                            className="text-xs text-foreground/70"
+                          >
+                            {node.metadata.switchStats.used} de{" "}
+                            {node.metadata.switchStats.total} puertos
+                          </text>
+                        ) : null}
+                      </>
                     ) : null}
-                  </>
-                ) : null}
-              </g>
-            );
-          })}
-         </g>
-       </svg>
-     </div>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }
