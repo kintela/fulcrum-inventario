@@ -120,6 +120,7 @@ function getEquipoColorClasses(tipo: string | null | undefined): string {
 export default function SwitchesConnectionsGraph({
   switches,
 }: SwitchesConnectionsGraphProps) {
+  const [searchTerm, setSearchTerm] = useState("");
   const filteredSwitches = useMemo(() => {
     return switches.filter((item) => {
       const ubicacion = item.ubicacion?.nombre?.trim().toLowerCase();
@@ -709,6 +710,39 @@ export default function SwitchesConnectionsGraph({
     return result;
   }, [filteredSwitches]);
 
+  const normalizedQuery = searchTerm.trim().toLowerCase();
+  const { matchedNodes, matchedLinks, nodesFromLinks } = useMemo(() => {
+    const nodes = new Set<string>();
+    const links = new Set<string>();
+    const nodesViaLinks = new Set<string>();
+    if (!normalizedQuery) return { matchedNodes: nodes, matchedLinks: links, nodesFromLinks: nodesViaLinks };
+
+    for (const node of positionedNodes) {
+      const text = [node.label, node.subtitle].filter(Boolean).join(" ").toLowerCase();
+      if (text.includes(normalizedQuery)) {
+        nodes.add(node.id);
+      }
+    }
+
+    for (const link of positionedLinks) {
+      const parts = [
+        link.label,
+        link.tomaRed,
+        link.sourcePos?.label,
+        link.targetPos?.label,
+      ]
+        .filter(Boolean)
+        .map((item) => String(item).toLowerCase());
+      if (parts.some((value) => value.includes(normalizedQuery))) {
+        links.add(link.id);
+        if (link.sourcePos.type === "equipo") nodesViaLinks.add(link.source);
+        if (link.targetPos.type === "equipo") nodesViaLinks.add(link.target);
+      }
+    }
+
+    return { matchedNodes: nodes, matchedLinks: links, nodesFromLinks: nodesViaLinks };
+  }, [normalizedQuery, positionedLinks, positionedNodes]);
+
   if (positionedNodes.length === 0) {
     return (
       <p className="text-sm text-foreground/70">
@@ -729,6 +763,13 @@ export default function SwitchesConnectionsGraph({
           Restablecer vista
         </button>
         <span className="font-mono text-foreground/60">Zoom: {zoom.toFixed(2)}x</span>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar por equipo, switch, puerto o toma de red"
+          className="w-full max-w-xs rounded-md border border-border px-3 py-1.5 text-sm text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
         <PrintDiagramButton className="ml-auto text-xs px-3 py-1.5" />
       </div>
       <div className="printable-graph w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -763,6 +804,10 @@ export default function SwitchesConnectionsGraph({
               if (isMutualLink && link.source > link.target) {
                 return null;
               }
+              const highlightColor = "#ef4444";
+              const isHighlighted =
+                matchedLinks.has(link.id) ||
+                (matchedNodes.has(link.source) && matchedNodes.has(link.target));
               const strokeColor = isSwitchConnection ? SWITCH_CONNECTION_COLOR : EQUIPO_CONNECTION_COLOR;
               const strokeWidth = isSwitchConnection ? 2.1 : 1.4;
               const direction = targetPos.x >= sourcePos.x ? 1 : -1;
@@ -824,8 +869,8 @@ export default function SwitchesConnectionsGraph({
                   <path
                     d={path}
                     fill="none"
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
+                    stroke={isHighlighted ? highlightColor : strokeColor}
+                    strokeWidth={isHighlighted ? strokeWidth + 0.6 : strokeWidth}
                     strokeDasharray={undefined}
                     markerEnd={undefined}
                   />
@@ -836,7 +881,8 @@ export default function SwitchesConnectionsGraph({
                           x={startX + direction * 12}
                           y={sourcePos.y - 12 - slotIndex * 12}
                           textAnchor={direction === 1 ? "start" : "end"}
-                          className="fill-foreground/70 text-[10px]"
+                          className="text-[10px]"
+                          fill={isHighlighted ? highlightColor : "currentColor"}
                         >
                           {sourceSideLabel.split("\n").map((line, idx) => (
                             <tspan key={idx} x={startX + direction * 12} dy={idx === 0 ? 0 : 12}>
@@ -850,7 +896,8 @@ export default function SwitchesConnectionsGraph({
                           x={endX - direction * 12}
                           y={targetPos.y - 12 - slotIndex * 12}
                           textAnchor={direction === 1 ? "end" : "start"}
-                          className="fill-foreground/70 text-[10px]"
+                          className="text-[10px]"
+                          fill={isHighlighted ? highlightColor : "currentColor"}
                         >
                           {targetSideLabel.split("\n").map((line, idx) => (
                             <tspan key={idx} x={endX - direction * 12} dy={idx === 0 ? 0 : 12}>
@@ -867,7 +914,8 @@ export default function SwitchesConnectionsGraph({
                           x={labelX}
                           y={labelY}
                           textAnchor={textAnchor}
-                          className="fill-foreground/70 text-[10px]"
+                          className="text-[10px]"
+                          fill={isHighlighted ? highlightColor : "currentColor"}
                         >
                           {displayLabel}
                         </text>
@@ -877,7 +925,8 @@ export default function SwitchesConnectionsGraph({
                           x={labelX}
                           y={labelY + (displayLabel ? 10 : 0)}
                           textAnchor={textAnchor}
-                          className="fill-foreground/60 text-[9px]"
+                          className="text-[9px]"
+                          fill={isHighlighted ? highlightColor : "currentColor"}
                         >
                           {link.tomaRed}
                         </text>
@@ -898,6 +947,9 @@ export default function SwitchesConnectionsGraph({
                     : colors[node.type as Exclude<GraphNodeType, "equipo">];
                 const nodeHeight =
                   node.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
+                const highlightColor = "#ef4444";
+                const isHighlightedNode =
+                  matchedNodes.has(node.id) || nodesFromLinks.has(node.id);
                 return (
                   <g key={node.id}>
                     <rect
@@ -907,12 +959,15 @@ export default function SwitchesConnectionsGraph({
                       height={nodeHeight}
                       rx={14}
                       className={`${classNames} stroke-[1.5]`}
+                      stroke={isHighlightedNode ? highlightColor : undefined}
+                      strokeWidth={isHighlightedNode ? 2.2 : undefined}
                     />
                     <text
                       x={node.x}
                       y={node.type === "switch" ? node.y - 4 : node.y + 3}
                       textAnchor="middle"
                       className="text-sm font-semibold text-foreground"
+                      fill={isHighlightedNode ? highlightColor : undefined}
                     >
                       {node.label}
                     </text>
@@ -923,6 +978,7 @@ export default function SwitchesConnectionsGraph({
                           y={node.y + 14}
                           textAnchor="middle"
                           className="text-xs text-foreground/70"
+                          fill={isHighlightedNode ? highlightColor : undefined}
                         >
                           {node.subtitle}
                         </text>
@@ -932,6 +988,7 @@ export default function SwitchesConnectionsGraph({
                             y={node.y + 28}
                             textAnchor="middle"
                             className="text-xs text-foreground/70"
+                            fill={isHighlightedNode ? highlightColor : undefined}
                           >
                             {node.metadata.switchStats.used} de{" "}
                             {node.metadata.switchStats.total} puertos
