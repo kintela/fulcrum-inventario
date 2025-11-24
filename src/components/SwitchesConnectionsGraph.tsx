@@ -33,6 +33,9 @@ type GraphLink = {
   source: string;
   target: string;
   label: string | null;
+  combinedLabels?: string[];
+  sourceLabels?: string[];
+  targetLabels?: string[];
   portNumber?: number | null;
   tomaRed?: string | null;
   isEquipoLink?: boolean;
@@ -604,8 +607,44 @@ export default function SwitchesConnectionsGraph({
       ];
     });
 
-    const linksByTarget = new Map<string, LinkWithPosition[]>();
+    // Combine multiple cables between the same pair of switches into a single visual link
+    const renderedLinks: LinkWithPosition[] = [];
+    const combinedSwitchLinks = new Map<string, LinkWithPosition>();
     for (const link of positionedLinks) {
+      const isSwitchToSwitch =
+        link.sourcePos.type === "switch" && link.targetPos.type === "switch";
+      if (!isSwitchToSwitch) {
+        renderedLinks.push(link);
+        continue;
+      }
+      const pairKey = [link.source, link.target].sort().join("::");
+      const labelValue =
+        (link.label?.trim().length ? link.label : null) ??
+        (link.portNumber != null ? `P${link.portNumber}` : null);
+      const existing = combinedSwitchLinks.get(pairKey);
+      if (existing) {
+        if (labelValue) {
+          if (link.source === existing.source) {
+            existing.sourceLabels = [...(existing.sourceLabels ?? []), labelValue];
+          } else {
+            existing.targetLabels = [...(existing.targetLabels ?? []), labelValue];
+          }
+        }
+        continue;
+      }
+      const newLink: LinkWithPosition = {
+        ...link,
+        combinedLabels: labelValue ? [labelValue] : [],
+        sourceLabels: labelValue ? [labelValue] : [],
+        targetLabels: [],
+        slotIndex: 0,
+      };
+      combinedSwitchLinks.set(pairKey, newLink);
+      renderedLinks.push(newLink);
+    }
+
+    const linksByTarget = new Map<string, LinkWithPosition[]>();
+    for (const link of renderedLinks) {
       if (link.targetPos.type !== "equipo") continue;
       const arr = linksByTarget.get(link.target) ?? [];
       arr.push(link);
@@ -625,7 +664,7 @@ export default function SwitchesConnectionsGraph({
 
     const result = {
       positionedNodes: [...positionedSwitches, ...positionedEndpoints],
-      positionedLinks,
+      positionedLinks: renderedLinks,
       height: DIAGRAM_HEIGHT,
       width: diagramWidth,
     };
@@ -711,28 +750,6 @@ export default function SwitchesConnectionsGraph({
               onMouseUp={handleMouseUp}
             >
             <defs>
-              <marker
-                id="arrowhead-switch"
-                markerWidth="10"
-                markerHeight="7"
-                refX="10"
-                refY="3.5"
-                orient="auto"
-                fill={SWITCH_CONNECTION_COLOR}
-              >
-                <polygon points="0 0, 10 3.5, 0 7" />
-              </marker>
-              <marker
-                id="arrowhead-equipo"
-                markerWidth="10"
-                markerHeight="7"
-                refX="10"
-                refY="3.5"
-                orient="auto"
-                fill={EQUIPO_CONNECTION_COLOR}
-              >
-                <polygon points="0 0, 10 3.5, 0 7" />
-              </marker>
             </defs>
             <g transform={`translate(${offset.x} ${offset.y}) scale(${zoom})`}>
               {positionedLinks.map((link) => {
@@ -742,6 +759,10 @@ export default function SwitchesConnectionsGraph({
               const isSwitchToSwitch = isSwitchSource && isSwitchTarget;
               const isSwitchConnection =
                 sourcePos.type === "switch" && (targetPos.type === "switch" || targetPos.type === "switchLink");
+              const isMutualLink = link.isMutual && isSwitchToSwitch;
+              if (isMutualLink && link.source > link.target) {
+                return null;
+              }
               const strokeColor = isSwitchConnection ? SWITCH_CONNECTION_COLOR : EQUIPO_CONNECTION_COLOR;
               const strokeWidth = isSwitchConnection ? 2.1 : 1.4;
               const direction = targetPos.x >= sourcePos.x ? 1 : -1;
@@ -752,14 +773,27 @@ export default function SwitchesConnectionsGraph({
                 targetPos.x +
                 (isSwitchTarget ? (direction === 1 ? -NODE_WIDTH / 2 : NODE_WIDTH / 2) : -NODE_WIDTH / 2);
               const controlOffset = (endX - startX) / 2;
-              const path = `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
-                sourcePos.y
-              }, ${endX - controlOffset} ${targetPos.y}, ${endX} ${targetPos.y}`;
               const targetHeight =
                 targetPos.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
               const isEquipmentTarget = targetPos.type === "equipo";
               const slotIndex =
                 isEquipmentTarget || isSwitchToSwitch ? link.slotIndex ?? 0 : 0;
+              const switchToSwitchCurveOffset = (() => {
+                const isNonAdjacent =
+                  isSwitchToSwitch &&
+                  Math.abs(targetPos.x - sourcePos.x) > SWITCH_HORIZONTAL_SPACING + 1;
+                if (!isNonAdjacent) return 0;
+                const distance = Math.abs(endX - startX);
+                const base = Math.min(120, Math.max(36, distance * 0.25));
+                return base * (slotIndex % 2 === 0 ? 1 : -1);
+              })();
+              const path = isSwitchToSwitch
+                ? `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
+                    sourcePos.y + switchToSwitchCurveOffset
+                  }, ${endX - controlOffset} ${targetPos.y + switchToSwitchCurveOffset}, ${endX} ${targetPos.y}`
+                : `M ${startX} ${sourcePos.y} C ${startX + controlOffset} ${
+                    sourcePos.y
+                  }, ${endX - controlOffset} ${targetPos.y}, ${endX} ${targetPos.y}`;
               let labelX: number;
               let labelY: number;
               let textAnchor: "start" | "middle" | "end";
@@ -767,18 +801,24 @@ export default function SwitchesConnectionsGraph({
                 labelX = targetPos.x - NODE_WIDTH / 2 - 6;
                 labelY = targetPos.y - targetHeight / 2 + 14 * (slotIndex + 1);
                 textAnchor = "end";
-              } else if (isSwitchToSwitch) {
-                labelX = startX + direction * 12;
-                labelY = sourcePos.y - 12 - slotIndex * 12;
-                textAnchor = direction === 1 ? "start" : "end";
               } else {
                 labelX = (startX + endX) / 2;
                 labelY = (sourcePos.y + targetPos.y) / 2 - 10;
                 textAnchor = "middle";
               }
+              const sourceSideLabel =
+                isSwitchToSwitch && link.sourceLabels && link.sourceLabels.length > 0
+                  ? link.sourceLabels.join("\n")
+                  : null;
+              const targetSideLabel =
+                isSwitchToSwitch && link.targetLabels && link.targetLabels.length > 0
+                  ? link.targetLabels.join("\n")
+                  : null;
               const displayLabel =
-                (link.label?.trim().length ? link.label : null) ??
-                (link.portNumber != null ? `P${link.portNumber}` : null);
+                link.combinedLabels && link.combinedLabels.length > 0
+                  ? link.combinedLabels.join(", ")
+                  : (link.label?.trim().length ? link.label : null) ??
+                    (link.portNumber != null ? `P${link.portNumber}` : null);
               return (
                 <g key={link.id} className="text-[10px]">
                   <path
@@ -786,14 +826,41 @@ export default function SwitchesConnectionsGraph({
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    strokeDasharray={isSwitchConnection ? undefined : "5 3"}
-                    markerEnd={
-                      link.isMutual && isSwitchToSwitch
-                        ? undefined
-                        : `url(#${isSwitchConnection ? "arrowhead-switch" : "arrowhead-equipo"})`
-                    }
+                    strokeDasharray={undefined}
+                    markerEnd={undefined}
                   />
-                  {(displayLabel || (isEquipmentTarget && link.tomaRed)) && (
+                  {isSwitchToSwitch ? (
+                    <>
+                      {sourceSideLabel ? (
+                        <text
+                          x={startX + direction * 12}
+                          y={sourcePos.y - 12 - slotIndex * 12}
+                          textAnchor={direction === 1 ? "start" : "end"}
+                          className="fill-foreground/70 text-[10px]"
+                        >
+                          {sourceSideLabel.split("\n").map((line, idx) => (
+                            <tspan key={idx} x={startX + direction * 12} dy={idx === 0 ? 0 : 12}>
+                              {line}
+                            </tspan>
+                          ))}
+                        </text>
+                      ) : null}
+                      {targetSideLabel ? (
+                        <text
+                          x={endX - direction * 12}
+                          y={targetPos.y - 12 - slotIndex * 12}
+                          textAnchor={direction === 1 ? "end" : "start"}
+                          className="fill-foreground/70 text-[10px]"
+                        >
+                          {targetSideLabel.split("\n").map((line, idx) => (
+                            <tspan key={idx} x={endX - direction * 12} dy={idx === 0 ? 0 : 12}>
+                              {line}
+                            </tspan>
+                          ))}
+                        </text>
+                      ) : null}
+                    </>
+                  ) : (displayLabel || (isEquipmentTarget && link.tomaRed)) ? (
                     <>
                       {displayLabel ? (
                         <text
@@ -816,7 +883,7 @@ export default function SwitchesConnectionsGraph({
                         </text>
                       ) : null}
                     </>
-                  )}
+                  ) : null}
                 </g>
               );
             })}
