@@ -294,6 +294,10 @@ export default function SwitchesList({
               fromQueryParam && fromQueryParam.length > 0
                 ? `/switches/${item.id}/editar?from=${encodeURIComponent(fromQueryParam)}`
                 : `/switches/${item.id}/editar`;
+            const puertosHref =
+              fromQueryParam && fromQueryParam.length > 0
+                ? `/switches/${item.id}/puertos?from=${encodeURIComponent(fromQueryParam)}`
+                : `/switches/${item.id}/puertos`;
             const contextoEdicion = nombre;
 
             return (
@@ -356,7 +360,10 @@ export default function SwitchesList({
                     <dd className="text-foreground">
                       {puertosTotalesNumero !== null ? (
                         <Link
-                          href={`/switches/${item.id}/puertos`}
+                          href={puertosHref}
+                          onClick={(event) =>
+                            abrirProteccionEdicion(event, puertosHref, `${nombre} (puertos)`)
+                          }
                           className="text-blue-600 underline underline-offset-4 transition hover:text-blue-700"
                         >
                           {puertosTexto}
