@@ -167,10 +167,14 @@ export default function EquipoEditForm({
       })),
   );
 
+  const displayName =
+    (equipo.nombre && equipo.nombre.trim()) ||
+    (equipo.modelo && equipo.modelo.trim()) ||
+    `Equipo ${equipo.id}`;
   const submitText =
     submitLabel ?? (mode === "create" ? "Crear equipo" : "Guardar cambios");
   const heading =
-    title ?? (mode === "create" ? "Nuevo equipo" : "Editar equipo");
+    title ?? (mode === "create" ? "Nuevo equipo" : `Editar equipo: ${displayName}`);
   const descriptionText =
     description ??
     (mode === "create"

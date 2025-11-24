@@ -76,8 +76,12 @@ export default function SwitchEditForm({
 }: SwitchEditFormProps) {
   const [state, formAction] = useActionState(action, initialState);
 
+  const displayName =
+    (values.nombre && values.nombre.trim()) ||
+    (values.modelo && values.modelo.trim()) ||
+    "Switch sin nombre";
   const heading =
-    title ?? (mode === "create" ? "Nuevo switch" : "Editar switch");
+    title ?? (mode === "create" ? "Nuevo switch" : `Editar switch: ${displayName}`);
   const submitText =
     submitLabel ?? (mode === "create" ? "Crear switch" : "Guardar cambios");
 

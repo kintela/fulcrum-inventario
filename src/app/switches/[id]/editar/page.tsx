@@ -202,7 +202,11 @@ export default async function EditarSwitchPage({
       <SwitchEditForm
         mode="edit"
         submitLabel="Guardar cambios"
-        title="Editar switch"
+        title={`Editar switch: ${
+          (valoresIniciales.nombre && valoresIniciales.nombre.trim()) ||
+          (valoresIniciales.modelo && valoresIniciales.modelo.trim()) ||
+          `Switch ${id}`
+        }`}
         description="Actualiza la informacion general del switch."
         values={valoresIniciales}
         fabricantes={fabricantes}
