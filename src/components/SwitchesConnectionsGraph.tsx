@@ -57,6 +57,9 @@ type SwitchesConnectionsGraphProps = {
   switches: SwitchRecord[];
 };
 
+const SWITCH_CONNECTION_COLOR = "#475569"; // slate-600
+const EQUIPO_CONNECTION_COLOR = "#9ca3af"; // gray-400
+
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
 const EQUIPO_NODE_HEIGHT = 44;
@@ -709,13 +712,24 @@ export default function SwitchesConnectionsGraph({
             >
             <defs>
               <marker
-                id="arrowhead"
+                id="arrowhead-switch"
                 markerWidth="10"
                 markerHeight="7"
                 refX="10"
                 refY="3.5"
                 orient="auto"
-                fill="#94a3b8"
+                fill={SWITCH_CONNECTION_COLOR}
+              >
+                <polygon points="0 0, 10 3.5, 0 7" />
+              </marker>
+              <marker
+                id="arrowhead-equipo"
+                markerWidth="10"
+                markerHeight="7"
+                refX="10"
+                refY="3.5"
+                orient="auto"
+                fill={EQUIPO_CONNECTION_COLOR}
               >
                 <polygon points="0 0, 10 3.5, 0 7" />
               </marker>
@@ -725,6 +739,11 @@ export default function SwitchesConnectionsGraph({
               const { sourcePos, targetPos } = link;
               const isSwitchSource = sourcePos.type === "switch";
               const isSwitchTarget = targetPos.type === "switch";
+              const isSwitchToSwitch = isSwitchSource && isSwitchTarget;
+              const isSwitchConnection =
+                sourcePos.type === "switch" && (targetPos.type === "switch" || targetPos.type === "switchLink");
+              const strokeColor = isSwitchConnection ? SWITCH_CONNECTION_COLOR : EQUIPO_CONNECTION_COLOR;
+              const strokeWidth = isSwitchConnection ? 2.1 : 1.4;
               const direction = targetPos.x >= sourcePos.x ? 1 : -1;
               const startX =
                 sourcePos.x +
@@ -739,8 +758,6 @@ export default function SwitchesConnectionsGraph({
               const targetHeight =
                 targetPos.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
               const isEquipmentTarget = targetPos.type === "equipo";
-              const isSwitchToSwitch =
-                isSwitchSource && isSwitchTarget;
               const slotIndex =
                 isEquipmentTarget || isSwitchToSwitch ? link.slotIndex ?? 0 : 0;
               let labelX: number;
@@ -767,10 +784,13 @@ export default function SwitchesConnectionsGraph({
                   <path
                     d={path}
                     fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth={1.5}
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={isSwitchConnection ? undefined : "5 3"}
                     markerEnd={
-                      link.isMutual && isSwitchToSwitch ? undefined : "url(#arrowhead)"
+                      link.isMutual && isSwitchToSwitch
+                        ? undefined
+                        : `url(#${isSwitchConnection ? "arrowhead-switch" : "arrowhead-equipo"})`
                     }
                   />
                   {(displayLabel || (isEquipmentTarget && link.tomaRed)) && (
