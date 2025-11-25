@@ -11,6 +11,7 @@ Tabla public.equipos (alias e):
 - modelo text
 - numero_serie text
 - part_number text
+- mac macaddr
 - codigo_sap text
 - sistema_operativo text
 - so_serial text

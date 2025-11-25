@@ -2505,6 +2505,8 @@ export default function EquiposList({
 
             const partNumber = equipo.part_number ?? "Sin part number";
 
+            const mac = equipo.mac ?? "Sin MAC";
+
             const ipEquipo = equipo.ip ?? null;
             const tomaRed =
               typeof equipo.toma_red === "string" &&
@@ -2711,6 +2713,8 @@ export default function EquiposList({
                   <p className="text-sm text-foreground/70">
                     Part number: {partNumber}
                   </p>
+
+                  <p className="text-sm text-foreground/70">MAC: {mac}</p>
 
                   <p className="text-sm text-foreground/70">
                     Admite update: {admiteUpdateTexto}
