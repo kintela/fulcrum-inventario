@@ -437,6 +437,23 @@ export default function EquiposList({
   );
   const [isVerifyingEditPassword, setIsVerifyingEditPassword] =
     useState(false);
+  const [deletePasswordDialog, setDeletePasswordDialog] = useState<{
+    tipo: "equipo" | "pantalla";
+    id: string | number;
+    context: string;
+  } | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteShowPassword, setDeleteShowPassword] = useState(false);
+  const [deletePasswordError, setDeletePasswordError] = useState<
+    string | null
+  >(null);
+  const [isVerifyingDeletePassword, setIsVerifyingDeletePassword] =
+    useState(false);
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    tipo: "equipo" | "pantalla";
+    id: string | number;
+    context: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!forzarMostrarPantallas) return;
@@ -509,6 +526,61 @@ export default function EquiposList({
       editPasswordDialog,
       router,
     ],
+  );
+
+  const abrirProteccionEliminacion = useCallback(
+    (tipo: "equipo" | "pantalla", id: string | number, context: string) => {
+      setDeleteConfirmDialog(null);
+      setDeletePasswordDialog({ tipo, id, context });
+      setDeletePassword("");
+      setDeleteShowPassword(false);
+      setDeletePasswordError(null);
+      setIsVerifyingDeletePassword(false);
+    },
+    [],
+  );
+
+  const cerrarDialogoEliminacionProtegida = useCallback(() => {
+    setDeletePasswordDialog(null);
+    setDeleteConfirmDialog(null);
+    setDeletePassword("");
+    setDeleteShowPassword(false);
+    setDeletePasswordError(null);
+    setIsVerifyingDeletePassword(false);
+  }, []);
+
+  const manejarSubmitEliminacionProtegida = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!deletePasswordDialog) return;
+
+      const trimmed = deletePassword.trim();
+      if (!trimmed) {
+        setDeletePasswordError("Introduce la contrasena.");
+        return;
+      }
+
+      setIsVerifyingDeletePassword(true);
+      setDeletePasswordError(null);
+
+      try {
+        await verifyAdminPassword(trimmed);
+        setDeleteConfirmDialog(deletePasswordDialog);
+        setDeletePasswordDialog(null);
+        setDeletePassword("");
+        setDeleteShowPassword(false);
+      } catch (error) {
+        console.error(error);
+        setDeletePasswordError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo verificar la contrasena.",
+        );
+      } finally {
+        setIsVerifyingDeletePassword(false);
+      }
+    },
+    [deletePassword, deletePasswordDialog],
   );
 
   const abrirDialogoAdminLocal = useCallback(
@@ -3153,61 +3225,36 @@ export default function EquiposList({
                   </div>
                 ) : null}
 
-                <AlertDialogPrimitive.Root>
-                  <AlertDialogPrimitive.Trigger asChild>
-                    <button
-                      type="button"
-                      aria-label={`Eliminar ${nombreEquipo}`}
-                      title="Eliminar equipo"
-                      disabled={estaEliminandoEquipo}
-                      className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </AlertDialogPrimitive.Trigger>
-                  <AlertDialogPrimitive.Portal>
-                    <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-                    <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
-                      <div className="space-y-2">
-                        <AlertDialogPrimitive.Title className="text-lg font-semibold text-foreground">
-                          Eliminar equipo
-                        </AlertDialogPrimitive.Title>
-                        <AlertDialogPrimitive.Description className="text-sm text-foreground/70">
-                          ¿Seguro que quieres eliminar{" "}
-                          <span className="font-medium text-foreground">
-                            {nombreEquipo}
-                          </span>
-                          ? Esta acción no se puede deshacer.
-                        </AlertDialogPrimitive.Description>
-                      </div>
-                      <div className="mt-6 flex justify-end gap-2">
-                        <AlertDialogPrimitive.Cancel className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 transition hover:bg-foreground/10">
-                          Cancelar
-                        </AlertDialogPrimitive.Cancel>
-                        <AlertDialogPrimitive.Action
-                          className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                          onClick={() => handleEliminarEquipo(equipo.id)}
-                        >
-                          Eliminar
-                        </AlertDialogPrimitive.Action>
-                      </div>
-                    </AlertDialogPrimitive.Content>
-                  </AlertDialogPrimitive.Portal>
-                </AlertDialogPrimitive.Root>
+                <button
+                  type="button"
+                  aria-label={`Eliminar ${nombreEquipo}`}
+                  title="Eliminar equipo"
+                  disabled={estaEliminandoEquipo}
+                  onClick={() =>
+                    abrirProteccionEliminacion(
+                      "equipo",
+                      equipo.id,
+                      nombreEquipo,
+                    )
+                  }
+                  className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
               </li>
             );
           })}
@@ -3257,6 +3304,8 @@ export default function EquiposList({
                   modelo && modelo.length > 0
                     ? `pantalla ${modelo}`
                     : "esta pantalla";
+                const nombrePantallaDialogo =
+                  modelo ?? fabricante ?? `Pantalla ${pantalla.id}`;
 
                 return (
                   <li
@@ -3351,61 +3400,36 @@ export default function EquiposList({
                       ) : null}
                     </div>
 
-                    <AlertDialogPrimitive.Root>
-                      <AlertDialogPrimitive.Trigger asChild>
-                        <button
-                          type="button"
-                          aria-label={`Eliminar pantalla ${modelo ?? fabricante ?? pantalla.id}`}
-                          title="Eliminar pantalla"
-                          disabled={estaEliminandoPantalla}
-                          className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <svg
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </AlertDialogPrimitive.Trigger>
-                      <AlertDialogPrimitive.Portal>
-                        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
-                        <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
-                          <div className="space-y-2">
-                            <AlertDialogPrimitive.Title className="text-lg font-semibold text-foreground">
-                              Eliminar pantalla
-                            </AlertDialogPrimitive.Title>
-                            <AlertDialogPrimitive.Description className="text-sm text-foreground/70">
-                              ¿Seguro que quieres eliminar{" "}
-                              <span className="font-medium text-foreground">
-                                {modelo ?? fabricante ?? `Pantalla ${pantalla.id}`}
-                              </span>
-                              ? Esta acción no se puede deshacer.
-                            </AlertDialogPrimitive.Description>
-                          </div>
-                          <div className="mt-6 flex justify-end gap-2">
-                            <AlertDialogPrimitive.Cancel className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground/70 transition hover:bg-foreground/10">
-                              Cancelar
-                            </AlertDialogPrimitive.Cancel>
-                            <AlertDialogPrimitive.Action
-                              className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-semibold text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                              onClick={() => handleEliminarPantalla(pantalla.id)}
-                            >
-                              Eliminar
-                            </AlertDialogPrimitive.Action>
-                          </div>
-                        </AlertDialogPrimitive.Content>
-                      </AlertDialogPrimitive.Portal>
-                    </AlertDialogPrimitive.Root>
+                    <button
+                      type="button"
+                      aria-label={`Eliminar pantalla ${nombrePantallaDialogo}`}
+                      title="Eliminar pantalla"
+                      disabled={estaEliminandoPantalla}
+                      onClick={() =>
+                        abrirProteccionEliminacion(
+                          "pantalla",
+                          pantalla.id,
+                          nombrePantallaDialogo,
+                        )
+                      }
+                      className="absolute bottom-4 right-4 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-red-500 text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M5 6h10M8 6v8m4-8v8M7 6l.447-1.341A1 1 0 0 1 8.404 4h3.192a1 1 0 0 1 .957.659L13 6m-8 0v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
                   </li>
                 );
               })}
@@ -3473,6 +3497,117 @@ export default function EquiposList({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deletePasswordDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-foreground">
+                Confirmar contrasena
+              </h2>
+              <p className="text-xs text-foreground/60">
+                Introduce la contrasena para eliminar{" "}
+                {deletePasswordDialog.context}. Esta acción no se puede
+                deshacer.
+              </p>
+            </div>
+            <form
+              className="space-y-4"
+              onSubmit={manejarSubmitEliminacionProtegida}
+              autoComplete="off"
+            >
+              <label className="flex flex-col gap-1 text-xs text-foreground/70">
+                Contrasena
+                <div className="flex items-center gap-2">
+                  <input
+                    type={deleteShowPassword ? "text" : "password"}
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    placeholder="Introduce la contrasena"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDeleteShowPassword((prev) => !prev)}
+                    className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+                  >
+                    {deleteShowPassword ? "Ocultar" : "Ver"}
+                  </button>
+                </div>
+              </label>
+
+              {deletePasswordError ? (
+                <p className="text-xs text-red-500">{deletePasswordError}</p>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarDialogoEliminacionProtegida}
+                  className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={isVerifyingDeletePassword}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingDeletePassword}
+                  className="inline-flex cursor-pointer items-center rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isVerifyingDeletePassword ? "Verificando..." : "Continuar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteConfirmDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-sm text-card-foreground shadow-lg">
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-foreground">
+                {deleteConfirmDialog.tipo === "pantalla"
+                  ? "Eliminar pantalla"
+                  : "Eliminar equipo"}
+              </h2>
+              <p className="text-sm text-foreground/70">
+                ¿Seguro que quieres eliminar{" "}
+                <span className="font-medium text-foreground">
+                  {deleteConfirmDialog.context ?? "este elemento"}
+                </span>
+                ? Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmDialog(null)}
+                className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground/70 transition hover:bg-foreground/10 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!deleteConfirmDialog) return;
+                  const { tipo, id } = deleteConfirmDialog;
+                  setDeleteConfirmDialog(null);
+                  if (tipo === "equipo") {
+                    handleEliminarEquipo(id as string);
+                  } else {
+                    handleEliminarPantalla(id as number);
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-background transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -3691,5 +3826,3 @@ export default function EquiposList({
     </section>
   );
 }
-
-
