@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type TouchEvent,
   type WheelEvent,
 } from "react";
 
@@ -70,6 +71,10 @@ const DEFAULT_DIAGRAM_WIDTH = 1100;
 const DIAGRAM_HEIGHT = 900;
 const SWITCH_HORIZONTAL_SPACING = 280;
 const SWITCH_MARGIN_X = 180;
+
+function clampZoom(value: number): number {
+  return Math.min(Math.max(value, 0.25), 8);
+}
 
 function formatSwitchLabel(item: SwitchRecord): string {
   if (item.nombre && item.nombre.trim()) return item.nombre.trim();
@@ -140,6 +145,13 @@ export default function SwitchesConnectionsGraph({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
+  const touchState = useRef({
+    mode: "none" as "none" | "pan" | "pinch",
+    lastX: 0,
+    lastY: 0,
+    initialDistance: 0,
+    initialZoom: INITIAL_ZOOM,
+  });
 
   const resetView = useCallback(() => {
     setZoom(INITIAL_ZOOM);
@@ -150,7 +162,7 @@ export default function SwitchesConnectionsGraph({
     const { deltaY } = event;
     setZoom((prev) => {
       const factor = deltaY < 0 ? 1.1 : 0.9;
-      const next = Math.min(Math.max(prev * factor, 0.25), 8);
+      const next = clampZoom(prev * factor);
       return Number(next.toFixed(2));
     });
   }, []);
@@ -177,6 +189,100 @@ export default function SwitchesConnectionsGraph({
     if (event) event.preventDefault();
     isPanning.current = false;
   }, []);
+
+  const handleTouchStart = useCallback((event: TouchEvent<SVGSVGElement>) => {
+    if (event.touches.length >= 2) {
+      const [a, b] = [event.touches[0], event.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
+      touchState.current = {
+        mode: "pinch",
+        lastX: 0,
+        lastY: 0,
+        initialDistance: distance,
+        initialZoom: zoom,
+      };
+      return;
+    }
+
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      touchState.current = {
+        mode: "pan",
+        lastX: touch.clientX,
+        lastY: touch.clientY,
+        initialDistance: 0,
+        initialZoom: zoom,
+      };
+      return;
+    }
+
+    if (event.touches.length >= 2) {
+      const [a, b] = [event.touches[0], event.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
+      touchState.current = {
+        mode: "pinch",
+        lastX: 0,
+        lastY: 0,
+        initialDistance: distance,
+        initialZoom: zoom,
+      };
+    }
+  }, [zoom]);
+
+  const handleTouchMove = useCallback(
+    (event: TouchEvent<SVGSVGElement>) => {
+      if (touchState.current.mode === "pan" && event.touches.length === 1) {
+        event.preventDefault();
+        const touch = event.touches[0];
+        const dx = touch.clientX - touchState.current.lastX;
+        const dy = touch.clientY - touchState.current.lastY;
+        setOffset((prev) => ({
+          x: prev.x + dx,
+          y: prev.y + dy,
+        }));
+        touchState.current.lastX = touch.clientX;
+        touchState.current.lastY = touch.clientY;
+        return;
+      }
+
+      if (event.touches.length >= 2) {
+        event.preventDefault();
+        const [a, b] = [event.touches[0], event.touches[1]];
+        const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
+        if (touchState.current.initialDistance === 0) {
+          touchState.current.initialDistance = distance;
+          touchState.current.initialZoom = zoom;
+        }
+        const factor = distance / touchState.current.initialDistance;
+        const nextZoom = clampZoom(touchState.current.initialZoom * factor);
+        setZoom(Number(nextZoom.toFixed(2)));
+        touchState.current.mode = "pinch";
+      }
+    },
+    [zoom],
+  );
+
+  const handleTouchEnd = useCallback((event: TouchEvent<SVGSVGElement>) => {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      touchState.current = {
+        mode: "pan",
+        lastX: touch.clientX,
+        lastY: touch.clientY,
+        initialDistance: 0,
+        initialZoom: zoom,
+      };
+      return;
+    }
+
+    touchState.current = {
+      mode: "none",
+      lastX: 0,
+      lastY: 0,
+      initialDistance: 0,
+      initialZoom: zoom,
+    };
+  }, [zoom]);
 
   const { positionedNodes, positionedLinks, height, width } = useMemo(() => {
     const nodes = new Map<string, GraphNode>();
@@ -789,6 +895,10 @@ export default function SwitchesConnectionsGraph({
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseUp}
               onMouseUp={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
             >
             <defs>
             </defs>
