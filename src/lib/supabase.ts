@@ -137,6 +137,42 @@ export type SwitchPortRecord = {
   observaciones: string | null;
 };
 
+export type SwitchPortCatalogoItem = {
+  id: number;
+  switch_id: number;
+  numero: number;
+  nombre: string | null;
+};
+
+export type PatchPanelPortRecord = {
+  id: number;
+  patchpanel_id: number;
+  numero: number;
+  puerto_switch_id: number | null;
+  etiqueta: string | null;
+  observaciones: string | null;
+  puerto_switch?: SwitchPortCatalogoItem | null;
+};
+
+export type PatchPanelRecord = {
+  id: string;
+  nombre: string | null;
+  puertos_totales: number | null;
+  fecha_compra: string | null;
+  en_garantia: boolean | null;
+  observaciones: string | null;
+  creado_el?: string | null;
+  puertos?: PatchPanelPortRecord[] | null;
+};
+
+export type PatchPanelPortUpsert = {
+  id?: number;
+  patchpanel_id: number;
+  numero: number;
+  puerto_switch_id?: number | null;
+  observaciones?: string | null;
+};
+
 export type SwitchPortUpsert = {
   id?: number;
   switch_id: number;
@@ -1033,6 +1069,73 @@ export async function fetchSwitchById(
   return switches.length > 0 ? switches[0] : null;
 }
 
+export async function fetchPatchpanels(): Promise<PatchPanelRecord[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/patchpanels`);
+  requestUrl.searchParams.set(
+    "select",
+    "id,nombre,puertos_totales,fecha_compra,en_garantia,observaciones,creado_el",
+  );
+  requestUrl.searchParams.set("order", "fecha_compra.desc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar patch panels: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as PatchPanelRecord[];
+}
+
+export async function fetchPatchpanelById(
+  id: string,
+): Promise<PatchPanelRecord | null> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/patchpanels`);
+  requestUrl.searchParams.set(
+    "select",
+    [
+      "id",
+      "nombre",
+      "puertos_totales",
+      "fecha_compra",
+      "en_garantia",
+      "observaciones",
+      "creado_el",
+      "puertos:puertos_patchpanel!puertos_patchpanel_patchpanel_id_fkey(id,patchpanel_id,numero,puerto_switch_id,etiqueta,observaciones)",
+    ].join(","),
+  );
+  requestUrl.searchParams.set("id", `eq.${id}`);
+  requestUrl.searchParams.set("limit", "1");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar el patch panel ${id}: ${response.status} ${details}`,
+    );
+  }
+
+  const patchpanels = (await response.json()) as PatchPanelRecord[];
+  return patchpanels.length > 0 ? patchpanels[0] : null;
+}
+
 export async function fetchTiposEquipoEnum(): Promise<string[]> {
   const config = getSupabaseConfig();
   const authKey = config.serviceRoleKey ?? config.anonKey;
@@ -1131,6 +1234,59 @@ export async function deleteSwitchPorts(ids: number[]): Promise<void> {
     const details = await response.text();
     throw new Error(
       `Error al eliminar puertos: ${response.status} ${details}`,
+    );
+  }
+}
+
+export async function upsertPatchPanelPorts(
+  ports: PatchPanelPortUpsert[],
+): Promise<void> {
+  if (ports.length === 0) return;
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/puertos_patchpanel`);
+  requestUrl.searchParams.set("on_conflict", "patchpanel_id,numero");
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const payload = ports.map(({ id: _id, ...rest }) => rest);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "POST",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al guardar puertos de patch panel: ${response.status} ${details}`,
+    );
+  }
+}
+
+export async function deletePatchPanelPorts(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/puertos_patchpanel`);
+  requestUrl.searchParams.set("id", `in.(${ids.join(",")})`);
+
+  const response = await fetch(requestUrl.toString(), {
+    method: "DELETE",
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al eliminar puertos de patch panel: ${response.status} ${details}`,
     );
   }
 }
@@ -1458,6 +1614,30 @@ export async function fetchSwitchesCatalogo(): Promise<SwitchCatalogoItem[]> {
   }
 
   return (await response.json()) as SwitchCatalogoItem[];
+}
+
+export async function fetchSwitchPortsCatalogo(): Promise<SwitchPortCatalogoItem[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/puertos`);
+  requestUrl.searchParams.set("select", "id,switch_id,numero,nombre");
+  requestUrl.searchParams.set("order", "switch_id.asc,numero.asc");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar puertos de switches: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as SwitchPortCatalogoItem[];
 }
 
 export type PantallaUpdatePayload = {

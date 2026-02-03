@@ -446,6 +446,39 @@ export default function DashboardContent({
             </Link>
             <span>Switches</span>
           </div>
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/patchpanels"
+              aria-label="Patch panels"
+              title="Patch panels"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-[18px] w-[18px]"
+                aria-hidden="true"
+              >
+                <rect
+                  x="3.5"
+                  y="5"
+                  width="17"
+                  height="14"
+                  rx="2.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M7 9h0.01M11 9h0.01M15 9h0.01M7 13h0.01M11 13h0.01M15 13h0.01"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </Link>
+            <span>Patch</span>
+          </div>
         </div>
       </header>
 
