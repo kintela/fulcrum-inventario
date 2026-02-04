@@ -151,7 +151,7 @@ export type PatchPanelPortRecord = {
   puerto_switch_id: number | null;
   etiqueta: string | null;
   observaciones: string | null;
-  puerto_switch?: SwitchPortCatalogoItem | null;
+  puerto_switch?: SwitchPortRecord | SwitchPortCatalogoItem | null;
 };
 
 export type PatchPanelRecord = {
@@ -1093,7 +1093,120 @@ export async function fetchPatchpanels(): Promise<PatchPanelRecord[]> {
     );
   }
 
-  return (await response.json()) as PatchPanelRecord[];
+  const patchpanels = (await response.json()) as PatchPanelRecord[];
+
+  if (patchpanels.length === 0) {
+    return [];
+  }
+
+  const patchpanelIds = patchpanels
+    .map((item) => item.id)
+    .filter((id): id is string | number => typeof id === "string" || typeof id === "number")
+    .map((id) => String(id).trim())
+    .filter((id) => id.length > 0);
+
+  if (patchpanelIds.length === 0) {
+    return patchpanels;
+  }
+
+  const puertosPatchUrl = new URL(`${config.url}/rest/v1/puertos_patchpanel`);
+  puertosPatchUrl.searchParams.set(
+    "select",
+    "id,patchpanel_id,numero,puerto_switch_id,etiqueta,observaciones",
+  );
+  puertosPatchUrl.searchParams.set(
+    "patchpanel_id",
+    `in.(${patchpanelIds.join(",")})`,
+  );
+  puertosPatchUrl.searchParams.set("order", "patchpanel_id.asc,numero.asc");
+
+  const puertosPatchResponse = await fetch(puertosPatchUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!puertosPatchResponse.ok) {
+    const details = await puertosPatchResponse.text();
+    throw new Error(
+      `Error al recuperar puertos de patch panels: ${puertosPatchResponse.status} ${details}`,
+    );
+  }
+
+  const puertosPatch = (await puertosPatchResponse.json()) as PatchPanelPortRecord[];
+
+  const puertoSwitchIds = Array.from(
+    new Set(
+      puertosPatch
+        .map((item) => item.puerto_switch_id)
+        .filter((id): id is number => typeof id === "number" && Number.isFinite(id)),
+    ),
+  );
+
+  const puertosSwitchMap = new Map<number, SwitchPortRecord>();
+
+  if (puertoSwitchIds.length > 0) {
+    const puertosSwitchUrl = new URL(`${config.url}/rest/v1/puertos`);
+    puertosSwitchUrl.searchParams.set(
+      "select",
+      [
+        "id",
+        "switch_id",
+        "numero",
+        "nombre",
+        "vlan",
+        "poe",
+        "velocidad_mbps",
+        "equipo_id",
+        "observaciones",
+        "equipo:equipos(id,nombre,modelo,tipo,usuario_id,usuario:usuarios(nombre,nombre_completo,apellidos),toma_red,ubicacion:ubicaciones(nombre))",
+        "switch:switches!puertos_switch_id_fkey(id,nombre)",
+      ].join(","),
+    );
+    puertosSwitchUrl.searchParams.set("id", `in.(${puertoSwitchIds.join(",")})`);
+
+    const puertosSwitchResponse = await fetch(puertosSwitchUrl.toString(), {
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!puertosSwitchResponse.ok) {
+      const details = await puertosSwitchResponse.text();
+      throw new Error(
+        `Error al recuperar puertos de switches: ${puertosSwitchResponse.status} ${details}`,
+      );
+    }
+
+    const puertosSwitch = (await puertosSwitchResponse.json()) as SwitchPortRecord[];
+    puertosSwitch.forEach((puerto) => {
+      puertosSwitchMap.set(puerto.id, puerto);
+    });
+  }
+
+  const puertosPorPatchpanel = new Map<string, PatchPanelPortRecord[]>();
+  puertosPatch.forEach((puerto) => {
+    const patchpanelKey = String(puerto.patchpanel_id);
+    const enriched: PatchPanelPortRecord = {
+      ...puerto,
+      puerto_switch:
+        puerto.puerto_switch_id !== null && puertosSwitchMap.has(puerto.puerto_switch_id)
+          ? puertosSwitchMap.get(puerto.puerto_switch_id) ?? null
+          : null,
+    };
+    const current = puertosPorPatchpanel.get(patchpanelKey) ?? [];
+    current.push(enriched);
+    puertosPorPatchpanel.set(patchpanelKey, current);
+  });
+
+  return patchpanels.map((panel) => ({
+    ...panel,
+    puertos: puertosPorPatchpanel.get(String(panel.id)) ?? [],
+  }));
 }
 
 export async function fetchPatchpanelById(
