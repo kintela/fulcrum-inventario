@@ -697,14 +697,16 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                             return (
                               <tr key={puerto.id}>
                                 <td className="px-3 py-2 text-foreground">
-                                  <div className="flex flex-col gap-1">
-                                    <span className="font-semibold">{puerto.numero}</span>
-                                    {etiquetaTexto ? (
-                                      <span className="text-xs text-foreground/60">
+                                  {etiquetaTexto ? (
+                                    <span>
+                                      <span className="font-semibold">
                                         {etiquetaTexto}
-                                      </span>
-                                    ) : null}
-                                  </div>
+                                      </span>{" "}
+                                      - {puerto.numero}
+                                    </span>
+                                  ) : (
+                                    <span>{puerto.numero}</span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2 text-foreground">{switchNombre}</td>
                                 <td className="px-3 py-2 text-foreground">{puertoSwitchTexto}</td>
