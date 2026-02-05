@@ -28,6 +28,56 @@ function extraerNumeroFinal(nombre: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const normalizeValue = (value: string | null | undefined) =>
+  value ? value.toLowerCase().trim() : "";
+
+const resolvePortInfo = (puerto: PatchPanelPortRecord) => {
+  const etiquetaTexto =
+    typeof puerto.etiqueta === "string" && puerto.etiqueta.trim().length > 0
+      ? puerto.etiqueta.trim()
+      : null;
+  const puertoSwitch = puerto.puerto_switch;
+  const switchNombre =
+    puertoSwitch && "switch" in puertoSwitch && puertoSwitch.switch
+      ? puertoSwitch.switch.nombre?.trim() ||
+        `Switch #${puertoSwitch.switch.id}`
+      : puertoSwitch && "switch_id" in puertoSwitch
+        ? `Switch #${puertoSwitch.switch_id}`
+        : "Sin switch";
+  const puertoSwitchTexto =
+    puertoSwitch && "numero" in puertoSwitch
+      ? `Puerto ${puertoSwitch.numero}`
+      : "Sin puerto";
+  const equipoNombre =
+    puertoSwitch &&
+    "equipo" in puertoSwitch &&
+    puertoSwitch.equipo &&
+    puertoSwitch.equipo.nombre
+      ? puertoSwitch.equipo.nombre.trim()
+      : "Sin equipo";
+  const observacionPatch =
+    typeof puerto.observaciones === "string" &&
+    puerto.observaciones.trim().length > 0
+      ? puerto.observaciones.trim()
+      : null;
+  const observacionSwitch =
+    puertoSwitch &&
+    "observaciones" in puertoSwitch &&
+    typeof puertoSwitch.observaciones === "string" &&
+    puertoSwitch.observaciones.trim().length > 0
+      ? puertoSwitch.observaciones.trim()
+      : null;
+
+  return {
+    etiquetaTexto,
+    switchNombre,
+    puertoSwitchTexto,
+    equipoNombre,
+    observacionPatch,
+    observacionSwitch,
+  };
+};
+
 function sanitizePdfText(value: string): string {
   return value
     .normalize("NFD")
@@ -359,14 +409,6 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     });
   }, [patchpanels]);
 
-  if (patchpanels.length === 0) {
-    return (
-      <p className="text-sm text-foreground/70">
-        No hay patch panels registrados.
-      </p>
-    );
-  }
-
   const toggleExpanded = (id: string) => {
     setExpandedPanels((prev) => {
       const next = new Set(prev);
@@ -409,81 +451,31 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
   const isSearchActive = trimmedSearch.length > 0;
   const isFilterActive = isSearchActive || showFreePorts;
 
-  const normalizeValue = (value: string | null | undefined) =>
-    value ? value.toLowerCase().trim() : "";
-
-  const resolvePortInfo = (puerto: PatchPanelPortRecord) => {
-    const etiquetaTexto =
-      typeof puerto.etiqueta === "string" && puerto.etiqueta.trim().length > 0
-        ? puerto.etiqueta.trim()
-        : null;
-    const puertoSwitch = puerto.puerto_switch;
-    const switchNombre =
-      puertoSwitch && "switch" in puertoSwitch && puertoSwitch.switch
-        ? puertoSwitch.switch.nombre?.trim() ||
-          `Switch #${puertoSwitch.switch.id}`
-        : puertoSwitch && "switch_id" in puertoSwitch
-          ? `Switch #${puertoSwitch.switch_id}`
-          : "Sin switch";
-    const puertoSwitchTexto =
-      puertoSwitch && "numero" in puertoSwitch
-        ? `Puerto ${puertoSwitch.numero}`
-        : "Sin puerto";
-    const equipoNombre =
-      puertoSwitch &&
-      "equipo" in puertoSwitch &&
-      puertoSwitch.equipo &&
-      puertoSwitch.equipo.nombre
-        ? puertoSwitch.equipo.nombre.trim()
-        : "Sin equipo";
-    const observacionPatch =
-      typeof puerto.observaciones === "string" &&
-      puerto.observaciones.trim().length > 0
-        ? puerto.observaciones.trim()
-        : null;
-    const observacionSwitch =
-      puertoSwitch &&
-      "observaciones" in puertoSwitch &&
-      typeof puertoSwitch.observaciones === "string" &&
-      puertoSwitch.observaciones.trim().length > 0
-        ? puertoSwitch.observaciones.trim()
-        : null;
-
-    return {
-      etiquetaTexto,
-      switchNombre,
-      puertoSwitchTexto,
-      equipoNombre,
-      observacionPatch,
-      observacionSwitch,
-    };
-  };
-
-  const portMatchesSearch = (puerto: PatchPanelPortRecord) => {
-    if (!isSearchActive) return true;
-    const info = resolvePortInfo(puerto);
-    const valores = [
-      info.etiquetaTexto,
-      info.observacionPatch,
-      info.observacionSwitch,
-      info.switchNombre,
-      info.equipoNombre,
-    ]
-      .map((valor) => normalizeValue(valor))
-      .filter((valor) => valor.length > 0);
-    return valores.some((valor) => valor.includes(trimmedSearch));
-  };
-
-  const portMatchesFilters = (puerto: PatchPanelPortRecord) => {
-    const hasSwitchPort =
-      typeof puerto.puerto_switch_id === "number" &&
-      Number.isFinite(puerto.puerto_switch_id);
-    const isFree = !hasSwitchPort;
-    if (showFreePorts && !isFree) return false;
-    return portMatchesSearch(puerto);
-  };
-
   const panelsForConnections = useMemo(() => {
+    const portMatchesSearch = (puerto: PatchPanelPortRecord) => {
+      if (!isSearchActive) return true;
+      const info = resolvePortInfo(puerto);
+      const valores = [
+        info.etiquetaTexto,
+        info.observacionPatch,
+        info.observacionSwitch,
+        info.switchNombre,
+        info.equipoNombre,
+      ]
+        .map((valor) => normalizeValue(valor))
+        .filter((valor) => valor.length > 0);
+      return valores.some((valor) => valor.includes(trimmedSearch));
+    };
+
+    const portMatchesFilters = (puerto: PatchPanelPortRecord) => {
+      const hasSwitchPort =
+        typeof puerto.puerto_switch_id === "number" &&
+        Number.isFinite(puerto.puerto_switch_id);
+      const isFree = !hasSwitchPort;
+      if (showFreePorts && !isFree) return false;
+      return portMatchesSearch(puerto);
+    };
+
     const basePanels = isFilterActive
       ? ordenados
       : ordenados.filter((panel) => expandedPanels.has(String(panel.id)));
@@ -505,7 +497,15 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
         };
       })
       .filter((entry) => !isFilterActive || entry.puertosFiltrados.length > 0);
-  }, [expandedPanels, isFilterActive, ordenados, portMatchesFilters, trimmedSearch, showFreePorts]);
+  }, [expandedPanels, isFilterActive, ordenados, isSearchActive, showFreePorts, trimmedSearch]);
+
+  if (patchpanels.length === 0) {
+    return (
+      <p className="text-sm text-foreground/70">
+        No hay patch panels registrados.
+      </p>
+    );
+  }
 
   return (
     <section className="space-y-4">
