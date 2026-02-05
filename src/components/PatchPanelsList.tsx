@@ -7,7 +7,7 @@ import type { FormEvent, MouseEvent } from "react";
 
 import { formatearFecha } from "@/lib/format";
 import { verifyAdminPassword } from "@/lib/verifyAdminPassword";
-import type { PatchPanelRecord } from "@/lib/supabase";
+import type { PatchPanelRecord, PatchPanelPortRecord } from "@/lib/supabase";
 
 type PatchPanelsListProps = {
   patchpanels: PatchPanelRecord[];
@@ -68,14 +68,20 @@ function wrapText(text: string, width: number): string[] {
   return lines;
 }
 
-function buildPdfLines(panel: PatchPanelRecord): string[] {
+function buildPdfLines(
+  panel: PatchPanelRecord,
+  portsOverride?: PatchPanelRecord["puertos"],
+): string[] {
   const nombre =
     panel.nombre && panel.nombre.trim().length > 0
       ? panel.nombre.trim()
       : `Patch panel #${panel.id}`;
+  const sourcePorts = Array.isArray(portsOverride)
+    ? portsOverride
+    : panel.puertos;
   const puertosOrdenados =
-    Array.isArray(panel.puertos) && panel.puertos.length > 0
-      ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
+    Array.isArray(sourcePorts) && sourcePorts.length > 0
+      ? sourcePorts.slice().sort((a, b) => a.numero - b.numero)
       : [];
 
   const lines: string[] = [];
@@ -256,6 +262,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
   const [expandedPanels, setExpandedPanels] = useState<Set<string>>(
     () => new Set(),
   );
+  const [searchTerm, setSearchTerm] = useState("");
   const [printTargetId, setPrintTargetId] = useState<string | null>(null);
   const isPrintActive = printTargetId !== null;
 
@@ -371,9 +378,12 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     });
   };
 
-  const handleSavePdf = (panel: PatchPanelRecord) => {
+  const handleSavePdf = (
+    panel: PatchPanelRecord,
+    portsOverride?: PatchPanelRecord["puertos"],
+  ) => {
     if (typeof window === "undefined") return;
-    const lines = buildPdfLines(panel);
+    const lines = buildPdfLines(panel, portsOverride);
     const pdfContent = buildPdfFromLines(lines);
     const blob = new Blob([pdfContent], { type: "application/pdf" });
     const url = window.URL.createObjectURL(blob);
@@ -393,6 +403,98 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     link.remove();
     window.URL.revokeObjectURL(url);
   };
+
+  const trimmedSearch = searchTerm.trim().toLowerCase();
+  const isSearchActive = trimmedSearch.length > 0;
+
+  const normalizeValue = (value: string | null | undefined) =>
+    value ? value.toLowerCase().trim() : "";
+
+  const resolvePortInfo = (puerto: PatchPanelPortRecord) => {
+    const etiquetaTexto =
+      typeof puerto.etiqueta === "string" && puerto.etiqueta.trim().length > 0
+        ? puerto.etiqueta.trim()
+        : null;
+    const puertoSwitch = puerto.puerto_switch;
+    const switchNombre =
+      puertoSwitch && "switch" in puertoSwitch && puertoSwitch.switch
+        ? puertoSwitch.switch.nombre?.trim() ||
+          `Switch #${puertoSwitch.switch.id}`
+        : puertoSwitch && "switch_id" in puertoSwitch
+          ? `Switch #${puertoSwitch.switch_id}`
+          : "Sin switch";
+    const puertoSwitchTexto =
+      puertoSwitch && "numero" in puertoSwitch
+        ? `Puerto ${puertoSwitch.numero}`
+        : "Sin puerto";
+    const equipoNombre =
+      puertoSwitch &&
+      "equipo" in puertoSwitch &&
+      puertoSwitch.equipo &&
+      puertoSwitch.equipo.nombre
+        ? puertoSwitch.equipo.nombre.trim()
+        : "Sin equipo";
+    const observacionPatch =
+      typeof puerto.observaciones === "string" &&
+      puerto.observaciones.trim().length > 0
+        ? puerto.observaciones.trim()
+        : null;
+    const observacionSwitch =
+      puertoSwitch &&
+      "observaciones" in puertoSwitch &&
+      typeof puertoSwitch.observaciones === "string" &&
+      puertoSwitch.observaciones.trim().length > 0
+        ? puertoSwitch.observaciones.trim()
+        : null;
+
+    return {
+      etiquetaTexto,
+      switchNombre,
+      puertoSwitchTexto,
+      equipoNombre,
+      observacionPatch,
+      observacionSwitch,
+    };
+  };
+
+  const portMatchesSearch = (puerto: PatchPanelPortRecord) => {
+    if (!isSearchActive) return true;
+    const info = resolvePortInfo(puerto);
+    const valores = [
+      info.etiquetaTexto,
+      info.observacionPatch,
+      info.observacionSwitch,
+      info.switchNombre,
+      info.equipoNombre,
+    ]
+      .map((valor) => normalizeValue(valor))
+      .filter((valor) => valor.length > 0);
+    return valores.some((valor) => valor.includes(trimmedSearch));
+  };
+
+  const panelsForConnections = useMemo(() => {
+    const basePanels = isSearchActive
+      ? ordenados
+      : ordenados.filter((panel) => expandedPanels.has(String(panel.id)));
+
+    return basePanels
+      .map((panel) => {
+        const puertosOrdenados =
+          Array.isArray(panel.puertos) && panel.puertos.length > 0
+            ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
+            : [];
+        const puertosFiltrados = isSearchActive
+          ? puertosOrdenados.filter((puerto) => portMatchesSearch(puerto))
+          : puertosOrdenados;
+
+        return {
+          panel,
+          puertosOrdenados,
+          puertosFiltrados,
+        };
+      })
+      .filter((entry) => !isSearchActive || entry.puertosFiltrados.length > 0);
+  }, [expandedPanels, isSearchActive, ordenados, portMatchesSearch, trimmedSearch]);
 
   return (
     <section className="space-y-4">
@@ -503,26 +605,42 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
         </div>
       </div>
 
-      {expandedPanels.size > 0 ? (
+      <div className="space-y-2 print:hidden">
+        <label className="text-sm font-medium text-foreground/70">
+          Buscar tomas del patch panel
+        </label>
+        <input
+          type="search"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Etiqueta, observaciones, switch o equipo..."
+          className="w-full max-w-2xl rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+        />
+      </div>
+
+      {isSearchActive || expandedPanels.size > 0 ? (
         <section className="space-y-4">
           <header className="space-y-1">
             <h3 className="text-lg font-semibold text-foreground">Conexiones</h3>
             <p className="text-sm text-foreground/70">
-              Detalle de los patch panels seleccionados.
+              {isSearchActive
+                ? `Resultados para: "${searchTerm.trim()}".`
+                : "Detalle de los patch panels seleccionados."}
             </p>
           </header>
 
-          {ordenados
-            .filter((panel) => expandedPanels.has(String(panel.id)))
-            .map((panel) => {
+          {panelsForConnections.length === 0 ? (
+            <p className="text-sm text-foreground/60">
+              No hay tomas que coincidan con la búsqueda.
+            </p>
+          ) : (
+            panelsForConnections.map((entry) => {
+              const { panel, puertosOrdenados, puertosFiltrados } = entry;
               const nombre =
                 panel.nombre && panel.nombre.trim().length > 0
                   ? panel.nombre.trim()
                   : `Patch panel #${panel.id}`;
-              const puertosOrdenados =
-                Array.isArray(panel.puertos) && panel.puertos.length > 0
-                  ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
-                  : [];
+              const puertosToRender = isSearchActive ? puertosFiltrados : puertosOrdenados;
               const ocultarEnImpresion =
                 isPrintActive &&
                 printTargetId !== null &&
@@ -539,13 +657,15 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                     <div>
                       <h4 className="text-base font-semibold text-foreground">{nombre}</h4>
                       <p className="text-xs text-foreground/60">
-                        Puertos configurados: {puertosOrdenados.length}
+                        {isSearchActive
+                          ? `Coincidencias: ${puertosToRender.length}`
+                          : `Puertos configurados: ${puertosOrdenados.length}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleSavePdf(panel)}
+                        onClick={() => handleSavePdf(panel, puertosToRender)}
                         title="Guardar PDF"
                         aria-label={`Guardar PDF de ${nombre}`}
                         className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 print:hidden"
@@ -639,9 +759,11 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                     </div>
                   </div>
 
-                  {puertosOrdenados.length === 0 ? (
+                  {puertosToRender.length === 0 ? (
                     <p className="text-sm text-foreground/60">
-                      No hay puertos configurados en este patch panel.
+                      {isSearchActive
+                        ? "No hay tomas que coincidan con la búsqueda."
+                        : "No hay puertos configurados en este patch panel."}
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
@@ -656,43 +778,15 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/60">
-                          {puertosOrdenados.map((puerto) => {
-                            const etiquetaTexto =
-                              typeof puerto.etiqueta === "string" &&
-                              puerto.etiqueta.trim().length > 0
-                                ? puerto.etiqueta.trim()
-                                : null;
-                            const puertoSwitch = puerto.puerto_switch;
-                            const switchNombre =
-                              puertoSwitch && "switch" in puertoSwitch && puertoSwitch.switch
-                                ? puertoSwitch.switch.nombre?.trim() ||
-                                  `Switch #${puertoSwitch.switch.id}`
-                                : puertoSwitch && "switch_id" in puertoSwitch
-                                  ? `Switch #${puertoSwitch.switch_id}`
-                                  : "Sin switch";
-                            const puertoSwitchTexto =
-                              puertoSwitch && "numero" in puertoSwitch
-                                ? `Puerto ${puertoSwitch.numero}`
-                                : "Sin puerto";
-                            const equipoNombre =
-                              puertoSwitch &&
-                              "equipo" in puertoSwitch &&
-                              puertoSwitch.equipo &&
-                              puertoSwitch.equipo.nombre
-                                ? puertoSwitch.equipo.nombre.trim()
-                                : "Sin equipo";
-                            const observacionPatch =
-                              typeof puerto.observaciones === "string" &&
-                              puerto.observaciones.trim().length > 0
-                                ? puerto.observaciones.trim()
-                                : null;
-                            const observacionSwitch =
-                              puertoSwitch &&
-                              "observaciones" in puertoSwitch &&
-                              typeof puertoSwitch.observaciones === "string" &&
-                              puertoSwitch.observaciones.trim().length > 0
-                                ? puertoSwitch.observaciones.trim()
-                                : null;
+                          {puertosToRender.map((puerto) => {
+                            const {
+                              etiquetaTexto,
+                              switchNombre,
+                              puertoSwitchTexto,
+                              equipoNombre,
+                              observacionPatch,
+                              observacionSwitch,
+                            } = resolvePortInfo(puerto);
 
                             return (
                               <tr key={puerto.id}>
@@ -734,7 +828,8 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                   )}
                 </article>
               );
-            })}
+            })
+          )}
         </section>
       ) : null}
 
