@@ -263,6 +263,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     () => new Set(),
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFreePorts, setShowFreePorts] = useState(false);
   const [printTargetId, setPrintTargetId] = useState<string | null>(null);
   const isPrintActive = printTargetId !== null;
 
@@ -406,6 +407,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
 
   const trimmedSearch = searchTerm.trim().toLowerCase();
   const isSearchActive = trimmedSearch.length > 0;
+  const isFilterActive = isSearchActive || showFreePorts;
 
   const normalizeValue = (value: string | null | undefined) =>
     value ? value.toLowerCase().trim() : "";
@@ -472,8 +474,17 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     return valores.some((valor) => valor.includes(trimmedSearch));
   };
 
+  const portMatchesFilters = (puerto: PatchPanelPortRecord) => {
+    const hasSwitchPort =
+      typeof puerto.puerto_switch_id === "number" &&
+      Number.isFinite(puerto.puerto_switch_id);
+    const isFree = !hasSwitchPort;
+    if (showFreePorts && !isFree) return false;
+    return portMatchesSearch(puerto);
+  };
+
   const panelsForConnections = useMemo(() => {
-    const basePanels = isSearchActive
+    const basePanels = isFilterActive
       ? ordenados
       : ordenados.filter((panel) => expandedPanels.has(String(panel.id)));
 
@@ -483,8 +494,8 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
           Array.isArray(panel.puertos) && panel.puertos.length > 0
             ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
             : [];
-        const puertosFiltrados = isSearchActive
-          ? puertosOrdenados.filter((puerto) => portMatchesSearch(puerto))
+        const puertosFiltrados = isFilterActive
+          ? puertosOrdenados.filter((puerto) => portMatchesFilters(puerto))
           : puertosOrdenados;
 
         return {
@@ -493,8 +504,8 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
           puertosFiltrados,
         };
       })
-      .filter((entry) => !isSearchActive || entry.puertosFiltrados.length > 0);
-  }, [expandedPanels, isSearchActive, ordenados, portMatchesSearch, trimmedSearch]);
+      .filter((entry) => !isFilterActive || entry.puertosFiltrados.length > 0);
+  }, [expandedPanels, isFilterActive, ordenados, portMatchesFilters, trimmedSearch, showFreePorts]);
 
   return (
     <section className="space-y-4">
@@ -609,22 +620,33 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
         <label className="text-sm font-medium text-foreground/70">
           Buscar tomas del patch panel
         </label>
-        <input
-          type="search"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Etiqueta, observaciones, switch o equipo..."
-          className="w-full max-w-2xl rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Etiqueta, observaciones, switch o equipo..."
+            className="w-full max-w-2xl flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+          />
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground/70">
+            <input
+              type="checkbox"
+              checked={showFreePorts}
+              onChange={(event) => setShowFreePorts(event.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+            />
+            Puertos libres
+          </label>
+        </div>
       </div>
 
-      {isSearchActive || expandedPanels.size > 0 ? (
+      {isFilterActive || expandedPanels.size > 0 ? (
         <section className="space-y-4">
           <header className="space-y-1">
             <h3 className="text-lg font-semibold text-foreground">Conexiones</h3>
             <p className="text-sm text-foreground/70">
-              {isSearchActive
-                ? `Resultados para: "${searchTerm.trim()}".`
+              {isFilterActive
+                ? `Resultados para: "${searchTerm.trim() || "Puertos libres"}".`
                 : "Detalle de los patch panels seleccionados."}
             </p>
           </header>
@@ -640,7 +662,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                 panel.nombre && panel.nombre.trim().length > 0
                   ? panel.nombre.trim()
                   : `Patch panel #${panel.id}`;
-              const puertosToRender = isSearchActive ? puertosFiltrados : puertosOrdenados;
+              const puertosToRender = isFilterActive ? puertosFiltrados : puertosOrdenados;
               const ocultarEnImpresion =
                 isPrintActive &&
                 printTargetId !== null &&
@@ -657,7 +679,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                     <div>
                       <h4 className="text-base font-semibold text-foreground">{nombre}</h4>
                       <p className="text-xs text-foreground/60">
-                        {isSearchActive
+                        {isFilterActive
                           ? `Coincidencias: ${puertosToRender.length}`
                           : `Puertos configurados: ${puertosOrdenados.length}`}
                       </p>
@@ -761,7 +783,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
 
                   {puertosToRender.length === 0 ? (
                     <p className="text-sm text-foreground/60">
-                      {isSearchActive
+                      {isFilterActive
                         ? "No hay tomas que coincidan con la búsqueda."
                         : "No hay puertos configurados en este patch panel."}
                     </p>
