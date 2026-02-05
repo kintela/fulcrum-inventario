@@ -1102,8 +1102,7 @@ export async function fetchPatchpanels(): Promise<PatchPanelRecord[]> {
 
   const patchpanelIds = patchpanels
     .map((item) => item.id)
-    .filter((id): id is string | number => typeof id === "string" || typeof id === "number")
-    .map((id) => String(id).trim())
+    .map((id) => String(id ?? "").trim())
     .filter((id) => id.length > 0);
 
   if (patchpanelIds.length === 0) {
