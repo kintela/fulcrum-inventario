@@ -170,6 +170,7 @@ export type PatchPanelPortUpsert = {
   patchpanel_id: number;
   numero: number;
   puerto_switch_id?: number | null;
+  etiqueta?: string | null;
   observaciones?: string | null;
 };
 

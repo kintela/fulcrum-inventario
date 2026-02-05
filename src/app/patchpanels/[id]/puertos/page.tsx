@@ -146,6 +146,7 @@ export default async function PatchPanelPortsPage({
       const idRaw = formData.get(`${base}_id`);
       const switchRaw = formData.get(`${base}_switch_id`);
       const puertoSwitchRaw = formData.get(`${base}_puerto_switch_id`);
+      const etiquetaRaw = formData.get(`${base}_etiqueta`);
       const observacionesRaw = formData.get(`${base}_observaciones`);
 
       const idValor =
@@ -211,8 +212,15 @@ export default async function PatchPanelPortsPage({
         typeof observacionesRaw === "string" && observacionesRaw.trim().length > 0
           ? observacionesRaw.trim()
           : null;
+      const etiqueta =
+        typeof etiquetaRaw === "string" && etiquetaRaw.trim().length > 0
+          ? etiquetaRaw.trim()
+          : null;
 
-      const hayContenido = puertoSwitchId !== null || (observaciones && observaciones.length > 0);
+      const hayContenido =
+        puertoSwitchId !== null ||
+        (observaciones && observaciones.length > 0) ||
+        (etiqueta && etiqueta.length > 0);
 
       if (!hayContenido) {
         if (idValor !== null) {
@@ -230,6 +238,10 @@ export default async function PatchPanelPortsPage({
 
       if (idValor !== null) {
         puerto.id = idValor;
+      }
+
+      if (etiqueta) {
+        puerto.etiqueta = etiqueta;
       }
 
       puertosAUpsert.push(puerto);

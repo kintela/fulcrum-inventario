@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, MouseEvent } from "react";
 
@@ -28,6 +28,219 @@ function extraerNumeroFinal(nombre: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function sanitizePdfText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "");
+}
+
+function wrapText(text: string, width: number): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [""];
+  const words = trimmed.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current.length === 0) {
+      current = word;
+      continue;
+    }
+    if (current.length + 1 + word.length <= width) {
+      current = `${current} ${word}`;
+      continue;
+    }
+    lines.push(current);
+    if (word.length > width) {
+      let remaining = word;
+      while (remaining.length > width) {
+        lines.push(remaining.slice(0, width));
+        remaining = remaining.slice(width);
+      }
+      current = remaining;
+    } else {
+      current = word;
+    }
+  }
+  if (current.length > 0) {
+    lines.push(current);
+  }
+  return lines;
+}
+
+function buildPdfLines(panel: PatchPanelRecord): string[] {
+  const nombre =
+    panel.nombre && panel.nombre.trim().length > 0
+      ? panel.nombre.trim()
+      : `Patch panel #${panel.id}`;
+  const puertosOrdenados =
+    Array.isArray(panel.puertos) && panel.puertos.length > 0
+      ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
+      : [];
+
+  const lines: string[] = [];
+  lines.push(`Patch panel: ${nombre}`);
+  lines.push(`Puertos configurados: ${puertosOrdenados.length}`);
+  lines.push("");
+
+  const colWidths = [14, 24, 16, 24, 46];
+  const headerCells = [
+    "Puerto patch",
+    "Switch",
+    "Puerto switch",
+    "Equipo conectado",
+    "Observaciones",
+  ];
+
+  const formatRow = (cells: string[]) => {
+    const wrapped = cells.map((cell, idx) =>
+      wrapText(cell, colWidths[idx]),
+    );
+    const maxLines = Math.max(...wrapped.map((arr) => arr.length));
+    for (let i = 0; i < maxLines; i += 1) {
+      const line = wrapped
+        .map((arr, idx) => (arr[i] ?? "").padEnd(colWidths[idx], " "))
+        .join(" | ");
+      lines.push(line);
+    }
+  };
+
+  formatRow(headerCells);
+  lines.push("-".repeat(colWidths.reduce((acc, w) => acc + w, 0) + 12));
+
+  puertosOrdenados.forEach((puerto) => {
+    const etiqueta =
+      typeof puerto.etiqueta === "string" && puerto.etiqueta.trim().length > 0
+        ? puerto.etiqueta.trim()
+        : null;
+    const puertoPatchTexto = etiqueta
+      ? `${puerto.numero} (${etiqueta})`
+      : `${puerto.numero}`;
+    const puertoSwitch = puerto.puerto_switch;
+    const switchNombre =
+      puertoSwitch && "switch" in puertoSwitch && puertoSwitch.switch
+        ? puertoSwitch.switch.nombre?.trim() ||
+          `Switch #${puertoSwitch.switch.id}`
+        : puertoSwitch && "switch_id" in puertoSwitch
+          ? `Switch #${puertoSwitch.switch_id}`
+          : "Sin switch";
+    const puertoSwitchTexto =
+      puertoSwitch && "numero" in puertoSwitch
+        ? `Puerto ${puertoSwitch.numero}`
+        : "Sin puerto";
+    const equipoNombre =
+      puertoSwitch &&
+      "equipo" in puertoSwitch &&
+      puertoSwitch.equipo &&
+      puertoSwitch.equipo.nombre
+        ? puertoSwitch.equipo.nombre.trim()
+        : "Sin equipo";
+    const observacionPatch =
+      typeof puerto.observaciones === "string" &&
+      puerto.observaciones.trim().length > 0
+        ? puerto.observaciones.trim()
+        : null;
+    const observacionSwitch =
+      puertoSwitch &&
+      "observaciones" in puertoSwitch &&
+      typeof puertoSwitch.observaciones === "string" &&
+      puertoSwitch.observaciones.trim().length > 0
+        ? puertoSwitch.observaciones.trim()
+        : null;
+    const observaciones =
+      observacionPatch || observacionSwitch
+        ? [
+            observacionPatch ? `Patch: ${observacionPatch}` : null,
+            observacionSwitch ? `Switch: ${observacionSwitch}` : null,
+          ]
+            .filter(Boolean)
+            .join(" | ")
+        : "Sin observaciones";
+
+    formatRow([
+      puertoPatchTexto,
+      switchNombre,
+      puertoSwitchTexto,
+      equipoNombre,
+      observaciones,
+    ]);
+    lines.push("-".repeat(colWidths.reduce((acc, w) => acc + w, 0) + 12));
+  });
+
+  return lines.map((line) => sanitizePdfText(line));
+}
+
+function buildPdfFromLines(lines: string[]): string {
+  const pageWidth = 842;
+  const pageHeight = 595;
+  const marginX = 36;
+  const marginY = 36;
+  const fontSize = 10;
+  const lineHeight = 14;
+  const linesPerPage = Math.floor((pageHeight - marginY * 2) / lineHeight);
+
+  const pages: string[][] = [];
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage));
+  }
+
+  const objects: string[] = [];
+  const addObject = (content: string) => {
+    objects.push(content);
+    return objects.length;
+  };
+
+  const pagesId = addObject("");
+  const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
+
+  const pageIds: number[] = [];
+
+  pages.forEach((pageLines) => {
+    const contentLines = [
+      "BT",
+      `/F1 ${fontSize} Tf`,
+      `${marginX} ${pageHeight - marginY - fontSize} Td`,
+      `${lineHeight} TL`,
+      ...pageLines.map((line) => `(${line.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj T*`),
+      "ET",
+    ];
+
+    const content = contentLines.join("\n");
+    const contentId = addObject(
+      `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    );
+    const pageId = addObject(
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`,
+    );
+    pageIds.push(pageId);
+  });
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds
+    .map((id) => `${id} 0 R`)
+    .join(" ")}] /Count ${pageIds.length} >>`;
+
+  const catalogId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+
+  let pdf = "%PDF-1.3\n";
+  const offsets: number[] = [0];
+
+  objects.forEach((obj, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i <= objects.length; i += 1) {
+    const offset = String(offsets[i]).padStart(10, "0");
+    pdf += `${offset} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\n`;
+  pdf += `startxref\n${xrefOffset}\n%%EOF`;
+
+  return pdf;
+}
 export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -43,6 +256,22 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
   const [expandedPanels, setExpandedPanels] = useState<Set<string>>(
     () => new Set(),
   );
+  const [printTargetId, setPrintTargetId] = useState<string | null>(null);
+  const isPrintActive = printTargetId !== null;
+
+  useEffect(() => {
+    if (!printTargetId) return;
+    if (typeof window === "undefined") return;
+
+    const handleAfterPrint = () => setPrintTargetId(null);
+    window.addEventListener("afterprint", handleAfterPrint);
+    const timer = window.setTimeout(() => window.print(), 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, [printTargetId]);
 
   const abrirProteccionEdicion = useCallback(
     (
@@ -142,16 +371,40 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
     });
   };
 
+  const handleSavePdf = (panel: PatchPanelRecord) => {
+    if (typeof window === "undefined") return;
+    const lines = buildPdfLines(panel);
+    const pdfContent = buildPdfFromLines(lines);
+    const blob = new Blob([pdfContent], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+    const nombreArchivo =
+      panel.nombre && panel.nombre.trim().length > 0
+        ? panel.nombre.trim()
+        : `patchpanel-${panel.id}`;
+    const safeName = sanitizePdfText(nombreArchivo)
+      .replace(/\s+/g, "_")
+      .replace(/[^\w.-]/g, "");
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${safeName}_conexiones.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold text-foreground">Patch panels</h2>
-        <p className="text-sm text-foreground/70">
-          Inventario general de patch panels. Total actuales: {patchpanels.length}.
-        </p>
-      </header>
+      <div className={isPrintActive ? "print:hidden" : ""}>
+        <header className="space-y-1">
+          <h2 className="text-xl font-semibold text-foreground">Patch panels</h2>
+          <p className="text-sm text-foreground/70">
+            Inventario general de patch panels. Total actuales: {patchpanels.length}.
+          </p>
+        </header>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
         {ordenados.map((item) => {
           const nombre =
             item.nombre && item.nombre.trim().length > 0
@@ -217,7 +470,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                         type="checkbox"
                         checked={mostrarDetalle}
                         onChange={() => toggleExpanded(String(item.id))}
-                        className="h-4 w-4 rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
+                        className="h-4 w-4 cursor-pointer rounded border-border text-foreground focus:ring-2 focus:ring-foreground/30"
                       />
                       Mostrar conexiones
                     </label>
@@ -247,6 +500,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
             </article>
           );
         })}
+        </div>
       </div>
 
       {expandedPanels.size > 0 ? (
@@ -269,11 +523,17 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                 Array.isArray(panel.puertos) && panel.puertos.length > 0
                   ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
                   : [];
+              const ocultarEnImpresion =
+                isPrintActive &&
+                printTargetId !== null &&
+                String(panel.id) !== printTargetId;
 
               return (
                 <article
                   key={`detalle-${panel.id}`}
-                  className="space-y-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
+                  className={`space-y-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm ${
+                    ocultarEnImpresion ? "print:hidden" : ""
+                  }`}
                 >
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -282,25 +542,101 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                         Puertos configurados: {puertosOrdenados.length}
                       </p>
                     </div>
-                    <Link
-                      href={
-                        fromQueryParam && fromQueryParam.length > 0
-                          ? `/patchpanels/${panel.id}/puertos?from=${encodeURIComponent(fromQueryParam)}`
-                          : `/patchpanels/${panel.id}/puertos`
-                      }
-                      onClick={(event) =>
-                        abrirProteccionEdicion(
-                          event,
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSavePdf(panel)}
+                        title="Guardar PDF"
+                        aria-label={`Guardar PDF de ${nombre}`}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 print:hidden"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M6 3h9l3 3v15H6V3Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M9 3v5h6V3"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M8 12h8M8 15h8"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPrintTargetId(String(panel.id))}
+                        title="Imprimir tabla"
+                        aria-label={`Imprimir conexiones de ${nombre}`}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border/60 bg-background text-foreground/60 transition hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40 print:hidden"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M7 7V3.75C7 3.336 7.336 3 7.75 3h8.5C16.664 3 17 3.336 17 3.75V7"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <rect
+                            x="5"
+                            y="13"
+                            width="14"
+                            height="8"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          <rect
+                            x="4"
+                            y="7"
+                            width="16"
+                            height="7"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          <path
+                            d="M8 16h8M8 18.5h8"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                      <Link
+                        href={
                           fromQueryParam && fromQueryParam.length > 0
                             ? `/patchpanels/${panel.id}/puertos?from=${encodeURIComponent(fromQueryParam)}`
-                            : `/patchpanels/${panel.id}/puertos`,
-                          `${nombre} (puertos)`,
-                        )
-                      }
-                      className="text-xs text-blue-600 underline underline-offset-4 transition hover:text-blue-700"
-                    >
-                      Editar conexiones
-                    </Link>
+                            : `/patchpanels/${panel.id}/puertos`
+                        }
+                        className="text-xs text-blue-600 underline underline-offset-4 transition hover:text-blue-700 print:hidden"
+                      >
+                        Editar conexiones
+                      </Link>
+                    </div>
                   </div>
 
                   {puertosOrdenados.length === 0 ? (
@@ -345,11 +681,18 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                               puertoSwitch.equipo.nombre
                                 ? puertoSwitch.equipo.nombre.trim()
                                 : "Sin equipo";
-                            const observacionesTexto =
+                            const observacionPatch =
                               typeof puerto.observaciones === "string" &&
                               puerto.observaciones.trim().length > 0
                                 ? puerto.observaciones.trim()
-                                : "Sin observaciones";
+                                : null;
+                            const observacionSwitch =
+                              puertoSwitch &&
+                              "observaciones" in puertoSwitch &&
+                              typeof puertoSwitch.observaciones === "string" &&
+                              puertoSwitch.observaciones.trim().length > 0
+                                ? puertoSwitch.observaciones.trim()
+                                : null;
 
                             return (
                               <tr key={puerto.id}>
@@ -366,7 +709,20 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                                 <td className="px-3 py-2 text-foreground">{switchNombre}</td>
                                 <td className="px-3 py-2 text-foreground">{puertoSwitchTexto}</td>
                                 <td className="px-3 py-2 text-foreground">{equipoNombre}</td>
-                                <td className="px-3 py-2 text-foreground">{observacionesTexto}</td>
+                                <td className="px-3 py-2 text-foreground">
+                                  {observacionPatch || observacionSwitch ? (
+                                    <div className="flex flex-col gap-1">
+                                      {observacionPatch ? (
+                                        <span>Patch: {observacionPatch}</span>
+                                      ) : null}
+                                      {observacionSwitch ? (
+                                        <span>Switch: {observacionSwitch}</span>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    "Sin observaciones"
+                                  )}
+                                </td>
                               </tr>
                             );
                           })}

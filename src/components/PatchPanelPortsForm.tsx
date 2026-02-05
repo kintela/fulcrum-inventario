@@ -196,6 +196,7 @@ export default function PatchPanelPortsForm({
                 typeof puerto?.etiqueta === "string" && puerto.etiqueta.trim().length > 0
                   ? puerto.etiqueta.trim()
                   : null;
+              const etiquetaDefaultValue = etiquetaTexto ?? "";
               const observacionesDefaultValue =
                 typeof puerto?.observaciones === "string" ? puerto.observaciones : "";
               const opcionesPuertos =
@@ -218,6 +219,11 @@ export default function PatchPanelPortsForm({
                       type="hidden"
                       name={`${campoBase}_numero`}
                       value={String(numero)}
+                    />
+                    <input
+                      type="hidden"
+                      name={`${campoBase}_etiqueta`}
+                      value={etiquetaDefaultValue}
                     />
                     <input
                       type="hidden"
