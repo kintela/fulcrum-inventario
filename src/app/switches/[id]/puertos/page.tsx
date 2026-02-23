@@ -165,14 +165,8 @@ export default async function SwitchPortsPage({
       }
       const vlan =
         typeof vlanRaw === "string" && vlanRaw.trim().length > 0
-          ? Number.parseInt(vlanRaw.trim(), 10)
+          ? vlanRaw.trim()
           : null;
-      if (vlan !== null && (!Number.isFinite(vlan) || vlan < 0)) {
-        return {
-          status: "error",
-          message: `La VLAN indicada para el puerto ${numero} no es válida.`,
-        };
-      }
       const velocidad =
         typeof velocidadRaw === "string" && velocidadRaw.trim().length > 0
           ? Number.parseInt(velocidadRaw.trim(), 10)

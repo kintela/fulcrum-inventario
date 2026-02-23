@@ -120,7 +120,7 @@ export type SwitchPortRecord = {
   switch_id: number;
   numero: number;
   nombre: string | null;
-  vlan: number | null;
+  vlan: string | null;
   poe: boolean | null;
   velocidad_mbps: number | null;
   equipo_id: string | null;
@@ -179,7 +179,7 @@ export type SwitchPortUpsert = {
   switch_id: number;
   numero: number;
   nombre?: string | null;
-  vlan?: number | null;
+  vlan?: string | null;
   poe?: boolean | null;
   velocidad_mbps?: number | null;
   equipo_id?: string | null;

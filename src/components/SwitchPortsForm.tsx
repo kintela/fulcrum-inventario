@@ -182,7 +182,7 @@ export default function SwitchPortsForm({
               const nombreDefaultValue =
                 typeof puerto?.nombre === "string" ? puerto.nombre : "";
               const vlanDefaultValue =
-                typeof puerto?.vlan === "number" ? puerto.vlan : "";
+                typeof puerto?.vlan === "string" ? puerto.vlan : "";
               const velocidadDefaultValue =
                 typeof puerto?.velocidad_mbps === "number"
                   ? puerto.velocidad_mbps
@@ -249,12 +249,11 @@ export default function SwitchPortsForm({
                   </td>
                   <td className="px-3 py-2">
                     <input
-                      type="number"
+                      type="text"
                       name={`${campoBase}_vlan`}
                       key={`${campoBase}_vlan_${vlanDefaultValue}`}
                       defaultValue={vlanDefaultValue}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
-                      min="1"
                     />
                   </td>
                   <td className="px-3 py-2">

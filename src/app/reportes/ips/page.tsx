@@ -95,7 +95,9 @@ export default async function ReporteIpsPage() {
                   ? `Puerto ${puerto.numero}`
                   : "Sin puerto";
               const vlan =
-                typeof puerto?.vlan === "number" ? `VLAN ${puerto.vlan}` : null;
+                typeof puerto?.vlan === "string" && puerto.vlan.trim().length > 0
+                  ? `VLAN ${puerto.vlan.trim()}`
+                  : null;
               return {
                 switchNombre,
                 puertoLabel: vlan ? `${puertoNumero} (${vlan})` : puertoNumero,
