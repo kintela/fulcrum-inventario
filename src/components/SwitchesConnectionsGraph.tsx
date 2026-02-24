@@ -63,6 +63,10 @@ type SwitchesConnectionsGraphProps = {
 
 const SWITCH_CONNECTION_COLOR = "#475569"; // slate-600
 const EQUIPO_CONNECTION_COLOR = "#9ca3af"; // gray-400
+const MIKROTIK_BACKBONE_SWITCH_ID = 11;
+const MIKROTIK_BACKBONE_NODE_ID = `switch-${MIKROTIK_BACKBONE_SWITCH_ID}`;
+const MIKROTIK_BACKBONE_Y_OFFSET = 56;
+const MIKROTIK_BACKBONE_CONNECTION_COLOR = "#0284c7"; // sky-600
 
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
@@ -494,7 +498,7 @@ export default function SwitchesConnectionsGraph({
     const positionedSwitches: NodeWithPosition[] = switchNodes.map((node, index) => ({
       ...node,
       x: SWITCH_MARGIN_X + index * SWITCH_HORIZONTAL_SPACING,
-      y: centerY,
+      y: centerY + (node.id === MIKROTIK_BACKBONE_NODE_ID ? MIKROTIK_BACKBONE_Y_OFFSET : 0),
     }));
 
   const switchPositionsMap = new Map<string, NodeWithPosition>();
@@ -910,6 +914,9 @@ export default function SwitchesConnectionsGraph({
               const isSwitchToSwitch = isSwitchSource && isSwitchTarget;
               const isSwitchConnection =
                 sourcePos.type === "switch" && (targetPos.type === "switch" || targetPos.type === "switchLink");
+              const isMikrotikBackboneConnection =
+                isSwitchConnection &&
+                (sourcePos.id === MIKROTIK_BACKBONE_NODE_ID || targetPos.id === MIKROTIK_BACKBONE_NODE_ID);
               const isMutualLink = link.isMutual && isSwitchToSwitch;
               if (isMutualLink && link.source > link.target) {
                 return null;
@@ -918,8 +925,12 @@ export default function SwitchesConnectionsGraph({
               const isHighlighted =
                 matchedLinks.has(link.id) ||
                 (matchedNodes.has(link.source) && matchedNodes.has(link.target));
-              const strokeColor = isSwitchConnection ? SWITCH_CONNECTION_COLOR : EQUIPO_CONNECTION_COLOR;
-              const strokeWidth = isSwitchConnection ? 2.1 : 1.4;
+              const strokeColor = isMikrotikBackboneConnection
+                ? MIKROTIK_BACKBONE_CONNECTION_COLOR
+                : isSwitchConnection
+                  ? SWITCH_CONNECTION_COLOR
+                  : EQUIPO_CONNECTION_COLOR;
+              const strokeWidth = isMikrotikBackboneConnection ? 2.6 : isSwitchConnection ? 2.1 : 1.4;
               const direction = targetPos.x >= sourcePos.x ? 1 : -1;
               const startX =
                 sourcePos.x +
@@ -1054,6 +1065,8 @@ export default function SwitchesConnectionsGraph({
                 const classNames =
                   node.type === "equipo"
                     ? getEquipoColorClasses(node.metadata?.tipo ?? null)
+                    : node.id === MIKROTIK_BACKBONE_NODE_ID
+                      ? "fill-sky-100 stroke-sky-500"
                     : colors[node.type as Exclude<GraphNodeType, "equipo">];
                 const nodeHeight =
                   node.type === "switch" ? NODE_HEIGHT : EQUIPO_NODE_HEIGHT;
