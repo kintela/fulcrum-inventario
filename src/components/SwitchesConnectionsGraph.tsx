@@ -67,6 +67,8 @@ const MIKROTIK_BACKBONE_SWITCH_ID = 11;
 const MIKROTIK_BACKBONE_NODE_ID = `switch-${MIKROTIK_BACKBONE_SWITCH_ID}`;
 const MIKROTIK_BACKBONE_Y_OFFSET = 56;
 const MIKROTIK_BACKBONE_CONNECTION_COLOR = "#0284c7"; // sky-600
+const FIREWALL_SWITCH_NODE_IDS = new Set(["switch-13", "switch-14"]);
+const FIREWALL_SWITCH_Y_OFFSET = -56;
 
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
@@ -498,7 +500,13 @@ export default function SwitchesConnectionsGraph({
     const positionedSwitches: NodeWithPosition[] = switchNodes.map((node, index) => ({
       ...node,
       x: SWITCH_MARGIN_X + index * SWITCH_HORIZONTAL_SPACING,
-      y: centerY + (node.id === MIKROTIK_BACKBONE_NODE_ID ? MIKROTIK_BACKBONE_Y_OFFSET : 0),
+      y:
+        centerY +
+        (node.id === MIKROTIK_BACKBONE_NODE_ID
+          ? MIKROTIK_BACKBONE_Y_OFFSET
+          : FIREWALL_SWITCH_NODE_IDS.has(node.id)
+            ? FIREWALL_SWITCH_Y_OFFSET
+            : 0),
     }));
 
   const switchPositionsMap = new Map<string, NodeWithPosition>();
@@ -1065,6 +1073,8 @@ export default function SwitchesConnectionsGraph({
                 const classNames =
                   node.type === "equipo"
                     ? getEquipoColorClasses(node.metadata?.tipo ?? null)
+                    : FIREWALL_SWITCH_NODE_IDS.has(node.id)
+                      ? "fill-rose-100 stroke-rose-500"
                     : node.id === MIKROTIK_BACKBONE_NODE_ID
                       ? "fill-sky-100 stroke-sky-500"
                     : colors[node.type as Exclude<GraphNodeType, "equipo">];
