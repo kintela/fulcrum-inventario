@@ -69,6 +69,7 @@ const MIKROTIK_BACKBONE_Y_OFFSET = 56;
 const MIKROTIK_BACKBONE_CONNECTION_COLOR = "#0284c7"; // sky-600
 const FIREWALL_SWITCH_NODE_IDS = new Set(["switch-13", "switch-14"]);
 const FIREWALL_SWITCH_Y_OFFSET = -56;
+const FIREWALL_SWITCH_CONNECTION_COLOR = "#e11d48"; // rose-600
 
 const NODE_WIDTH = 170;
 const NODE_HEIGHT = 64;
@@ -925,6 +926,10 @@ export default function SwitchesConnectionsGraph({
               const isMikrotikBackboneConnection =
                 isSwitchConnection &&
                 (sourcePos.id === MIKROTIK_BACKBONE_NODE_ID || targetPos.id === MIKROTIK_BACKBONE_NODE_ID);
+              const isFirewallSwitchConnection =
+                isSwitchConnection &&
+                !isMikrotikBackboneConnection &&
+                (FIREWALL_SWITCH_NODE_IDS.has(sourcePos.id) || FIREWALL_SWITCH_NODE_IDS.has(targetPos.id));
               const isMutualLink = link.isMutual && isSwitchToSwitch;
               if (isMutualLink && link.source > link.target) {
                 return null;
@@ -935,10 +940,18 @@ export default function SwitchesConnectionsGraph({
                 (matchedNodes.has(link.source) && matchedNodes.has(link.target));
               const strokeColor = isMikrotikBackboneConnection
                 ? MIKROTIK_BACKBONE_CONNECTION_COLOR
+                : isFirewallSwitchConnection
+                  ? FIREWALL_SWITCH_CONNECTION_COLOR
                 : isSwitchConnection
                   ? SWITCH_CONNECTION_COLOR
                   : EQUIPO_CONNECTION_COLOR;
-              const strokeWidth = isMikrotikBackboneConnection ? 2.6 : isSwitchConnection ? 2.1 : 1.4;
+              const strokeWidth = isMikrotikBackboneConnection
+                ? 2.6
+                : isFirewallSwitchConnection
+                  ? 2.4
+                  : isSwitchConnection
+                    ? 2.1
+                    : 1.4;
               const direction = targetPos.x >= sourcePos.x ? 1 : -1;
               const startX =
                 sourcePos.x +
