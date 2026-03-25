@@ -5,6 +5,10 @@ type SupabaseConfig = {
 };
 
 const STORAGE_BUCKET = "fotos";
+const STORAGE_LIST_CONCURRENCY = 4;
+const STORAGE_LIST_MAX_ATTEMPTS = 4;
+const THUMBNAIL_HIT_CACHE_TTL_MS = 5 * 60_000;
+const THUMBNAIL_MISS_CACHE_TTL_MS = 30_000;
 
 export const MAX_IMAGE_SIZE_BYTES = 200 * 1024;
 
@@ -302,6 +306,85 @@ function buildStorageProxyUrl(...segments: string[]): string {
 
 type StorageFolder = "equipos" | "pantallas";
 
+type ThumbnailCacheEntry = {
+  value: string | null;
+  expiresAt: number;
+};
+
+const thumbnailResultCache = new Map<string, ThumbnailCacheEntry>();
+const thumbnailInFlightCache = new Map<string, Promise<string | null>>();
+const storageListWaitQueue: Array<() => void> = [];
+let activeStorageListRequests = 0;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getThumbnailCacheKey(
+  folder: StorageFolder,
+  identifier: string | number,
+): string {
+  return `${folder}:${identifier}`;
+}
+
+function getCachedThumbnail(cacheKey: string): string | null | undefined {
+  const entry = thumbnailResultCache.get(cacheKey);
+  if (!entry) {
+    return undefined;
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    thumbnailResultCache.delete(cacheKey);
+    return undefined;
+  }
+
+  return entry.value;
+}
+
+function setCachedThumbnail(cacheKey: string, value: string | null): void {
+  thumbnailResultCache.set(cacheKey, {
+    value,
+    expiresAt:
+      Date.now() +
+      (value === null
+        ? THUMBNAIL_MISS_CACHE_TTL_MS
+        : THUMBNAIL_HIT_CACHE_TTL_MS),
+  });
+}
+
+async function acquireStorageListSlot(): Promise<void> {
+  if (activeStorageListRequests < STORAGE_LIST_CONCURRENCY) {
+    activeStorageListRequests += 1;
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    storageListWaitQueue.push(resolve);
+  });
+}
+
+function releaseStorageListSlot(): void {
+  const next = storageListWaitQueue.shift();
+  if (next) {
+    next();
+    return;
+  }
+
+  activeStorageListRequests = Math.max(0, activeStorageListRequests - 1);
+}
+
+async function runWithStorageListConcurrencyLimit<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  await acquireStorageListSlot();
+
+  try {
+    return await operation();
+  } finally {
+    releaseStorageListSlot();
+  }
+}
+
 export type UploadableImage = Blob & { name?: string; type?: string };
 
 function getStorageAuthKey(config: SupabaseConfig): string {
@@ -454,20 +537,22 @@ async function cleanStorageFolder(
   const authKey = getStorageAuthKey(config);
 
   const listUrl = `${config.url}/storage/v1/object/list/${STORAGE_BUCKET}`;
-  const response = await fetch(listUrl, {
-    method: "POST",
-    headers: {
-      apikey: authKey,
-      Authorization: `Bearer ${authKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prefix: prefixWithSlash,
-      limit: 100,
-      offset: 0,
-      sortBy: { column: "name", order: "asc" },
+  const response = await runWithStorageListConcurrencyLimit(() =>
+    fetch(listUrl, {
+      method: "POST",
+      headers: {
+        apikey: authKey,
+        Authorization: `Bearer ${authKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prefix: prefixWithSlash,
+        limit: 100,
+        offset: 0,
+        sortBy: { column: "name", order: "asc" },
+      }),
     }),
-  });
+  );
 
   if (!response.ok) {
     return;
@@ -582,6 +667,10 @@ async function uploadImageToStorage(
 
   await cleanStorageFolder(config, prefixWithSlash, normalizedObjectPath);
 
+  const cacheKey = getThumbnailCacheKey(folder, identifier);
+  setCachedThumbnail(cacheKey, buildStorageProxyUrl(normalizedObjectPath));
+  thumbnailInFlightCache.delete(cacheKey);
+
   return normalizedObjectPath;
 }
 
@@ -605,154 +694,188 @@ async function obtenerMiniaturaDesdeStorage(
   identificador: string | number,
   cache: Map<string, string | null>,
 ): Promise<string | null> {
-  const cacheKey = `${carpeta}:${identificador}`;
+  const cacheKey = getThumbnailCacheKey(carpeta, identificador);
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey) ?? null;
   }
 
-  const listUrl = `${config.url}/storage/v1/object/list/${STORAGE_BUCKET}`;
-  const authKey = getStorageAuthKey(config);
-
-  const { prefix, prefixWithSlash } = sanitizeStorageFolder(
-    carpeta,
-    identificador,
-  );
-
-  const candidatePrefixes = Array.from(
-    new Set(
-      [
-        prefixWithSlash,
-        prefix,
-        prefixWithSlash.replace(/\/+$/, ""),
-      ].filter(
-        (value): value is string =>
-          typeof value === "string" && value.length > 0,
-      ),
-    ),
-  );
-
-  const normalizarPrefix = (valor: string) => {
-    const limpio = valor.replace(/\\/g, "/").replace(/\/+/g, "/");
-    const sinInicial = limpio.startsWith("/") ? limpio.slice(1) : limpio;
-    if (sinInicial.length === 0) return "";
-    return sinInicial.endsWith("/") ? sinInicial : `${sinInicial}/`;
-  };
-
-  const listarPrimerArchivo = async (prefixOriginal: string) => {
-    const prefix = normalizarPrefix(prefixOriginal);
-
-    let response: Response | null = null;
-    for (let intento = 0; intento < 2; intento += 1) {
-      response = await fetch(listUrl, {
-        method: "POST",
-        headers: {
-          apikey: authKey,
-          Authorization: `Bearer ${authKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prefix,
-          limit: 1,
-          offset: 0,
-          sortBy: { column: "name", order: "desc" },
-        }),
-      });
-
-      if (response.ok) break;
-
-      const status = response.status;
-      if (status >= 500 && intento === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        continue;
-      }
-
-      console.error(
-        "[obtenerMiniaturaDesdeStorage] respuesta no OK",
-        carpeta,
-        identificador,
-        prefix,
-        status,
-        await response.text().catch(() => "<sin cuerpo>"),
-      );
-      return null;
-    }
-
-    if (!response || !response.ok) return null;
-
-    const payload = (await response.json()) as
-      | Array<{ name?: string | null }>
-      | {
-          items?: Array<{ name?: string | null }>;
-          data?: Array<{ name?: string | null }>;
-          error?: unknown;
-        };
-
-    const posiblesItems = (
-      Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.items)
-          ? payload.items
-          : Array.isArray(payload?.data)
-            ? payload.data
-            : []
-    ).filter((archivo) => {
-      if (!archivo?.name || archivo.name.endsWith("/")) return false;
-      return /\.[a-z0-9]+$/i.test(archivo.name);
-    });
-
-    if (posiblesItems.length === 0) {
-      return null;
-    }
-
-    const item = posiblesItems.find(
-      (archivo) =>
-        archivo?.name !== undefined &&
-        archivo.name !== null &&
-        archivo.name.length > 0 &&
-        !archivo.name.endsWith("/"),
-    );
-
-    if (!item || !item.name) {
-      console.warn(
-        "[obtenerMiniaturaDesdeStorage] sin archivo válido",
-        carpeta,
-        identificador,
-        prefix,
-        JSON.stringify(posiblesItems),
-      );
-      return null;
-    }
-
-    const relativePath = resolveObjectPathFromItem(prefix, item.name ?? "");
-
-    return buildStorageProxyUrl(relativePath);
-  };
-
-  for (const candidato of candidatePrefixes) {
-    try {
-      const url = await listarPrimerArchivo(candidato);
-      if (url) {
-        cache.set(cacheKey, url);
-        return url;
-      }
-    } catch (error) {
-      const isNetworkError = error instanceof TypeError;
-      const logger = isNetworkError ? console.warn : console.error;
-      logger(
-        "[obtenerMiniaturaDesdeStorage] error al listar",
-        carpeta,
-        identificador,
-        candidato,
-        error,
-      );
-      if (isNetworkError) {
-        continue;
-      }
-    }
+  const cachedThumbnail = getCachedThumbnail(cacheKey);
+  if (cachedThumbnail !== undefined) {
+    cache.set(cacheKey, cachedThumbnail);
+    return cachedThumbnail;
   }
 
-  cache.set(cacheKey, null);
-  return null;
+  const pendingLookup = thumbnailInFlightCache.get(cacheKey);
+  if (pendingLookup) {
+    const result = await pendingLookup;
+    cache.set(cacheKey, result);
+    return result;
+  }
+
+  const lookupPromise = (async () => {
+    const listUrl = `${config.url}/storage/v1/object/list/${STORAGE_BUCKET}`;
+    const authKey = getStorageAuthKey(config);
+
+    const { prefix, prefixWithSlash } = sanitizeStorageFolder(
+      carpeta,
+      identificador,
+    );
+
+    const candidatePrefixes = Array.from(
+      new Set(
+        [
+          prefixWithSlash,
+          prefix,
+          prefixWithSlash.replace(/\/+$/, ""),
+        ].filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        ),
+      ),
+    );
+
+    const normalizarPrefix = (valor: string) => {
+      const limpio = valor.replace(/\\/g, "/").replace(/\/+/g, "/");
+      const sinInicial = limpio.startsWith("/") ? limpio.slice(1) : limpio;
+      if (sinInicial.length === 0) return "";
+      return sinInicial.endsWith("/") ? sinInicial : `${sinInicial}/`;
+    };
+
+    const listarPrimerArchivo = async (prefixOriginal: string) => {
+      const prefix = normalizarPrefix(prefixOriginal);
+
+      let response: Response | null = null;
+      for (
+        let intento = 0;
+        intento < STORAGE_LIST_MAX_ATTEMPTS;
+        intento += 1
+      ) {
+        response = await runWithStorageListConcurrencyLimit(() =>
+          fetch(listUrl, {
+            method: "POST",
+            headers: {
+              apikey: authKey,
+              Authorization: `Bearer ${authKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              prefix,
+              limit: 1,
+              offset: 0,
+              sortBy: { column: "name", order: "desc" },
+            }),
+          }),
+        );
+
+        if (response.ok) {
+          break;
+        }
+
+        const status = response.status;
+        const shouldRetry =
+          (status === 429 || status >= 500) &&
+          intento < STORAGE_LIST_MAX_ATTEMPTS - 1;
+
+        if (shouldRetry) {
+          await sleep(150 * 2 ** intento);
+          continue;
+        }
+
+        console.error(
+          "[obtenerMiniaturaDesdeStorage] respuesta no OK",
+          carpeta,
+          identificador,
+          prefix,
+          status,
+          await response.text().catch(() => "<sin cuerpo>"),
+        );
+        return null;
+      }
+
+      if (!response || !response.ok) return null;
+
+      const payload = (await response.json()) as
+        | Array<{ name?: string | null }>
+        | {
+            items?: Array<{ name?: string | null }>;
+            data?: Array<{ name?: string | null }>;
+            error?: unknown;
+          };
+
+      const posiblesItems = (
+        Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : []
+      ).filter((archivo) => {
+        if (!archivo?.name || archivo.name.endsWith("/")) return false;
+        return /\.[a-z0-9]+$/i.test(archivo.name);
+      });
+
+      if (posiblesItems.length === 0) {
+        return null;
+      }
+
+      const item = posiblesItems.find(
+        (archivo) =>
+          archivo?.name !== undefined &&
+          archivo.name !== null &&
+          archivo.name.length > 0 &&
+          !archivo.name.endsWith("/"),
+      );
+
+      if (!item || !item.name) {
+        console.warn(
+          "[obtenerMiniaturaDesdeStorage] sin archivo válido",
+          carpeta,
+          identificador,
+          prefix,
+          JSON.stringify(posiblesItems),
+        );
+        return null;
+      }
+
+      const relativePath = resolveObjectPathFromItem(prefix, item.name ?? "");
+
+      return buildStorageProxyUrl(relativePath);
+    };
+
+    for (const candidato of candidatePrefixes) {
+      try {
+        const url = await listarPrimerArchivo(candidato);
+        if (url) {
+          setCachedThumbnail(cacheKey, url);
+          return url;
+        }
+      } catch (error) {
+        const isNetworkError = error instanceof TypeError;
+        const logger = isNetworkError ? console.warn : console.error;
+        logger(
+          "[obtenerMiniaturaDesdeStorage] error al listar",
+          carpeta,
+          identificador,
+          candidato,
+          error,
+        );
+      }
+    }
+
+    setCachedThumbnail(cacheKey, null);
+    return null;
+  })();
+
+  thumbnailInFlightCache.set(cacheKey, lookupPromise);
+
+  try {
+    const result = await lookupPromise;
+    cache.set(cacheKey, result);
+    return result;
+  } finally {
+    thumbnailInFlightCache.delete(cacheKey);
+  }
 }
 
 async function completarFabricantesPantallas(
