@@ -177,12 +177,13 @@ export default function PatchPanelPortsForm({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-sm">
+        <table className="w-full min-w-[920px] border-collapse text-sm">
           <thead>
             <tr className="bg-foreground/5 text-left text-foreground/70">
               <th className="px-3 py-2 font-medium">Puerto</th>
               <th className="px-3 py-2 font-medium">Switch</th>
               <th className="px-3 py-2 font-medium">Puerto switch</th>
+              <th className="px-3 py-2 font-medium">Etiqueta</th>
               <th className="px-3 py-2 font-medium">Observaciones</th>
             </tr>
           </thead>
@@ -207,23 +208,11 @@ export default function PatchPanelPortsForm({
               return (
                 <tr key={numero} className="align-top">
                   <td className="px-3 py-3 text-sm font-semibold text-foreground">
-                    <div className="flex flex-col gap-1">
-                      <span>{numero}</span>
-                      {etiquetaTexto ? (
-                        <span className="text-xs font-medium text-foreground/60">
-                          {etiquetaTexto}
-                        </span>
-                      ) : null}
-                    </div>
+                    <span>{numero}</span>
                     <input
                       type="hidden"
                       name={`${campoBase}_numero`}
                       value={String(numero)}
-                    />
-                    <input
-                      type="hidden"
-                      name={`${campoBase}_etiqueta`}
-                      value={etiquetaDefaultValue}
                     />
                     <input
                       type="hidden"
@@ -277,6 +266,16 @@ export default function PatchPanelPortsForm({
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      name={`${campoBase}_etiqueta`}
+                      key={`${campoBase}_etiqueta_${etiquetaDefaultValue}`}
+                      defaultValue={etiquetaDefaultValue}
+                      placeholder={`Etiqueta ${numero}`}
+                      className="w-full min-w-[180px] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <textarea
