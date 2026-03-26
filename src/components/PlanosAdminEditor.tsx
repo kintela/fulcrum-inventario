@@ -31,6 +31,11 @@ type Position = {
   yPct: number | null;
 };
 
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
 function toPositionRecord(equipos: EquipoRecord[]): Record<string, Position> {
   return Object.fromEntries(
     equipos.map((equipo) => [
@@ -65,6 +70,47 @@ function formatCoordinate(value: number | null | undefined): string {
   }
 
   return `${value.toFixed(2)}%`;
+}
+
+function clampZoom(value: number): number {
+  return Math.min(4, Math.max(0.5, value));
+}
+
+function normalizeRotationTurns(value: number): 0 | 1 | 2 | 3 {
+  const normalized = ((value % 4) + 4) % 4;
+  return normalized as 0 | 1 | 2 | 3;
+}
+
+function fitImageToViewport(
+  naturalSize: ImageDimensions,
+  viewportWidth: number | null,
+): ImageDimensions {
+  const usableWidth =
+    typeof viewportWidth === "number" && viewportWidth > 0
+      ? Math.max(320, viewportWidth - 24)
+      : naturalSize.width;
+  const scale = naturalSize.width > usableWidth ? usableWidth / naturalSize.width : 1;
+
+  return {
+    width: Math.round(naturalSize.width * scale),
+    height: Math.round(naturalSize.height * scale),
+  };
+}
+
+function mapPositionToVisual(
+  position: { xPct: number; yPct: number },
+  rotationTurns: 0 | 1 | 2 | 3,
+): { xPct: number; yPct: number } {
+  switch (rotationTurns) {
+    case 1:
+      return { xPct: 100 - position.yPct, yPct: position.xPct };
+    case 2:
+      return { xPct: 100 - position.xPct, yPct: 100 - position.yPct };
+    case 3:
+      return { xPct: position.yPct, yPct: 100 - position.xPct };
+    default:
+      return position;
+  }
 }
 
 function ActionButtons({
@@ -119,8 +165,14 @@ export default function PlanosAdminEditor({
   const [searchTerm, setSearchTerm] = useState("");
   const [feedback, setFeedback] = useState<PlanosAdminEditorState | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [rotationTurns, setRotationTurns] = useState<0 | 1 | 2 | 3>(0);
+  const [imageNaturalSize, setImageNaturalSize] = useState<ImageDimensions | null>(null);
+  const [imageBaseSize, setImageBaseSize] = useState<ImageDimensions | null>(null);
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setPositionsById(toPositionRecord(equipos));
@@ -133,6 +185,32 @@ export default function PlanosAdminEditor({
   useEffect(() => {
     setImageLoadFailed(false);
   }, [planoImageUrl]);
+
+  useEffect(() => {
+    setZoom(1);
+  }, [planoImageUrl]);
+
+  useEffect(() => {
+    setRotationTurns(0);
+    setImageNaturalSize(null);
+    setImageBaseSize(null);
+  }, [planoImageUrl]);
+
+  useEffect(() => {
+    if (!imageNaturalSize) return;
+
+    const syncImageBaseSize = () => {
+      const viewportWidth = viewportRef.current?.clientWidth ?? null;
+      setImageBaseSize(fitImageToViewport(imageNaturalSize, viewportWidth));
+    };
+
+    syncImageBaseSize();
+    window.addEventListener("resize", syncImageBaseSize);
+
+    return () => {
+      window.removeEventListener("resize", syncImageBaseSize);
+    };
+  }, [imageNaturalSize]);
 
   useEffect(() => {
     if (state.status === "idle") return;
@@ -191,20 +269,103 @@ export default function PlanosAdminEditor({
     );
   }).length;
 
-  const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!selectedEquipoId || !imageRef.current) return;
+  const imageWidth = imageBaseSize?.width ?? 0;
+  const imageHeight = imageBaseSize?.height ?? 0;
+  const isQuarterTurn = rotationTurns % 2 !== 0;
+  const stageWidth = isQuarterTurn ? imageHeight : imageWidth;
+  const stageHeight = isQuarterTurn ? imageWidth : imageHeight;
+  const rotationDegrees = rotationTurns * 90;
 
-    const rect = imageRef.current.getBoundingClientRect();
+  const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!selectedEquipoId || !stageRef.current) return;
+
+    const rect = stageRef.current.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    const xVisual = ((event.clientX - rect.left) / rect.width) * 100;
+    const yVisual = ((event.clientY - rect.top) / rect.height) * 100;
+    let x = xVisual;
+    let y = yVisual;
+
+    switch (rotationTurns) {
+      case 1:
+        x = yVisual;
+        y = 100 - xVisual;
+        break;
+      case 2:
+        x = 100 - xVisual;
+        y = 100 - yVisual;
+        break;
+      case 3:
+        x = 100 - yVisual;
+        y = xVisual;
+        break;
+      default:
+        break;
+    }
+
     const xPct = Number(Math.min(100, Math.max(0, x)).toFixed(3));
     const yPct = Number(Math.min(100, Math.max(0, y)).toFixed(3));
 
     setDraftPosition({ xPct, yPct });
     setFeedback(null);
   };
+
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    setImageLoadFailed(false);
+
+    const naturalWidth = event.currentTarget.naturalWidth || event.currentTarget.clientWidth;
+    const naturalHeight = event.currentTarget.naturalHeight || event.currentTarget.clientHeight;
+
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setImageNaturalSize({ width: naturalWidth, height: naturalHeight });
+    }
+  };
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const handleWheelZoom = (event: WheelEvent) => {
+      event.preventDefault();
+
+      const rect = viewport.getBoundingClientRect();
+      const pointerX = event.clientX - rect.left + viewport.scrollLeft;
+      const pointerY = event.clientY - rect.top + viewport.scrollTop;
+      const zoomFactor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+
+      setZoom((currentZoom) => {
+        const nextZoom = clampZoom(Number((currentZoom * zoomFactor).toFixed(3)));
+        if (nextZoom === currentZoom) {
+          return currentZoom;
+        }
+
+        const scaleRatio = nextZoom / currentZoom;
+
+        requestAnimationFrame(() => {
+          const currentViewport = viewportRef.current;
+          if (!currentViewport) return;
+
+          currentViewport.scrollLeft = Math.max(
+            0,
+            pointerX * scaleRatio - (event.clientX - rect.left),
+          );
+          currentViewport.scrollTop = Math.max(
+            0,
+            pointerY * scaleRatio - (event.clientY - rect.top),
+          );
+        });
+
+        return nextZoom;
+      });
+    };
+
+    viewport.addEventListener("wheel", handleWheelZoom, { passive: false });
+
+    return () => {
+      viewport.removeEventListener("wheel", handleWheelZoom);
+    };
+  }, []);
 
   return (
     <section className="space-y-6">
@@ -375,17 +536,77 @@ export default function PlanosAdminEditor({
               </p>
             ) : (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/60">
-                  <span className="font-medium text-foreground/70">Ruta del plano:</span>
-                  <code className="rounded bg-foreground/5 px-2 py-1">{planoImageUrl}</code>
-                  <a
-                    href={planoImageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline underline-offset-4 hover:text-blue-700"
-                  >
-                    Abrir plano en otra pestaña
-                  </a>
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-foreground/60">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-medium text-foreground/70">Ruta del plano:</span>
+                    <code className="rounded bg-foreground/5 px-2 py-1">{planoImageUrl}</code>
+                    <a
+                      href={planoImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 underline underline-offset-4 hover:text-blue-700"
+                    >
+                      Abrir plano en otra pestaña
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-foreground/5 px-2 py-1 font-medium text-foreground/70">
+                      Giro {rotationDegrees}°
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRotationTurns((currentTurns) =>
+                          normalizeRotationTurns(currentTurns - 1),
+                        )
+                      }
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      Izquierda
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRotationTurns(0)}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      0°
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRotationTurns((currentTurns) =>
+                          normalizeRotationTurns(currentTurns + 1),
+                        )
+                      }
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      Derecha
+                    </button>
+                    <span className="rounded bg-foreground/5 px-2 py-1 font-medium text-foreground/70">
+                      Zoom {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setZoom((currentZoom) => clampZoom(currentZoom / 1.1))}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoom(1)}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      100%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoom((currentZoom) => clampZoom(currentZoom * 1.1))}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground transition hover:bg-foreground/10"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
                 {imageLoadFailed ? (
@@ -397,60 +618,111 @@ export default function PlanosAdminEditor({
                 ) : null}
 
                 <div
-                  className="relative inline-block max-w-full cursor-crosshair overflow-auto rounded-lg border border-border bg-white"
-                  onClick={handleMapClick}
+                  ref={viewportRef}
+                  className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-white"
                 >
-                  <img
-                    ref={imageRef}
-                    src={planoImageUrl}
-                    alt="Plano de oficina"
-                    className="block h-auto max-w-full"
-                    draggable={false}
-                    onLoad={() => setImageLoadFailed(false)}
-                    onError={() => setImageLoadFailed(true)}
-                  />
-
-                  {equipos.map((equipo) => {
-                    const position =
-                      equipo.id === selectedEquipoId && draftPosition
-                        ? draftPosition
-                        : positionsById[equipo.id];
-
-                    if (
-                      typeof position?.xPct !== "number" ||
-                      !Number.isFinite(position.xPct) ||
-                      typeof position?.yPct !== "number" ||
-                      !Number.isFinite(position.yPct)
-                    ) {
-                      return null;
-                    }
-
-                    const isSelected = equipo.id === selectedEquipoId;
-                    const label = equipo.toma_red?.trim() || equipo.nombre?.trim() || equipo.id;
-
-                    return (
-                      <button
-                        key={`marker-${equipo.id}`}
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedEquipoId(equipo.id);
-                        }}
-                        title={label}
-                        className={`absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow ${
-                          isSelected
-                            ? "border-white bg-red-500 shadow-red-500/50"
-                            : "border-white bg-sky-500 shadow-sky-500/40"
-                        }`}
+                  {imageBaseSize ? (
+                    <div
+                      className="origin-top-left"
+                      style={{
+                        width: `${stageWidth}px`,
+                        height: `${stageHeight}px`,
+                        transform: `scale(${zoom})`,
+                      }}
+                    >
+                      <div
+                        ref={stageRef}
+                        className="relative cursor-crosshair"
+                        onClick={handleMapClick}
                         style={{
-                          left: `${position.xPct}%`,
-                          top: `${position.yPct}%`,
+                          width: `${stageWidth}px`,
+                          height: `${stageHeight}px`,
                         }}
                       >
-                        <span className="sr-only">{label}</span>
-                      </button>
-                    );
-                  })}
+                        <div
+                          className="absolute left-1/2 top-1/2"
+                          style={{
+                            width: `${imageWidth}px`,
+                            height: `${imageHeight}px`,
+                            transform: `translate(-50%, -50%) rotate(${rotationDegrees}deg)`,
+                            transformOrigin: "center center",
+                          }}
+                        >
+                          <img
+                            ref={imageRef}
+                            src={planoImageUrl}
+                            alt="Plano de oficina"
+                            className="block h-full w-full"
+                            draggable={false}
+                            onLoad={handleImageLoad}
+                            onError={() => setImageLoadFailed(true)}
+                          />
+                        </div>
+
+                        <div className="pointer-events-none absolute inset-0 z-10">
+                          {equipos.map((equipo) => {
+                            const position =
+                              equipo.id === selectedEquipoId && draftPosition
+                                ? draftPosition
+                                : positionsById[equipo.id];
+
+                            if (
+                              typeof position?.xPct !== "number" ||
+                              !Number.isFinite(position.xPct) ||
+                              typeof position?.yPct !== "number" ||
+                              !Number.isFinite(position.yPct)
+                            ) {
+                              return null;
+                            }
+
+                            const isSelected = equipo.id === selectedEquipoId;
+                            const label =
+                              equipo.toma_red?.trim() || equipo.nombre?.trim() || equipo.id;
+                            const visualPosition = mapPositionToVisual(
+                              {
+                                xPct: position.xPct,
+                                yPct: position.yPct,
+                              },
+                              rotationTurns,
+                            );
+
+                            return (
+                              <button
+                                key={`marker-${equipo.id}`}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedEquipoId(equipo.id);
+                                }}
+                                title={label}
+                                className={`pointer-events-auto absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow ${
+                                  isSelected
+                                    ? "border-white bg-red-500 shadow-red-500/50"
+                                    : "border-white bg-sky-500 shadow-sky-500/40"
+                                }`}
+                                style={{
+                                  left: `${visualPosition.xPct}%`,
+                                  top: `${visualPosition.yPct}%`,
+                                }}
+                              >
+                                <span className="sr-only">{label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      ref={imageRef}
+                      src={planoImageUrl}
+                      alt="Plano de oficina"
+                      className="block h-auto max-w-full"
+                      draggable={false}
+                      onLoad={handleImageLoad}
+                      onError={() => setImageLoadFailed(true)}
+                    />
+                  )}
                 </div>
               </div>
             )}
