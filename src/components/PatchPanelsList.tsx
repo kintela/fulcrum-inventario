@@ -31,6 +31,64 @@ function extraerNumeroFinal(nombre: string | null | undefined): number | null {
 const normalizeValue = (value: string | null | undefined) =>
   value ? value.toLowerCase().trim() : "";
 
+function getOrderedPatchPanelPorts(
+  panel: PatchPanelRecord,
+  includeImplicitFreePorts = false,
+): PatchPanelPortRecord[] {
+  const puertosConfigurados =
+    Array.isArray(panel.puertos) && panel.puertos.length > 0
+      ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
+      : [];
+
+  if (!includeImplicitFreePorts) {
+    return puertosConfigurados;
+  }
+
+  const puertosTotales =
+    typeof panel.puertos_totales === "number" &&
+    Number.isFinite(panel.puertos_totales) &&
+    panel.puertos_totales > 0
+      ? Math.trunc(panel.puertos_totales)
+      : puertosConfigurados.length;
+
+  if (puertosTotales <= puertosConfigurados.length) {
+    return puertosConfigurados;
+  }
+
+  const puertosPorNumero = new Map<number, PatchPanelPortRecord>();
+  puertosConfigurados.forEach((puerto) => {
+    if (typeof puerto.numero === "number" && Number.isFinite(puerto.numero)) {
+      puertosPorNumero.set(puerto.numero, puerto);
+    }
+  });
+
+  const patchpanelIdNumerico = Number.parseInt(String(panel.id), 10);
+  const patchpanelIdFallback = Number.isFinite(patchpanelIdNumerico)
+    ? patchpanelIdNumerico
+    : 0;
+  const puertosCompletos: PatchPanelPortRecord[] = [];
+
+  for (let numero = 1; numero <= puertosTotales; numero += 1) {
+    const puertoExistente = puertosPorNumero.get(numero);
+    if (puertoExistente) {
+      puertosCompletos.push(puertoExistente);
+      continue;
+    }
+
+    puertosCompletos.push({
+      id: -(patchpanelIdFallback * 10_000 + numero),
+      patchpanel_id: patchpanelIdFallback,
+      numero,
+      puerto_switch_id: null,
+      etiqueta: null,
+      observaciones: null,
+      puerto_switch: null,
+    });
+  }
+
+  return puertosCompletos;
+}
+
 const resolvePortInfo = (puerto: PatchPanelPortRecord) => {
   const etiquetaTexto =
     typeof puerto.etiqueta === "string" && puerto.etiqueta.trim().length > 0
@@ -482,10 +540,10 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
 
     return basePanels
       .map((panel) => {
-        const puertosOrdenados =
-          Array.isArray(panel.puertos) && panel.puertos.length > 0
-            ? panel.puertos.slice().sort((a, b) => a.numero - b.numero)
-            : [];
+        const puertosOrdenados = getOrderedPatchPanelPorts(
+          panel,
+          showFreePorts,
+        );
         const puertosFiltrados = isFilterActive
           ? puertosOrdenados.filter((puerto) => portMatchesFilters(puerto))
           : puertosOrdenados;
@@ -811,7 +869,7 @@ export default function PatchPanelsList({ patchpanels }: PatchPanelsListProps) {
                             } = resolvePortInfo(puerto);
 
                             return (
-                              <tr key={puerto.id}>
+                              <tr key={`${panel.id}-${puerto.numero}-${puerto.id}`}>
                                 <td className="px-3 py-2 text-foreground">
                                   {etiquetaTexto ? (
                                     <span>
