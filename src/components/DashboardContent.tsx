@@ -479,6 +479,36 @@ export default function DashboardContent({
             </Link>
             <span>Patch</span>
           </div>
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/admin"
+              aria-label="Administración"
+              title="Administración"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 8.75A3.25 3.25 0 1 0 12 15.25A3.25 3.25 0 1 0 12 8.75Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M19 12A7 7 0 0 0 18.92 10.95L21 9.34L19.5 6.74L17.02 7.55C16.47 7.08 15.85 6.69 15.18 6.41L14.75 3.84H9.25L8.82 6.41C8.15 6.69 7.53 7.08 6.98 7.55L4.5 6.74L3 9.34L5.08 10.95C5.03 11.3 5 11.65 5 12C5 12.35 5.03 12.7 5.08 13.05L3 14.66L4.5 17.26L6.98 16.45C7.53 16.92 8.15 17.31 8.82 17.59L9.25 20.16H14.75L15.18 17.59C15.85 17.31 16.47 16.92 17.02 16.45L19.5 17.26L21 14.66L18.92 13.05C18.97 12.7 19 12.35 19 12Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <span>Admin</span>
+          </div>
         </div>
       </header>
 

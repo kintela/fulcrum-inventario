@@ -240,6 +240,9 @@ export type EquipoRecord = {
   mac: string | null;
   ip: string | null;
   toma_red: string | null;
+  plano_id?: number | null;
+  x_pct?: number | null;
+  y_pct?: number | null;
   tarjeta_red: string | number | null;
   admin_local: string | null;
   admite_update: boolean | null;
@@ -291,7 +294,19 @@ export type UsuarioCatalogo = {
   nombre_completo: string | null;
 };
 
-function buildStorageProxyUrl(...segments: string[]): string {
+export type PlanoRecord = {
+  id: number;
+  nombre: string | null;
+  ruta_storage: string | null;
+  creado_el?: string | null;
+};
+
+type StorageBucket = "fotos" | "planos";
+
+function buildStorageProxyUrlForBucket(
+  bucket: StorageBucket,
+  ...segments: string[]
+): string {
   const encoded = segments
     .map((segment) =>
       segment
@@ -301,7 +316,15 @@ function buildStorageProxyUrl(...segments: string[]): string {
     )
     .join("/");
 
-  return `/api/storage/image?path=${encoded}`;
+  return `/api/storage/image?bucket=${encodeURIComponent(bucket)}&path=${encoded}`;
+}
+
+function buildStorageProxyUrl(...segments: string[]): string {
+  return buildStorageProxyUrlForBucket("fotos", ...segments);
+}
+
+export function buildPlanoStorageProxyUrl(path: string): string {
+  return buildStorageProxyUrlForBucket("planos", path);
 }
 
 type StorageFolder = "equipos" | "pantallas";
@@ -1789,6 +1812,9 @@ export type EquipoUpdatePayload = {
   mac?: string | null;
   ip?: string | null;
   toma_red?: string | null;
+  plano_id?: number | null;
+  x_pct?: number | null;
+  y_pct?: number | null;
   tarjeta_red?: string | number | null;
   admin_local?: string | null;
   admite_update?: boolean | null;
@@ -1826,6 +1852,60 @@ export async function fetchEquiposCatalogo(): Promise<EquipoCatalogoItem[]> {
   }
 
   return (await response.json()) as EquipoCatalogoItem[];
+}
+
+export async function fetchPlanos(): Promise<PlanoRecord[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/planos`);
+  requestUrl.searchParams.set("select", "id,nombre,ruta_storage,creado_el");
+  requestUrl.searchParams.set("order", "nombre.asc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar planos: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as PlanoRecord[];
+}
+
+export async function fetchEquiposByPlanoId(
+  planoId: number,
+): Promise<EquipoRecord[]> {
+  const config = getSupabaseConfig();
+  const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
+  requestUrl.searchParams.set(
+    "select",
+    "id,nombre,modelo,toma_red,plano_id,x_pct,y_pct,ubicacion:ubicaciones(nombre)",
+  );
+  requestUrl.searchParams.set("plano_id", `eq.${planoId}`);
+  requestUrl.searchParams.set("order", "toma_red.asc.nullslast,nombre.asc.nullslast");
+
+  const response = await fetch(requestUrl.toString(), {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(
+      `Error al recuperar equipos del plano ${planoId}: ${response.status} ${details}`,
+    );
+  }
+
+  return (await response.json()) as EquipoRecord[];
 }
 
 export async function fetchSwitchesCatalogo(): Promise<SwitchCatalogoItem[]> {
@@ -1905,6 +1985,9 @@ export type EquipoInsertPayload = {
   mac?: string | null;
   ip?: string | null;
   toma_red?: string | null;
+  plano_id?: number | null;
+  x_pct?: number | null;
+  y_pct?: number | null;
   tarjeta_red?: string | number | null;
   admin_local?: string | null;
   admite_update?: boolean | null;
