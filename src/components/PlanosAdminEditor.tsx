@@ -72,6 +72,64 @@ function formatCoordinate(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
+function getEquipoDisplayName(equipo: EquipoRecord): string {
+  return equipo.nombre?.trim() || equipo.modelo?.trim() || `Equipo ${equipo.id}`;
+}
+
+function getUsuarioDisplayName(equipo: EquipoRecord): string {
+  const nombreCompleto = equipo.usuario?.nombre_completo?.trim();
+  if (nombreCompleto) return nombreCompleto;
+
+  const partes = [equipo.usuario?.nombre, equipo.usuario?.apellidos]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value) => value.length > 0);
+
+  return partes.length > 0 ? partes.join(" ") : "Sin usuario";
+}
+
+function getConexionPrincipal(equipo: EquipoRecord): {
+  switchName: string;
+  portLabel: string;
+} {
+  const primerPuerto = Array.isArray(equipo.puertos_conectados)
+    ? equipo.puertos_conectados
+        .filter(
+          (puerto) =>
+            Boolean(puerto) &&
+            typeof puerto.switch_id === "number" &&
+            Number.isFinite(puerto.switch_id),
+        )
+        .slice()
+        .sort((a, b) => {
+          const switchA = typeof a.switch_id === "number" ? a.switch_id : Number.MAX_SAFE_INTEGER;
+          const switchB = typeof b.switch_id === "number" ? b.switch_id : Number.MAX_SAFE_INTEGER;
+          if (switchA !== switchB) return switchA - switchB;
+
+          const numeroA = typeof a.numero === "number" ? a.numero : Number.MAX_SAFE_INTEGER;
+          const numeroB = typeof b.numero === "number" ? b.numero : Number.MAX_SAFE_INTEGER;
+          return numeroA - numeroB;
+        })[0] ?? null
+    : null;
+
+  if (!primerPuerto) {
+    return {
+      switchName: "Sin switch",
+      portLabel: "Sin puerto",
+    };
+  }
+
+  const switchName =
+    primerPuerto.switch?.nombre?.trim() ||
+    (typeof primerPuerto.switch_id === "number" ? `Switch ${primerPuerto.switch_id}` : "Sin switch");
+
+  const portLabel =
+    typeof primerPuerto.numero === "number" && Number.isFinite(primerPuerto.numero)
+      ? String(primerPuerto.numero)
+      : primerPuerto.nombre?.trim() || "Sin puerto";
+
+  return { switchName, portLabel };
+}
+
 function clampZoom(value: number): number {
   return Math.min(4, Math.max(0.5, value));
 }
@@ -406,10 +464,7 @@ export default function PlanosAdminEditor({
                   Number.isFinite(position.xPct) &&
                   typeof position?.yPct === "number" &&
                   Number.isFinite(position.yPct);
-                const titulo =
-                  equipo.nombre?.trim() ||
-                  equipo.modelo?.trim() ||
-                  `Equipo ${equipo.id}`;
+                const titulo = getEquipoDisplayName(equipo);
 
                 return (
                   <button
@@ -485,9 +540,7 @@ export default function PlanosAdminEditor({
                   Equipo seleccionado
                 </div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
-                  {selectedEquipo?.nombre?.trim() ||
-                    selectedEquipo?.modelo?.trim() ||
-                    (selectedEquipo ? `Equipo ${selectedEquipo.id}` : "Ninguno")}
+                  {selectedEquipo ? getEquipoDisplayName(selectedEquipo) : "Ninguno"}
                 </div>
               </div>
               <div className="rounded-lg border border-border bg-background px-3 py-2">
@@ -676,8 +729,17 @@ export default function PlanosAdminEditor({
                             }
 
                             const isSelected = equipo.id === selectedEquipoId;
-                            const label =
-                              equipo.toma_red?.trim() || equipo.nombre?.trim() || equipo.id;
+                            const equipoLabel = getEquipoDisplayName(equipo);
+                            const usuarioLabel = getUsuarioDisplayName(equipo);
+                            const tomaLabel = equipo.toma_red?.trim() || "Sin toma";
+                            const conexion = getConexionPrincipal(equipo);
+                            const tooltipLabel = [
+                              `Equipo: ${equipoLabel}`,
+                              `Usuario: ${usuarioLabel}`,
+                              `Toma: ${tomaLabel}`,
+                              `Switch: ${conexion.switchName}`,
+                              `Puerto: ${conexion.portLabel}`,
+                            ].join("\n");
                             const visualPosition = mapPositionToVisual(
                               {
                                 xPct: position.xPct,
@@ -687,26 +749,39 @@ export default function PlanosAdminEditor({
                             );
 
                             return (
-                              <button
+                              <div
                                 key={`marker-${equipo.id}`}
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setSelectedEquipoId(equipo.id);
-                                }}
-                                title={label}
-                                className={`pointer-events-auto absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow ${
-                                  isSelected
-                                    ? "border-white bg-red-500 shadow-red-500/50"
-                                    : "border-white bg-sky-500 shadow-sky-500/40"
-                                }`}
+                                className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
                                 style={{
                                   left: `${visualPosition.xPct}%`,
                                   top: `${visualPosition.yPct}%`,
                                 }}
                               >
-                                <span className="sr-only">{label}</span>
-                              </button>
+                                <span
+                                  className={`mb-0.5 block max-w-[72px] truncate rounded border px-1 py-px text-center text-[8px] leading-none ${
+                                    isSelected
+                                      ? "border-red-200 bg-red-50/95 text-red-950"
+                                      : "border-slate-200 bg-white/95 text-slate-900"
+                                  }`}
+                                >
+                                  {usuarioLabel}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setSelectedEquipoId(equipo.id);
+                                  }}
+                                  title={tooltipLabel}
+                                  className={`pointer-events-auto block h-2.5 w-2.5 rounded-full border shadow ${
+                                    isSelected
+                                      ? "border-white bg-red-500 shadow-red-500/50"
+                                      : "border-white bg-sky-500 shadow-sky-500/40"
+                                  }`}
+                                >
+                                  <span className="sr-only">{equipoLabel}</span>
+                                </button>
+                              </div>
                             );
                           })}
                         </div>

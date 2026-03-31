@@ -1885,7 +1885,18 @@ export async function fetchEquiposByPlanoId(
   const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
   requestUrl.searchParams.set(
     "select",
-    "id,nombre,modelo,toma_red,plano_id,x_pct,y_pct,ubicacion:ubicaciones(nombre)",
+    [
+      "id",
+      "nombre",
+      "modelo",
+      "toma_red",
+      "plano_id",
+      "x_pct",
+      "y_pct",
+      "ubicacion:ubicaciones(nombre)",
+      "usuario:usuarios(nombre,apellidos,nombre_completo)",
+      "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,switch:switches!puertos_switch_id_fkey(id,nombre),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
+    ].join(","),
   );
   requestUrl.searchParams.set("plano_id", `eq.${planoId}`);
   requestUrl.searchParams.set("order", "toma_red.asc.nullslast,nombre.asc.nullslast");
