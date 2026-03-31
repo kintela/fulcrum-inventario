@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EquipoRecord } from "@/lib/supabase";
 
@@ -72,6 +72,16 @@ function getUsuarioDisplayName(equipo: EquipoRecord): string {
   return partes.length > 0 ? partes.join(" ") : "Sin usuario";
 }
 
+function normalizeComparableText(value: string | null | undefined): string {
+  if (!value) return "";
+
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function getConexionPrincipal(equipo: EquipoRecord): {
   switchName: string;
   portLabel: string;
@@ -123,10 +133,12 @@ export default function PlanosViewer({
 }: PlanosViewerProps) {
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [zoom, setZoom] = useState(1);
   const [rotationTurns, setRotationTurns] = useState<0 | 1 | 2 | 3>(0);
   const [imageNaturalSize, setImageNaturalSize] = useState<ImageDimensions | null>(null);
   const [imageBaseSize, setImageBaseSize] = useState<ImageDimensions | null>(null);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const panStateRef = useRef({
@@ -140,6 +152,7 @@ export default function PlanosViewer({
 
   useEffect(() => {
     setImageLoadFailed(false);
+    setSearchTerm("");
     setZoom(1);
     setRotationTurns(0);
     setImageNaturalSize(null);
@@ -271,6 +284,38 @@ export default function PlanosViewer({
       Number.isFinite(equipo.y_pct)
     );
   });
+  const shouldRestrictMarkersToCurrentPlano = new Set(["principal", "principal2"]).has(
+    normalizeComparableText(planoNombre),
+  );
+  const equiposConPosicionVisibles = useMemo(() => {
+    const equiposDelPlano = shouldRestrictMarkersToCurrentPlano
+      ? equiposConPosicion.filter((equipo) => Number(equipo.plano_id) === Number(planoId))
+      : equiposConPosicion;
+
+    const query = normalizeComparableText(deferredSearchTerm);
+    if (!query) {
+      return equiposDelPlano;
+    }
+
+    return equiposDelPlano.filter((equipo) => {
+      const values = [
+        getEquipoDisplayName(equipo),
+        getUsuarioDisplayName(equipo),
+        equipo.modelo,
+        equipo.toma_red,
+        equipo.ubicacion?.nombre,
+      ]
+        .map((value) => normalizeComparableText(value))
+        .filter((value) => value.length > 0);
+
+      return values.some((value) => value.includes(query));
+    });
+  }, [
+    deferredSearchTerm,
+    equiposConPosicion,
+    planoId,
+    shouldRestrictMarkersToCurrentPlano,
+  ]);
 
   const equiposSinPosicion = equipos.length - equiposConPosicion.length;
   const imageWidth = imageBaseSize?.width ?? 0;
@@ -323,20 +368,22 @@ export default function PlanosViewer({
           </p>
         ) : (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-foreground/60">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="font-medium text-foreground/70">Ruta del plano:</span>
-                <code className="rounded bg-foreground/5 px-2 py-1">{planoImageUrl}</code>
-                <a
-                  href={planoImageUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 underline underline-offset-4 hover:text-blue-700"
-                >
-                  Abrir plano en otra pestaña
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <label className="flex w-full max-w-sm flex-col gap-2 text-xs text-foreground/70">
+                Buscar equipos visibles
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Usuario, equipo, toma o ubicación..."
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-inner focus:border-foreground/60 focus:outline-none focus:ring-2 focus:ring-foreground/30"
+                />
+                <span className="text-[11px] text-foreground/60">
+                  Mostrando {equiposConPosicionVisibles.length} de {equiposConPosicion.length} equipos
+                  ubicados
+                </span>
+              </label>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/60">
                 <span className="rounded bg-foreground/5 px-2 py-1 font-medium text-foreground/70">
                   Giro {rotationDegrees}°
                 </span>
@@ -442,9 +489,7 @@ export default function PlanosViewer({
                     </div>
 
                     <div className="pointer-events-none absolute inset-0 z-10">
-                      {equiposConPosicion
-                        .filter((equipo) => equipo.plano_id === planoId)
-                        .map((equipo) => {
+                      {equiposConPosicionVisibles.map((equipo) => {
                         const usuarioLabel = getUsuarioDisplayName(equipo);
                         const tomaLabel = equipo.toma_red?.trim() || "Sin toma";
                         const equipoLabel = getEquipoDisplayName(equipo);
