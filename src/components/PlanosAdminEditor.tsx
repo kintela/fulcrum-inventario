@@ -72,6 +72,16 @@ function formatCoordinate(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
+function normalizeComparableText(value: string | null | undefined): string {
+  if (!value) return "";
+
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function getEquipoDisplayName(equipo: EquipoRecord): string {
   return equipo.nombre?.trim() || equipo.modelo?.trim() || `Equipo ${equipo.id}`;
 }
@@ -306,11 +316,33 @@ export default function PlanosAdminEditor({
     setDraftPosition(null);
   }, [selectedEquipoId]);
 
-  const equiposFiltrados = useMemo(() => {
-    const query = deferredSearchTerm.trim().toLowerCase();
-    if (!query) return equipos;
+  const selectedPlanoNombre =
+    planos.find((plano) => plano.id === planoSeleccionadoId)?.nombre ?? null;
+  const shouldHidePositionedEquiposInList = new Set(["principal", "principal2"]).has(
+    normalizeComparableText(selectedPlanoNombre),
+  );
+
+  const equiposParaLista = useMemo(() => {
+    if (!shouldHidePositionedEquiposInList) {
+      return equipos;
+    }
 
     return equipos.filter((equipo) => {
+      const position = positionsById[equipo.id];
+      return !(
+        typeof position?.xPct === "number" &&
+        Number.isFinite(position.xPct) &&
+        typeof position?.yPct === "number" &&
+        Number.isFinite(position.yPct)
+      );
+    });
+  }, [equipos, positionsById, shouldHidePositionedEquiposInList]);
+
+  const equiposFiltrados = useMemo(() => {
+    const query = deferredSearchTerm.trim().toLowerCase();
+    if (!query) return equiposParaLista;
+
+    return equiposParaLista.filter((equipo) => {
       const values = [
         equipo.nombre,
         equipo.modelo,
@@ -322,7 +354,7 @@ export default function PlanosAdminEditor({
 
       return values.some((value) => value.includes(query));
     });
-  }, [deferredSearchTerm, equipos]);
+  }, [deferredSearchTerm, equiposParaLista]);
 
   const selectedEquipo =
     equipos.find((equipo) => equipo.id === selectedEquipoId) ?? null;
@@ -799,10 +831,16 @@ export default function PlanosAdminEditor({
 
                         <div className="pointer-events-none absolute inset-0 z-10">
                           {equipos.map((equipo) => {
-                            const position =
-                              equipo.id === selectedEquipoId && draftPosition
-                                ? draftPosition
-                                : positionsById[equipo.id];
+                            const hasDraftPosition =
+                              equipo.id === selectedEquipoId && draftPosition !== null;
+
+                            if (!hasDraftPosition && equipo.plano_id !== planoSeleccionadoId) {
+                              return null;
+                            }
+
+                            const position = hasDraftPosition
+                              ? draftPosition
+                              : positionsById[equipo.id];
 
                             if (
                               typeof position?.xPct !== "number" ||

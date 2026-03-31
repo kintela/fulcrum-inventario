@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EquipoRecord } from "@/lib/supabase";
 
 type PlanosViewerProps = {
+  planoId: number;
   planoNombre: string;
   planoImageUrl: string | null;
   equipos: EquipoRecord[];
@@ -115,6 +116,7 @@ function getConexionPrincipal(equipo: EquipoRecord): {
 }
 
 export default function PlanosViewer({
+  planoId,
   planoNombre,
   planoImageUrl,
   equipos,
@@ -440,7 +442,9 @@ export default function PlanosViewer({
                     </div>
 
                     <div className="pointer-events-none absolute inset-0 z-10">
-                      {equiposConPosicion.map((equipo) => {
+                      {equiposConPosicion
+                        .filter((equipo) => equipo.plano_id === planoId)
+                        .map((equipo) => {
                         const usuarioLabel = getUsuarioDisplayName(equipo);
                         const tomaLabel = equipo.toma_red?.trim() || "Sin toma";
                         const equipoLabel = getEquipoDisplayName(equipo);

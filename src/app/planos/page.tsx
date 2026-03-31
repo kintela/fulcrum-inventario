@@ -79,6 +79,7 @@ export default async function PlanosPage({
 
       {planoSeleccionado ? (
         <PlanosViewer
+          planoId={planoSeleccionado.id}
           planoNombre={planoSeleccionado.nombre?.trim() || `Plano ${planoSeleccionado.id}`}
           planoImageUrl={planoImageUrl}
           equipos={equipos}

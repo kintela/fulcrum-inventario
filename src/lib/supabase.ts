@@ -1894,7 +1894,9 @@ export async function fetchEquiposByPlanoId(
 ): Promise<EquipoRecord[]> {
   const config = getSupabaseConfig();
   const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
-  const isPlanoPrincipal = normalizeComparableText(planoNombre) === "principal";
+  const planoNombreNormalizado = normalizeComparableText(planoNombre);
+  const planosConFiltroPrincipal = new Set(["principal", "principal2"]);
+  const isPlanoPrincipal = planosConFiltroPrincipal.has(planoNombreNormalizado);
   requestUrl.searchParams.set(
     "select",
     [
