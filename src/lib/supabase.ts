@@ -1956,12 +1956,6 @@ export async function fetchEquiposByPlanoId(
       return false;
     }
 
-    if (ubicacion === "obra") {
-      const hasX = typeof equipo.x_pct === "number" && Number.isFinite(equipo.x_pct);
-      const hasY = typeof equipo.y_pct === "number" && Number.isFinite(equipo.y_pct);
-      return !hasX || !hasY;
-    }
-
     return true;
   });
 }
