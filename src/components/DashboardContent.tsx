@@ -354,12 +354,8 @@ export default function DashboardContent({
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Inventario de equipos</h1>
-          <p className="text-sm text-foreground/70">
-            Resumen general del parque de equipos. Los totales se agrupan por tipo y las tarjetas
-            muestran el detalle ordenado por fecha de compra más reciente.
-          </p>
         </div>
-        <div className="flex items-center gap-4 text-xs text-foreground/70">
+        <div className="flex flex-wrap items-center justify-end gap-4 text-xs text-foreground/70">
           <div className="flex flex-col items-center gap-1">
             <Link
               href="/reportes/ips"
@@ -478,6 +474,36 @@ export default function DashboardContent({
               </svg>
             </Link>
             <span>Patch</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Link
+              href="/planos"
+              aria-label="Visualizador de mapas"
+              title="Visualizador de mapas"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground/70 transition hover:bg-card/80 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4.5 6.5L9 4.5L15 6.5L19.5 4.5V17.5L15 19.5L9 17.5L4.5 19.5V6.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 4.5V17.5M15 6.5V19.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <circle cx="12" cy="12" r="1.25" fill="currentColor" />
+              </svg>
+            </Link>
+            <span>Mapas</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Link
