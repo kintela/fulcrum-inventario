@@ -224,6 +224,7 @@ export default function PlanosAdminEditor({
   const [feedback, setFeedback] = useState<PlanosAdminEditorState | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [rotationTurns, setRotationTurns] = useState<0 | 1 | 2 | 3>(0);
   const [imageNaturalSize, setImageNaturalSize] = useState<ImageDimensions | null>(null);
@@ -263,6 +264,10 @@ export default function PlanosAdminEditor({
     setImageNaturalSize(null);
     setImageBaseSize(null);
   }, [planoImageUrl]);
+
+  useEffect(() => {
+    setShowLabels(true);
+  }, [planoSeleccionadoId]);
 
   useEffect(() => {
     if (!imageNaturalSize) return;
@@ -724,6 +729,18 @@ export default function PlanosAdminEditor({
                     >
                       +
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowLabels((currentValue) => !currentValue)}
+                      aria-pressed={showLabels}
+                      className={`rounded border px-2 py-1 text-sm transition ${
+                        showLabels
+                          ? "border-foreground bg-foreground text-background hover:bg-foreground/90"
+                          : "border-border bg-background text-foreground hover:bg-foreground/10"
+                      }`}
+                    >
+                      {showLabels ? "Ocultar etiquetas" : "Mostrar etiquetas"}
+                    </button>
                   </div>
                 </div>
 
@@ -825,15 +842,17 @@ export default function PlanosAdminEditor({
                                   top: `${visualPosition.yPct}%`,
                                 }}
                               >
-                                <span
-                                  className={`absolute bottom-[7px] left-1/2 block max-w-[72px] -translate-x-1/2 truncate rounded border px-1 py-px text-center text-[8px] leading-none ${
-                                    isSelected
-                                      ? "border-red-200 bg-red-50/95 text-red-950"
-                                      : "border-slate-200 bg-white/95 text-slate-900"
-                                  }`}
-                                >
-                                  {usuarioLabel}
-                                </span>
+                                {showLabels ? (
+                                  <span
+                                    className={`absolute bottom-[7px] left-1/2 block max-w-[72px] -translate-x-1/2 truncate rounded border px-1 py-px text-center text-[8px] leading-none ${
+                                      isSelected
+                                        ? "border-red-200 bg-red-50/95 text-red-950"
+                                        : "border-slate-200 bg-white/95 text-slate-900"
+                                    }`}
+                                  >
+                                    {usuarioLabel}
+                                  </span>
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={(event) => {
