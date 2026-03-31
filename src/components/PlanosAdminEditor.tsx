@@ -819,14 +819,14 @@ export default function PlanosAdminEditor({
                             return (
                               <div
                                 key={`marker-${equipo.id}`}
-                                className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                                className="pointer-events-none absolute z-10"
                                 style={{
                                   left: `${visualPosition.xPct}%`,
                                   top: `${visualPosition.yPct}%`,
                                 }}
                               >
                                 <span
-                                  className={`mb-0.5 block max-w-[72px] truncate rounded border px-1 py-px text-center text-[8px] leading-none ${
+                                  className={`absolute bottom-[7px] left-1/2 block max-w-[72px] -translate-x-1/2 truncate rounded border px-1 py-px text-center text-[8px] leading-none ${
                                     isSelected
                                       ? "border-red-200 bg-red-50/95 text-red-950"
                                       : "border-slate-200 bg-white/95 text-slate-900"
@@ -845,7 +845,7 @@ export default function PlanosAdminEditor({
                                     setSelectedEquipoId(equipo.id);
                                   }}
                                   title={tooltipLabel}
-                                  className={`pointer-events-auto block h-2.5 w-2.5 rounded-full border shadow ${
+                                  className={`pointer-events-auto absolute left-1/2 top-1/2 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border shadow ${
                                     isSelected
                                       ? "border-white bg-red-500 shadow-red-500/50"
                                       : "border-white bg-sky-500 shadow-sky-500/40"

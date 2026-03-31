@@ -456,13 +456,13 @@ export default function PlanosViewer({
                         return (
                           <div
                             key={`viewer-marker-${equipo.id}`}
-                            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                            className="pointer-events-none absolute z-10"
                             style={{
                               left: `${visualPosition.xPct}%`,
                               top: `${visualPosition.yPct}%`,
                             }}
                           >
-                            <span className="mb-0.5 block max-w-[72px] truncate rounded border border-slate-200 bg-white/95 px-1 py-px text-center text-[8px] leading-none text-slate-900">
+                            <span className="absolute bottom-[7px] left-1/2 block max-w-[72px] -translate-x-1/2 truncate rounded border border-slate-200 bg-white/95 px-1 py-px text-center text-[8px] leading-none text-slate-900">
                               {usuarioLabel}
                             </span>
                             <button
@@ -474,7 +474,7 @@ export default function PlanosViewer({
                                 `Switch: ${conexion.switchName}`,
                                 `Puerto: ${conexion.portLabel}`,
                               ].join("\n")}
-                              className="pointer-events-auto block h-2.5 w-2.5 rounded-full border border-white bg-sky-500 shadow shadow-sky-500/40"
+                              className="pointer-events-auto absolute left-1/2 top-1/2 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-sky-500 shadow shadow-sky-500/40"
                             >
                               <span className="sr-only">{equipoLabel}</span>
                             </button>
