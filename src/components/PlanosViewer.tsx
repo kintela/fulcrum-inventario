@@ -120,12 +120,21 @@ export default function PlanosViewer({
   equipos,
 }: PlanosViewerProps) {
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotationTurns, setRotationTurns] = useState<0 | 1 | 2 | 3>(0);
   const [imageNaturalSize, setImageNaturalSize] = useState<ImageDimensions | null>(null);
   const [imageBaseSize, setImageBaseSize] = useState<ImageDimensions | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const panStateRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
 
   useEffect(() => {
     setImageLoadFailed(false);
@@ -196,6 +205,37 @@ export default function PlanosViewer({
     };
   }, []);
 
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const viewport = viewportRef.current;
+      const panState = panStateRef.current;
+      if (!viewport || !panState.active) return;
+
+      const deltaX = event.clientX - panState.startX;
+      const deltaY = event.clientY - panState.startY;
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        panState.moved = true;
+      }
+
+      viewport.scrollLeft = panState.scrollLeft - deltaX;
+      viewport.scrollTop = panState.scrollTop - deltaY;
+    };
+
+    const stopPanning = () => {
+      if (!panStateRef.current.active) return;
+      panStateRef.current.active = false;
+      setIsPanning(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopPanning);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopPanning);
+    };
+  }, []);
+
   const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     setImageLoadFailed(false);
 
@@ -205,6 +245,20 @@ export default function PlanosViewer({
     if (naturalWidth > 0 && naturalHeight > 0) {
       setImageNaturalSize({ width: naturalWidth, height: naturalHeight });
     }
+  };
+
+  const handleViewportMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !viewportRef.current) return;
+
+    panStateRef.current = {
+      active: true,
+      moved: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: viewportRef.current.scrollLeft,
+      scrollTop: viewportRef.current.scrollTop,
+    };
+    setIsPanning(true);
   };
 
   const equiposConPosicion = equipos.filter((equipo) => {
@@ -344,7 +398,10 @@ export default function PlanosViewer({
 
             <div
               ref={viewportRef}
-              className="max-h-[75vh] overflow-auto rounded-lg border border-border bg-white"
+              onMouseDown={handleViewportMouseDown}
+              className={`max-h-[75vh] overflow-auto rounded-lg border border-border bg-white ${
+                isPanning ? "cursor-grabbing select-none" : "cursor-grab"
+              }`}
             >
               {imageBaseSize ? (
                 <div
