@@ -24,7 +24,7 @@ export default async function PlanosPage({
 
   const equipos =
     planoSeleccionado && Number.isFinite(planoSeleccionado.id)
-      ? await fetchEquiposByPlanoId(planoSeleccionado.id)
+      ? await fetchEquiposByPlanoId(planoSeleccionado.id, planoSeleccionado.nombre)
       : [];
 
   const planoImageUrl =

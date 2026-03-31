@@ -45,7 +45,7 @@ export default async function AdminPlanosPage({
 
   const equipos =
     planoSeleccionado && Number.isFinite(planoSeleccionado.id)
-      ? await fetchEquiposByPlanoId(planoSeleccionado.id)
+      ? await fetchEquiposByPlanoId(planoSeleccionado.id, planoSeleccionado.nombre)
       : [];
 
   const planoImageUrl =

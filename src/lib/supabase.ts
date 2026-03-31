@@ -301,6 +301,16 @@ export type PlanoRecord = {
   creado_el?: string | null;
 };
 
+function normalizeComparableText(value: string | null | undefined): string {
+  if (!value) return "";
+
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 type StorageBucket = "fotos" | "planos";
 
 function buildStorageProxyUrlForBucket(
@@ -1880,9 +1890,11 @@ export async function fetchPlanos(): Promise<PlanoRecord[]> {
 
 export async function fetchEquiposByPlanoId(
   planoId: number,
+  planoNombre?: string | null,
 ): Promise<EquipoRecord[]> {
   const config = getSupabaseConfig();
   const requestUrl = new URL(`${config.url}/rest/v1/equipos`);
+  const isPlanoPrincipal = normalizeComparableText(planoNombre) === "principal";
   requestUrl.searchParams.set(
     "select",
     [
@@ -1898,7 +1910,9 @@ export async function fetchEquiposByPlanoId(
       "puertos_conectados:puertos(id,switch_id,numero,nombre,vlan,poe,velocidad_mbps,equipo_id,switch_conectado_id,observaciones,switch:switches!puertos_switch_id_fkey(id,nombre),switch_conectado:switches!puertos_switch_conectado_fkey(id,nombre))",
     ].join(","),
   );
-  requestUrl.searchParams.set("plano_id", `eq.${planoId}`);
+  if (!isPlanoPrincipal) {
+    requestUrl.searchParams.set("plano_id", `eq.${planoId}`);
+  }
   requestUrl.searchParams.set("order", "toma_red.asc.nullslast,nombre.asc.nullslast");
 
   const response = await fetch(requestUrl.toString(), {
@@ -1916,7 +1930,38 @@ export async function fetchEquiposByPlanoId(
     );
   }
 
-  return (await response.json()) as EquipoRecord[];
+  const equipos = (await response.json()) as EquipoRecord[];
+  const ubicacionesOcultasEnPlanos = new Set(["boxes"]);
+  const equiposVisibles = equipos.filter((equipo) => {
+    const ubicacion = normalizeComparableText(equipo.ubicacion?.nombre);
+    return !ubicacionesOcultasEnPlanos.has(ubicacion);
+  });
+
+  if (!isPlanoPrincipal) {
+    return equiposVisibles;
+  }
+
+  const ubicacionesExcluidasPlanoPrincipal = new Set([
+    "delineacion",
+    "informatica",
+    "medio ambiente",
+    "geologia",
+  ]);
+
+  return equiposVisibles.filter((equipo) => {
+    const ubicacion = normalizeComparableText(equipo.ubicacion?.nombre);
+    if (ubicacionesExcluidasPlanoPrincipal.has(ubicacion)) {
+      return false;
+    }
+
+    if (ubicacion === "obra") {
+      const hasX = typeof equipo.x_pct === "number" && Number.isFinite(equipo.x_pct);
+      const hasY = typeof equipo.y_pct === "number" && Number.isFinite(equipo.y_pct);
+      return !hasX || !hasY;
+    }
+
+    return true;
+  });
 }
 
 export async function fetchSwitchesCatalogo(): Promise<SwitchCatalogoItem[]> {
