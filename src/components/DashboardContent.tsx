@@ -503,7 +503,7 @@ export default function DashboardContent({
                 <circle cx="12" cy="12" r="1.25" fill="currentColor" />
               </svg>
             </Link>
-            <span>Mapas</span>
+            <span>Planos</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Link

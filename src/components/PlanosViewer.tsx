@@ -495,6 +495,13 @@ export default function PlanosViewer({
                         const tomaLabel = equipo.toma_red?.trim() || "Sin toma";
                         const equipoLabel = getEquipoDisplayName(equipo);
                         const conexion = getConexionPrincipal(equipo);
+                        const tooltipRows = [
+                          { label: "Equipo", value: equipoLabel },
+                          { label: "Usuario", value: usuarioLabel },
+                          { label: "Toma", value: tomaLabel },
+                          { label: "Switch", value: conexion.switchName },
+                          { label: "Puerto", value: conexion.portLabel },
+                        ];
                         const visualPosition = mapPositionToVisual(
                           {
                             xPct: equipo.x_pct!,
@@ -517,16 +524,27 @@ export default function PlanosViewer({
                             </span>
                             <button
                               type="button"
-                              title={[
-                                `Equipo: ${equipoLabel}`,
-                                `Usuario: ${usuarioLabel}`,
-                                `Toma: ${tomaLabel}`,
-                                `Switch: ${conexion.switchName}`,
-                                `Puerto: ${conexion.portLabel}`,
-                              ].join("\n")}
-                              className="pointer-events-auto absolute left-1/2 top-1/2 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-sky-500 shadow shadow-sky-500/40"
+                              aria-label={tooltipRows
+                                .map((row) => `${row.label}: ${row.value}`)
+                                .join(", ")}
+                              className="group pointer-events-auto absolute left-1/2 top-1/2 block h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-help rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500/50"
                             >
+                              <span
+                                aria-hidden="true"
+                                className="absolute left-1/2 top-1/2 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-sky-500 shadow shadow-sky-500/40"
+                              />
                               <span className="sr-only">{equipoLabel}</span>
+                              <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-max min-w-[160px] max-w-[220px] -translate-x-1/2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-[10px] leading-tight text-slate-900 shadow-lg group-hover:block group-focus-visible:block">
+                                {tooltipRows.map((row) => (
+                                  <span
+                                    key={`${equipo.id}-${row.label}`}
+                                    className="block whitespace-nowrap"
+                                  >
+                                    <span className="font-semibold">{row.label}:</span>{" "}
+                                    {row.value}
+                                  </span>
+                                ))}
+                              </span>
                             </button>
                           </div>
                         );
