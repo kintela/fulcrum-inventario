@@ -7,8 +7,8 @@ import {
 
 export default async function Dashboard() {
   const [equipos, pantallasSinEquipo, switches] = await Promise.all([
-    fetchEquipos(),
-    fetchPantallasSinEquipo(),
+    fetchEquipos({ includeThumbnails: false }),
+    fetchPantallasSinEquipo({ includeThumbnails: false }),
     fetchSwitches(),
   ]);
 

@@ -995,8 +995,15 @@ async function completarFabricantesPantallas(
     }
   });
 }
-export async function fetchEquipos(): Promise<EquipoRecord[]> {
+type FetchInventoryOptions = {
+  includeThumbnails?: boolean;
+};
+
+export async function fetchEquipos(
+  options: FetchInventoryOptions = {},
+): Promise<EquipoRecord[]> {
   const config = getSupabaseConfig();
+  const { includeThumbnails = true } = options;
   const restUrl = `${config.url}/rest/v1/equipos`;
 
   const requestUrl = new URL(restUrl);
@@ -1063,6 +1070,10 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
 
   await completarFabricantesPantallas(equipos, config);
 
+  if (!includeThumbnails) {
+    return equipos;
+  }
+
   const miniaturasCache = new Map<string, string | null>();
 
   await Promise.all(
@@ -1094,8 +1105,11 @@ export async function fetchEquipos(): Promise<EquipoRecord[]> {
   return equipos;
 }
 
-export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
+export async function fetchPantallasSinEquipo(
+  options: FetchInventoryOptions = {},
+): Promise<PantallaRecord[]> {
   const config = getSupabaseConfig();
+  const { includeThumbnails = true } = options;
   const requestUrl = new URL(`${config.url}/rest/v1/pantallas`);
   requestUrl.searchParams.set(
     "select",
@@ -1126,6 +1140,10 @@ export async function fetchPantallasSinEquipo(): Promise<PantallaRecord[]> {
   }
 
   await completarFabricantesPantallas([], config, pantallas);
+
+  if (!includeThumbnails) {
+    return pantallas;
+  }
 
   const miniaturasCache = new Map<string, string | null>();
 

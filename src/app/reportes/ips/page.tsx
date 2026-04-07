@@ -60,7 +60,10 @@ function formatTipo(valor: string | null | undefined): string {
 }
 
 export default async function ReporteIpsPage() {
-  const [equipos, switches] = await Promise.all([fetchEquipos(), fetchSwitches()]);
+  const [equipos, switches] = await Promise.all([
+    fetchEquipos({ includeThumbnails: false }),
+    fetchSwitches(),
+  ]);
 
   const registrosEquipos: IpRegistro[] = equipos
     .filter((equipo) => typeof equipo.ip === "string" && equipo.ip.trim().length > 0)
