@@ -918,16 +918,18 @@ export default function PlanosAdminEditor({
                       </div>
                     </div>
                   ) : (
-                    {/* eslint-disable-next-line @next/next/no-img-element -- Plano interactivo con zoom/rotacion y medicion directa del recurso cargado. */}
-                    <img
-                      ref={imageRef}
-                      src={planoImageUrl}
-                      alt="Plano de oficina"
-                      className="block h-auto max-w-full"
-                      draggable={false}
-                      onLoad={handleImageLoad}
-                      onError={() => setImageLoadFailed(true)}
-                    />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- Plano interactivo con zoom/rotacion y medicion directa del recurso cargado. */}
+                      <img
+                        ref={imageRef}
+                        src={planoImageUrl}
+                        alt="Plano de oficina"
+                        className="block h-auto max-w-full"
+                        draggable={false}
+                        onLoad={handleImageLoad}
+                        onError={() => setImageLoadFailed(true)}
+                      />
+                    </>
                   )}
                 </div>
               </div>
