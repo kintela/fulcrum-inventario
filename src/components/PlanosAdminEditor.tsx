@@ -818,6 +818,7 @@ export default function PlanosAdminEditor({
                             transformOrigin: "center center",
                           }}
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Plano interactivo con zoom/rotacion y medicion directa del recurso cargado. */}
                           <img
                             ref={imageRef}
                             src={planoImageUrl}
@@ -917,6 +918,7 @@ export default function PlanosAdminEditor({
                       </div>
                     </div>
                   ) : (
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Plano interactivo con zoom/rotacion y medicion directa del recurso cargado. */}
                     <img
                       ref={imageRef}
                       src={planoImageUrl}
